@@ -244,6 +244,14 @@ function VoiceList() {
         </ul>
       )}
 
+      <PersonaLibrary
+        onAdopted={(id) => {
+          invalidate();
+          navigate({ to: "/settings/voice/$id", params: { id } });
+        }}
+      />
+
+
       {openSheet === "menu" && (
         <NewVoiceSheet
           onClose={() => setOpenSheet(null)}
