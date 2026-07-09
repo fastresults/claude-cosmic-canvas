@@ -38,7 +38,12 @@ function micErrorMessage(err: unknown) {
   return err instanceof Error ? err.message : "Mic error";
 }
 
-export function ComposerBar() {
+type ComposerBarProps = {
+  onGenerate: (prompt: string) => void;
+  busy?: boolean;
+};
+
+export function ComposerBar({ onGenerate, busy: externalBusy = false }: ComposerBarProps) {
   const [value, setValue] = useState("");
   const [listening, setListening] = useState(false);
   const [requestingMic, setRequestingMic] = useState(false);
@@ -47,9 +52,7 @@ export function ComposerBar() {
   const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const draftFn = useServerFn(contentDraft);
   const transcribeFn = useServerFn(aiTranscribe);
-  const qc = useQueryClient();
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -90,13 +93,13 @@ export function ComposerBar() {
     };
   }, []);
 
-  const mutation = useMutation({
-    mutationFn: (prompt: string) => draftFn({ data: { prompt, format: "post" } }),
-    onSuccess: () => {
-      setValue("");
-      qc.invalidateQueries({ queryKey: ["drafts"] });
-    },
-  });
+  function emit(prompt: string) {
+    const p = prompt.trim();
+    if (p.length < 2) return;
+    setValue("");
+    onGenerate(p);
+  }
+
 
   async function startRecording() {
     wantsRecordingRef.current = true;
