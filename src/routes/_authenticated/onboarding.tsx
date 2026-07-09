@@ -117,14 +117,15 @@ function OnboardingPage() {
             </label>
             <div className="flex flex-wrap gap-2">
               {DOMAIN_SUGGESTIONS.map((d) => (
-                <button key={d} type="button" onClick={() => toggleDomain(d)}>
-                  <Pill
-                    size="sm"
-                    variant={domains.includes(d) ? "solid" : "ghost"}
-                  >
-                    {d}
-                  </Pill>
-                </button>
+                <Pill
+                  key={d}
+                  type="button"
+                  size="sm"
+                  variant={domains.includes(d) ? "solid" : "ghost"}
+                  onClick={() => toggleDomain(d)}
+                >
+                  {d}
+                </Pill>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
