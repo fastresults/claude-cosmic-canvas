@@ -56,8 +56,9 @@ function VoiceList() {
   const [q, setQ] = useState("");
   const [openSheet, setOpenSheet] = useState<null | "menu" | "analyze">(null);
 
-  const invalidate = () => {
   const confirm = useConfirm();
+
+  const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["voice-profiles"] });
     qc.invalidateQueries({ queryKey: ["voice-active"] });
   };
@@ -232,8 +233,8 @@ function VoiceList() {
                   <button
                     type="button"
                     aria-label="Delete"
-                    onClick={() => {
-                      if (confirm(`Delete voice "${v.name}"?`)) del.mutate(v.id);
+                    onClick={async () => {
+                      if (await confirm({ title: `Delete voice "${v.name}"?`, destructive: true })) del.mutate(v.id);
                     }}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                   >
