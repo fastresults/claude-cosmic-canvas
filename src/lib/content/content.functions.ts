@@ -86,12 +86,14 @@ export const contentDraft = createServerFn({ method: "POST" })
     }
 
     // Write brain provenance edges.
-    const edges = [
+    const { ServerEdgeInput } = await import("@/lib/ai/provenance.server");
+    void ServerEdgeInput; // type-only import trick avoided; see below
+    const edges: Array<Parameters<typeof writeEdgesServer>[2][number]> = [
       {
-        srcType: "you" as const,
+        srcType: "you",
         srcId: userId,
-        edgeKind: "GENERATED_BY_TOOL" as const,
-        dstType: "draft" as const,
+        edgeKind: "GENERATED_BY_TOOL",
+        dstType: "draft",
         dstId: draft.id,
         meta: {
           tool: "claude",
@@ -104,12 +106,11 @@ export const contentDraft = createServerFn({ method: "POST" })
     ];
     if (personaId) {
       edges.push({
-        srcType: "persona" as const,
+        srcType: "persona",
         srcId: personaId,
-        edgeKind: "SPEAKS_IN" as const,
-        dstType: "draft" as const,
+        edgeKind: "SPEAKS_IN",
+        dstType: "draft",
         dstId: draft.id,
-        meta: {},
       });
     }
     await writeEdgesServer(supabase, userId, edges);
