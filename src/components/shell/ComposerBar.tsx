@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
+import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
 import { contentDraft } from "@/lib/content/content.functions";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+
+const MIC_HELP_SHOWN_KEY = "eve:mic-help-shown";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -44,6 +47,7 @@ export function ComposerBar() {
   const [transcribing, setTranscribing] = useState(false);
   const [micErr, setMicErr] = useState<string | null>(null);
   const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const draftFn = useServerFn(contentDraft);
   const transcribeFn = useServerFn(aiTranscribe);
@@ -166,8 +170,19 @@ export function ComposerBar() {
       setListening(true);
       if (!wantsRecordingRef.current) stopRecording();
     } catch (err) {
-      if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) {
+      const denied =
+        err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError");
+      if (denied) {
         setMicPermission("denied");
+        try {
+          const seen = sessionStorage.getItem(MIC_HELP_SHOWN_KEY);
+          if (!seen) {
+            sessionStorage.setItem(MIC_HELP_SHOWN_KEY, "1");
+            setHelpOpen(true);
+          }
+        } catch {
+          setHelpOpen(true);
+        }
       }
       setMicErr(micErrorMessage(err));
       setRequestingMic(false);
@@ -245,21 +260,27 @@ export function ComposerBar() {
             />
           )}
         </div>
-        {micErr && (
-          <div className="flex items-center justify-between gap-2 px-2 text-[11px] text-destructive">
-            <p>{micErr}</p>
-            {micPermission === "denied" && (
-              <button
-                type="button"
-                onClick={() => void startRecording()}
-                className="flex-shrink-0 text-accent underline-offset-2 hover:underline"
-              >
-                Retry
-              </button>
-            )}
+        {(micErr || micPermission === "denied") && (
+          <div className="flex items-center justify-between gap-2 px-2 text-[11px]">
+            <p className="text-destructive">
+              {micErr ?? "Microphone is blocked for this site."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="flex flex-shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-accent hover:bg-accent/20"
+            >
+              <Settings2 className="h-3 w-3" />
+              Fix mic access
+            </button>
           </div>
         )}
       </div>
+      <MicPermissionSheet
+        open={helpOpen}
+        onOpenChange={setHelpOpen}
+        onRetry={() => void startRecording()}
+      />
     </form>
   );
 }

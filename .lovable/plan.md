@@ -1,58 +1,39 @@
-# Eve OS — Full Build Plan (7 Phases)
+## Goal
+Make the "mic blocked" moment feel guided instead of a dead-end by detecting the user's OS/browser and showing the exact steps (and, where possible, a direct link) to re-enable microphone access.
 
-Foundation (M0 + M1.5 + Brain scaffold) is already shipped: schema, auth, app shell, 5-tab nav, `<Orb>`/`<EveSheet>`/`<DraftCard>`, Brain canvas + realtime + `writeEdge`. The remaining work breaks into **7 phases**.
+## What changes
 
-## Phase 1 — Orchestrator + AI Plumbing
-- Wire hybrid model layer: Claude Fable 5 (thinking) via existing orchestrator; Lovable AI Gateway for STT, image gen, embeddings.
-- `src/lib/ai/` clients: `claude.ts`, `gateway.ts`, `embeddings.ts`, `stt.ts`, `image.ts`.
-- Server fns: `ai.transcribe`, `ai.embed`, `ai.image`.
-- Provenance helper: every AI call auto-writes a `brain_edges` row (source, prompt hash, model, tokens).
+**1. New helper: `src/lib/platform/mic-help.ts`**
+- `detectPlatform()` — parses `navigator.userAgent` + `userAgentData` into one of: `ios-safari`, `ios-chrome`, `android-chrome`, `android-firefox`, `macos-safari`, `macos-chrome`, `macos-firefox`, `windows-chrome`, `windows-edge`, `windows-firefox`, `linux-*`, `unknown`.
+- `micHelpFor(platform)` — returns `{ title, steps: string[], deepLink?: { href, label } }`.
+  - iOS Safari/Chrome → "Settings → Safari (or Chrome) → Microphone". Deep link: `App-Prefs:` isn't reliable in Safari, so show steps only; on iOS Chrome offer `googlechrome://settings`.
+  - Android Chrome → deep link `intent://settings/site_settings/microphone#Intent;scheme=chrome;package=com.android.chrome;end` with fallback text steps.
+  - Desktop Chrome/Edge → link to `chrome://settings/content/microphone` / `edge://settings/content/microphone` shown as copy-to-clipboard (browsers block navigation to `chrome://` from a page, so we copy + instruct).
+  - Desktop Safari → steps: Safari → Settings → Websites → Microphone.
+  - Desktop Firefox → `about:preferences#privacy` (copy + instruct).
+  - Fallback → generic "click the lock icon in the address bar → Site settings → Microphone → Allow".
 
-## Phase 2 — Onboarding + Voice Profile
-- `/onboarding` flow: identity → domains → tone samples → goals.
-- Hold-to-speak capture → STT → Claude extracts `voice_profile` (tone axes, forbidden phrases, signature moves).
-- Persist to `personas` + `voice_profiles`; seed initial `brain_edges` (You → Persona → Domain → Voice).
-- First Brain "bloom" animation on completion.
+**2. New component: `src/components/shell/MicPermissionSheet.tsx`**
+- Uses existing `EveSheet` primitive.
+- Shows: platform-specific title, numbered steps, the deep-link button (or "Copy address" for `chrome://` style URLs with a toast), plus a "Try mic again" primary action that calls back into `startRecording`.
+- Includes a small "Not your device?" link that reveals a `<select>` to manually pick another platform — covers misdetection.
 
-## Phase 3 — Content Drafting (Home)
-- `ComposerBar` → `content.draft` serverFn → Claude with persona + voice + retrieved knowledge (pgvector).
-- `<DraftCard>` state machine: idea → draft → revise → approved.
-- Rewrite/tone actions (shorter, punchier, on-brand) via Claude.
-- Every draft writes edges: Prompt → Draft → Sources → Persona.
-- Library tab: filter/search drafts, campaigns, arcs.
+**3. `src/components/shell/ComposerBar.tsx` updates**
+- Replace the inline "Mic blocked… Retry" strip with a single "Fix microphone access" button when `micPermission === "denied"` or `micErr` is set.
+- Clicking it opens `MicPermissionSheet` (new state `helpOpen`).
+- On first `NotAllowedError`, auto-open the sheet once per session (guarded by a `sessionStorage` flag so it doesn't nag).
+- Keep the current recording pipeline untouched.
 
-## Phase 4 — Second Brain (Full)
-- Node types: Persona, Domain, Knowledge, Entity, Draft, Campaign, Arc, Source.
-- View modes: Map, Timeline, Clusters.
-- Node inspector sheet (provenance, related, actions).
-- Search + semantic query (`brain.query` serverFn, pgvector).
-- Manual knowledge ingest (paste/upload → chunk → embed → nodes).
+**4. Small polish**
+- When `micPermission === "granted"`, never show any warning UI.
+- When permission is `prompt`, the first tap continues to trigger the native browser prompt (no sheet); only failure opens the sheet.
 
-## Phase 5 — Arcs + Campaigns + Scheduling
-- Arcs tab: multi-step narrative planner (Claude generates arc_nodes).
-- Campaigns: group drafts, assign channels, schedule.
-- `schedules` + pg_cron worker (`/api/public/process-social-queue`) with HMAC.
-- Notifications center (in-app + optional email).
+## Technical notes
+- Pure client code, no server functions, no schema changes.
+- No new dependencies.
+- Deep links that browsers refuse to navigate (`chrome://`, `edge://`, `about:`) are handled via `navigator.clipboard.writeText` + toast, since anchor navigation to those schemes is blocked by design.
+- iOS PWAs (`display-mode: standalone`) get an extra note that mic permission must be granted in the Safari-hosted first launch.
 
-## Phase 6 — Channel Connections (M2)
-- `channel_connections` OAuth flows: X, LinkedIn, Instagram, Threads, YouTube, TikTok, Substack.
-- Publish adapters per channel; retry + status on `DraftCard`.
-- OAuth callback routes under `/api/public/oauth/*` (signature-verified).
-- MCP client registry (`mcp_clients`) for external tool access via `@lovable.dev/mcp-js`.
-
-## Phase 7 — Polish, PWA, GA
-- PWA manifest, offline shell, install prompt, push (optional).
-- Settings: personas manager, voice tuning, data export, danger zone.
-- Accessibility pass (reduced motion, focus, contrast), perf budget, empty/error states.
-- Analytics + audit_log surfacing, admin role via `has_role`.
-- SEO metadata per route, social OG images, published launch.
-
-## Technical Notes
-- All AI calls server-side; keys never touch client.
-- Every mutation that changes user knowledge writes to `brain_edges` for zero-fabrication guarantee.
-- Semantic tokens only; dark-first; Instrument Serif + Inter Tight throughout.
-- `createServerFn` for internal; Edge/`/api/public/*` only for webhooks + cron.
-- RLS + GRANTs on every new public table in the same migration.
-
-## Proceeding
-On approval I'll start **Phase 1** immediately: AI client modules, three server fns, provenance helper, and a smoke test writing a Claude-sourced edge into the Brain.
+## Out of scope
+- Actually opening OS settings from the web is not possible on iOS Safari or desktop browsers — we can only guide. The plan is honest about that inside the sheet copy.
+- No changes to recording, transcription, or onboarding logic.
