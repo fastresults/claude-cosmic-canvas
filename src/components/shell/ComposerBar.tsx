@@ -206,13 +206,12 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
 
   function submit(e?: FormEvent) {
     e?.preventDefault();
-    const p = value.trim();
-    if (p.length < 2 || mutation.isPending) return;
-    mutation.mutate(p);
+    if (externalBusy) return;
+    emit(value);
   }
 
-  const busy = mutation.isPending || transcribing;
-  const placeholder = mutation.isPending
+  const busy = externalBusy || transcribing;
+  const placeholder = externalBusy
     ? "Eve is thinking…"
     : transcribing
       ? "Transcribing…"
