@@ -155,8 +155,7 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
           });
           const clean = text?.trim();
           if (clean && clean.length > 1) {
-            setValue(clean);
-            mutation.mutate(clean);
+            emit(clean);
           }
         } catch (err) {
           setMicErr(err instanceof Error ? err.message : "Transcription failed");
