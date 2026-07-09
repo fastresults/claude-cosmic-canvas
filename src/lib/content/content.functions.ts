@@ -86,9 +86,7 @@ export const contentDraft = createServerFn({ method: "POST" })
     }
 
     // Write brain provenance edges.
-    const { ServerEdgeInput } = await import("@/lib/ai/provenance.server");
-    void ServerEdgeInput; // type-only import trick avoided; see below
-    const edges: Array<Parameters<typeof writeEdgesServer>[2][number]> = [
+    const edges: Parameters<typeof writeEdgesServer>[2] = [
       {
         srcType: "you",
         srcId: userId,
