@@ -1,0 +1,13 @@
+{
+  "name": "Eve OS",
+  "short_name": "Eve",
+  "description": "Voice-first AI content OS with a living Second Brain.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08060f",
+  "theme_color": "#08060f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+  ]
+}
