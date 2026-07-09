@@ -1,302 +1,479 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Pill } from "@/components/primitives/Pill";
-import { Trash2, Plus, Check } from "lucide-react";
 import {
-  createPersona,
-  deletePersona,
-  getMyProfile,
-  getVoiceProfile,
-  listPersonas,
-  renamePersona,
-  setActivePersona,
-  upsertVoiceProfile,
-} from "@/lib/settings/settings.functions";
+  Check,
+  Copy,
+  Plus,
+  Sparkles,
+  Star,
+  Trash2,
+  Wand2,
+  BookOpen,
+  Search,
+} from "lucide-react";
+import {
+  adoptSystemVoice,
+  analyzeOwnVoice,
+  createVoiceProfile,
+  deleteVoiceProfile,
+  duplicateVoiceProfile,
+  getActiveVoice,
+  listSystemVoices,
+  listVoiceProfiles,
+  setActiveVoice,
+  setDefaultVoiceProfile,
+} from "@/lib/voice/voice.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/voice")({
-  component: VoiceSettings,
+  component: VoiceList,
 });
 
-type Sample = { text: string; source?: string };
-
-function VoiceSettings() {
+function VoiceList() {
   const qc = useQueryClient();
-  const listFn = useServerFn(listPersonas);
-  const profileFn = useServerFn(getMyProfile);
-  const createFn = useServerFn(createPersona);
-  const renameFn = useServerFn(renamePersona);
-  const deleteFn = useServerFn(deletePersona);
-  const activateFn = useServerFn(setActivePersona);
+  const navigate = useNavigate();
+  const listFn = useServerFn(listVoiceProfiles);
+  const activeFn = useServerFn(getActiveVoice);
+  const createFn = useServerFn(createVoiceProfile);
+  const setActiveFn = useServerFn(setActiveVoice);
+  const setDefaultFn = useServerFn(setDefaultVoiceProfile);
+  const dupFn = useServerFn(duplicateVoiceProfile);
+  const delFn = useServerFn(deleteVoiceProfile);
 
-  const { data: personas = [] } = useQuery({
-    queryKey: ["personas"],
-    queryFn: () => listFn(),
+  const { data: voices = [] } = useQuery({
+    queryKey: ["voice-profiles"],
+    queryFn: () => listFn({ data: {} }),
   });
-  const { data: profile } = useQuery({
-    queryKey: ["profile"],
-    queryFn: () => profileFn(),
+  const { data: active } = useQuery({
+    queryKey: ["voice-active"],
+    queryFn: () => activeFn(),
   });
 
-  const activeId = profile?.persona_active_id ?? null;
+  const [q, setQ] = useState("");
+  const [openSheet, setOpenSheet] = useState<null | "menu" | "analyze">(null);
 
-  const [newName, setNewName] = useState("");
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+    qc.invalidateQueries({ queryKey: ["voice-active"] });
+  };
 
   const create = useMutation({
-    mutationFn: (name: string) => createFn({ data: { name } }),
-    onSuccess: () => {
-      setNewName("");
-      qc.invalidateQueries({ queryKey: ["personas"] });
+    mutationFn: (name: string) =>
+      createFn({
+        data: {
+          name,
+          vocabulary_preferred: [],
+          vocabulary_avoid: [],
+          samples: [],
+          formality: 50,
+          humor: 50,
+          technicality: 50,
+          conciseness: 50,
+          source: "scratch",
+        },
+      }),
+    onSuccess: (row) => {
+      invalidate();
+      navigate({
+        to: "/settings/voice/$id",
+        params: { id: row.id },
+      });
     },
   });
-  const rename = useMutation({
-    mutationFn: (v: { id: string; name: string }) => renameFn({ data: v }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["personas"] }),
+
+  const setActive = useMutation({
+    mutationFn: (id: string) => setActiveFn({ data: { id } }),
+    onSuccess: invalidate,
   });
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["personas"] });
-      qc.invalidateQueries({ queryKey: ["profile"] });
-    },
+  const setDefault = useMutation({
+    mutationFn: (id: string) => setDefaultFn({ data: { id } }),
+    onSuccess: invalidate,
   });
-  const activate = useMutation({
-    mutationFn: (id: string) => activateFn({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  const dup = useMutation({
+    mutationFn: (id: string) => dupFn({ data: { id } }),
+    onSuccess: invalidate,
   });
+  const del = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: invalidate,
+  });
+
+  const filtered = voices.filter((v) =>
+    q ? v.name.toLowerCase().includes(q.toLowerCase()) : true,
+  );
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-24">
       <SettingsPageHeader
         title="Voice & Style"
-        description="Personas, writing samples, and hard rules. Eve pulls from your active persona every time it drafts."
+        description="Your written voices. Every AI generation is gated by the voice you activate here."
       />
 
-      <section className="mb-6 rounded-lg border border-border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Personas</h2>
-          <span className="text-xs text-muted-foreground">
-            {personas.length} total
+      {active ? (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-xs">
+          <span className="flex items-center gap-1.5 text-accent">
+            <Sparkles className="h-3.5 w-3.5" />
+            Active voice: <strong className="font-semibold">{active.name}</strong>
           </span>
-        </div>
-
-        <div className="mb-3 flex gap-2">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="New persona name (e.g. Founder voice)"
-            className="flex-1 rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <button
-            type="button"
-            disabled={!newName.trim() || create.isPending}
-            onClick={() => create.mutate(newName.trim())}
-            className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+          <Link
+            to="/settings/voice/$id"
+            params={{ id: active.id }}
+            className="text-accent underline-offset-2 hover:underline"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add
-          </button>
+            Tune
+          </Link>
         </div>
+      ) : (
+        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          No active voice. AI generations are blocked until you pick one.
+        </div>
+      )}
 
-        {personas.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No personas yet. Add one, then paste writing samples below.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {personas.map((p) => (
+      <div className="mb-3 flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search voices…"
+            className="w-full rounded-md border border-input bg-surface-elev py-2 pl-8 pr-3 text-sm outline-none focus:border-accent"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpenSheet("menu")}
+          className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New
+        </button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+          No voices yet. Tap <strong>New</strong> to analyze your writing, research
+          a communicator, or start from scratch.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {filtered.map((v) => {
+            const isActive = active?.id === v.id;
+            return (
               <li
-                key={p.id}
-                className="flex items-center gap-2 rounded-md border border-border bg-surface-elev px-3 py-2"
+                key={v.id}
+                className="rounded-lg border border-border bg-card p-3"
               >
-                <input
-                  defaultValue={p.name}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (v && v !== p.name) rename.mutate({ id: p.id, name: v });
-                  }}
-                  className="flex-1 bg-transparent text-sm outline-none"
-                />
-                {activeId === p.id ? (
-                  <span className="flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent">
-                    <Check className="h-3 w-3" /> Active
-                  </span>
-                ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    to="/settings/voice/$id"
+                    params={{ id: v.id }}
+                    className="min-w-0 flex-1"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {v.name}
+                      </span>
+                      {v.is_default && (
+                        <Pill size="sm" variant="ghost">
+                          <Star className="h-3 w-3" /> default
+                        </Pill>
+                      )}
+                      {isActive && (
+                        <Pill size="sm" variant="ghost">
+                          <Check className="h-3 w-3" /> active
+                        </Pill>
+                      )}
+                    </div>
+                    {v.tone && (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {v.tone}
+                      </p>
+                    )}
+                    <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                      {v.category && <span>{v.category}</span>}
+                      <span>F{v.formality} · H{v.humor} · T{v.technicality} · C{v.conciseness}</span>
+                    </div>
+                  </Link>
+                  <div className="flex flex-col items-end gap-1">
+                    {!isActive && (
+                      <button
+                        type="button"
+                        onClick={() => setActive.mutate(v.id)}
+                        className="rounded bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent"
+                      >
+                        Use
+                      </button>
+                    )}
+                    {!v.is_default && (
+                      <button
+                        type="button"
+                        onClick={() => setDefault.mutate(v.id)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground"
+                      >
+                        Default
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end gap-1">
                   <button
                     type="button"
-                    onClick={() => activate.mutate(p.id)}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    aria-label="Duplicate"
+                    onClick={() => dup.mutate(v.id)}
+                    className="rounded p-1 text-muted-foreground hover:text-foreground"
                   >
-                    Make active
+                    <Copy className="h-3.5 w-3.5" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  aria-label="Delete"
-                  onClick={() => {
-                    if (confirm(`Delete persona "${p.name}"?`)) remove.mutate(p.id);
-                  }}
-                  className="rounded p-1 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                  <button
+                    type="button"
+                    aria-label="Delete"
+                    onClick={() => {
+                      if (confirm(`Delete voice "${v.name}"?`)) del.mutate(v.id);
+                    }}
+                    className="rounded p-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </li>
-            ))}
-          </ul>
-        )}
-      </section>
+            );
+          })}
+        </ul>
+      )}
 
-      {activeId ? (
-        <VoiceProfileEditor personaId={activeId} />
-      ) : (
-        <p className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-          Pick an active persona to edit voice samples and directives.
-        </p>
+      {openSheet === "menu" && (
+        <NewVoiceSheet
+          onClose={() => setOpenSheet(null)}
+          onScratch={() => {
+            const name = prompt("Name this voice");
+            if (name?.trim()) {
+              setOpenSheet(null);
+              create.mutate(name.trim());
+            }
+          }}
+          onAnalyze={() => setOpenSheet("analyze")}
+        />
+      )}
+      {openSheet === "analyze" && (
+        <AnalyzeSheet
+          onClose={() => setOpenSheet(null)}
+          onCreated={(id) => {
+            setOpenSheet(null);
+            invalidate();
+            navigate({ to: "/settings/voice/$id", params: { id } });
+          }}
+        />
       )}
     </div>
   );
 }
 
-function VoiceProfileEditor({ personaId }: { personaId: string }) {
+function NewVoiceSheet({
+  onClose,
+  onScratch,
+  onAnalyze,
+}: {
+  onClose: () => void;
+  onScratch: () => void;
+  onAnalyze: () => void;
+}) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<"actions" | "library">("actions");
+  const listSysFn = useServerFn(listSystemVoices);
+  const adoptFn = useServerFn(adoptSystemVoice);
   const qc = useQueryClient();
-  const getFn = useServerFn(getVoiceProfile);
-  const saveFn = useServerFn(upsertVoiceProfile);
-
-  const { data } = useQuery({
-    queryKey: ["voice", personaId],
-    queryFn: () => getFn({ data: { personaId } }),
+  const { data: sys = [] } = useQuery({
+    queryKey: ["system-voices"],
+    queryFn: () => listSysFn({ data: {} }),
+    enabled: tab === "library",
   });
-
-  const [samples, setSamples] = useState<Sample[]>([]);
-  const [directives, setDirectives] = useState<string[]>([]);
-  const [newSample, setNewSample] = useState("");
-  const [newDirective, setNewDirective] = useState("");
-
-  useEffect(() => {
-    setSamples(Array.isArray(data?.samples) ? (data?.samples as Sample[]) : []);
-    setDirectives(
-      Array.isArray(data?.directives) ? (data?.directives as string[]) : [],
-    );
-  }, [data]);
-
-  const save = useMutation({
-    mutationFn: (payload: { samples: Sample[]; directives: string[] }) =>
-      saveFn({ data: { personaId, ...payload } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice", personaId] }),
+  const adopt = useMutation({
+    mutationFn: (id: string) => adoptFn({ data: { id } }),
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      onClose();
+      navigate({ to: "/settings/voice/$id", params: { id: row.id } });
+    },
   });
-
-  function commit(next: { samples?: Sample[]; directives?: string[] }) {
-    const payload = {
-      samples: next.samples ?? samples,
-      directives: next.directives ?? directives,
-    };
-    if (next.samples) setSamples(next.samples);
-    if (next.directives) setDirectives(next.directives);
-    save.mutate(payload);
-  }
 
   return (
-    <>
-      <section className="mb-6 rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-1 text-sm font-semibold text-foreground">Writing samples</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Paste a few things you've written that sound like you. Eve studies these for cadence and word choice.
-        </p>
-
-        <div className="mb-3">
-          <textarea
-            value={newSample}
-            onChange={(e) => setNewSample(e.target.value)}
-            placeholder="Paste a post, tweet, email — anything you wrote."
-            rows={4}
-            className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
-          />
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-2xl border border-border bg-card p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">New voice</h3>
+          <button onClick={onClose} className="text-xs text-muted-foreground">Close</button>
+        </div>
+        <div className="mb-3 flex gap-1 rounded-md bg-surface-elev p-0.5">
           <button
-            type="button"
-            disabled={!newSample.trim()}
-            onClick={() => {
-              const next = [...samples, { text: newSample.trim() }];
-              setNewSample("");
-              commit({ samples: next });
-            }}
-            className="mt-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            onClick={() => setTab("actions")}
+            className={`flex-1 rounded px-2 py-1 text-xs ${
+              tab === "actions" ? "bg-card text-foreground" : "text-muted-foreground"
+            }`}
           >
-            Add sample
+            AI first
+          </button>
+          <button
+            onClick={() => setTab("library")}
+            className={`flex-1 rounded px-2 py-1 text-xs ${
+              tab === "library" ? "bg-card text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            Persona library
           </button>
         </div>
 
-        {samples.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No samples yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {samples.map((s, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2 rounded-md border border-border bg-surface-elev px-3 py-2 text-sm"
-              >
-                <p className="flex-1 whitespace-pre-line text-foreground/90">{s.text}</p>
-                <button
-                  type="button"
-                  aria-label="Remove"
-                  onClick={() => commit({ samples: samples.filter((_, j) => j !== i) })}
-                  className="rounded p-1 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-1 text-sm font-semibold text-foreground">Directives</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Hard rules Eve must follow (e.g. "Never use emoji", "Prefer active voice").
-        </p>
-
-        <div className="mb-3 flex gap-2">
-          <input
-            value={newDirective}
-            onChange={(e) => setNewDirective(e.target.value)}
-            placeholder="Add a rule…"
-            className="flex-1 rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <button
-            type="button"
-            disabled={!newDirective.trim()}
-            onClick={() => {
-              const next = [...directives, newDirective.trim()];
-              setNewDirective("");
-              commit({ directives: next });
-            }}
-            className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
-          >
-            Add
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {directives.length === 0 && (
-            <p className="text-xs text-muted-foreground">No directives yet.</p>
-          )}
-          {directives.map((d, i) => (
+        {tab === "actions" ? (
+          <div className="space-y-2">
             <button
-              key={i}
               type="button"
-              onClick={() => commit({ directives: directives.filter((_, j) => j !== i) })}
-              title="Click to remove"
+              onClick={onAnalyze}
+              className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
             >
-              <Pill size="sm" variant="ghost">
-                {d}
-                <Trash2 className="h-3 w-3" />
-              </Pill>
+              <Wand2 className="mt-0.5 h-4 w-4 text-accent" />
+              <div>
+                <div className="text-sm font-medium">Analyze my writing</div>
+                <div className="text-xs text-muted-foreground">
+                  Paste a sample; Eve extracts your voice profile.
+                </div>
+              </div>
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={onScratch}
+              className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
+            >
+              <Plus className="mt-0.5 h-4 w-4 text-accent" />
+              <div>
+                <div className="text-sm font-medium">From scratch</div>
+                <div className="text-xs text-muted-foreground">
+                  Empty profile you'll tune manually.
+                </div>
+              </div>
+            </button>
+          </div>
+        ) : (
+          <div className="max-h-[50vh] space-y-2 overflow-y-auto">
+            {sys.length === 0 && (
+              <p className="p-3 text-center text-xs text-muted-foreground">
+                No system voices seeded yet.
+              </p>
+            )}
+            {sys.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                disabled={adopt.isPending}
+                onClick={() => adopt.mutate(s.id)}
+                className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
+              >
+                <BookOpen className="mt-0.5 h-4 w-4 text-accent" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{s.name}</div>
+                  {s.tagline && (
+                    <div className="truncate text-xs text-muted-foreground">
+                      {s.tagline}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AnalyzeSheet({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (id: string) => void;
+}) {
+  const analyzeFn = useServerFn(analyzeOwnVoice);
+  const createFn = useServerFn(createVoiceProfile);
+  const [text, setText] = useState("");
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState<"idle" | "analyzing" | "error">("idle");
+
+  const run = async () => {
+    if (text.trim().length < 20) return;
+    setStatus("analyzing");
+    try {
+      const result = await analyzeFn({ data: { samples: [text.trim()] } });
+      if (result.fallback || !("profile" in result)) {
+        setStatus("error");
+        return;
+      }
+      const p = result.profile;
+      const created = await createFn({
+        data: {
+          name: name.trim() || p.name || "My voice",
+          tone: p.tone,
+          guidelines: p.guidelines,
+          vocabulary_preferred: p.vocabulary_preferred,
+          vocabulary_avoid: p.vocabulary_avoid,
+          formality: p.formality,
+          humor: p.humor,
+          technicality: p.technicality,
+          conciseness: p.conciseness,
+          samples: [{ text: text.trim(), source: "analyze" }, ...(p.samples ?? [])].slice(
+            0,
+            5,
+          ),
+          source: "analyze",
+        },
+      });
+      onCreated(created.id);
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-2xl border border-border bg-card p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Analyze my writing</h3>
+          <button onClick={onClose} className="text-xs text-muted-foreground">Close</button>
         </div>
-      </section>
-    </>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Voice name (optional)"
+          className="mb-2 w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={8}
+          placeholder="Paste a sample of your writing (a post, email, tweet — 100+ words works best)."
+          className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        {status === "error" && (
+          <p className="mt-2 text-xs text-destructive">
+            Couldn't analyze that sample. Try a longer one.
+          </p>
+        )}
+        <button
+          type="button"
+          disabled={text.trim().length < 20 || status === "analyzing"}
+          onClick={run}
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        >
+          {status === "analyzing" ? "Analyzing…" : "Analyze & create"}
+        </button>
+      </div>
+    </div>
   );
 }
