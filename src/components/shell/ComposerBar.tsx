@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
+import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
 import { contentDraft } from "@/lib/content/content.functions";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+
+const MIC_HELP_SHOWN_KEY = "eve:mic-help-shown";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
