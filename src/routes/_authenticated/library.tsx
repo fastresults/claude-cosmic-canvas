@@ -34,6 +34,7 @@ import {
   type LibraryFilters,
   type LibrarySort,
 } from "@/lib/library/library.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/library")({
   component: Library,
@@ -83,6 +84,7 @@ function Library() {
   const deleteFn = useServerFn(bulkDeleteDrafts);
   const statusFn = useServerFn(bulkSetStatus);
   const qc = useQueryClient();
+  const confirm = useConfirm();
 
   const [inputValue, setInputValue] = useState("");
   const [q, setQ] = useState("");
@@ -545,8 +547,8 @@ function Library() {
                 <Archive className="h-3 w-3" /> Archive
               </button>
               <button
-                onClick={() => {
-                  if (confirm(`Delete ${selected.size} draft(s)?`)) {
+                onClick={async () => {
+                  if (await confirm({ title: `Delete ${selected.size} draft(s)?`, destructive: true })) {
                     bulkDelete.mutate([...selected]);
                   }
                 }}

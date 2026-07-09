@@ -13,6 +13,7 @@ import {
   listDomains,
   listKnowledge,
 } from "@/lib/settings/settings.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/knowledge")({
   component: KnowledgeSettings,
@@ -116,6 +117,7 @@ function DomainsSection() {
 
 function KnowledgeSection() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const listFn = useServerFn(listKnowledge);
   const addFn = useServerFn(addKnowledge);
   const deleteFn = useServerFn(deleteKnowledge);
@@ -239,8 +241,8 @@ function KnowledgeSection() {
                 <button
                   type="button"
                   aria-label="Delete"
-                  onClick={() => {
-                    if (confirm(`Delete "${e.title}"?`)) remove.mutate(e.id);
+                  onClick={async () => {
+                    if (await confirm({ title: `Delete "${e.title}"?`, destructive: true })) remove.mutate(e.id);
                   }}
                   className="rounded p-1 text-muted-foreground hover:text-destructive"
                 >

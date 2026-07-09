@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { deleteChannel, listChannels } from "@/lib/settings/settings.functions";
 import { Trash2 } from "lucide-react";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/distribution")({
   component: Distribution,
@@ -17,6 +18,7 @@ const AVAILABLE = [
 
 function Distribution() {
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const listFn = useServerFn(listChannels);
   const deleteFn = useServerFn(deleteChannel);
 
@@ -59,8 +61,8 @@ function Distribution() {
                 <button
                   type="button"
                   aria-label="Disconnect"
-                  onClick={() => {
-                    if (confirm(`Disconnect ${ch.label}?`)) remove.mutate(connected.id);
+                  onClick={async () => {
+                    if (await confirm({ title: `Disconnect ${ch.label}?`, destructive: true, confirmLabel: "Disconnect" })) remove.mutate(connected.id);
                   }}
                   className="rounded p-1 text-muted-foreground hover:text-destructive"
                 >
