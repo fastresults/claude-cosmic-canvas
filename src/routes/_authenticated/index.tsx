@@ -72,7 +72,7 @@ function Home() {
                 {drafts.length} draft{drafts.length === 1 ? "" : "s"} in the queue
               </p>
             </div>
-            <Orb size={56} intensity={mutation.isPending ? "high" : "low"} />
+            <Orb size={56} />
           </header>
 
           <AnimatePresence>
