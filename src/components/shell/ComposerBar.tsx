@@ -260,21 +260,27 @@ export function ComposerBar() {
             />
           )}
         </div>
-        {micErr && (
-          <div className="flex items-center justify-between gap-2 px-2 text-[11px] text-destructive">
-            <p>{micErr}</p>
-            {micPermission === "denied" && (
-              <button
-                type="button"
-                onClick={() => void startRecording()}
-                className="flex-shrink-0 text-accent underline-offset-2 hover:underline"
-              >
-                Retry
-              </button>
-            )}
+        {(micErr || micPermission === "denied") && (
+          <div className="flex items-center justify-between gap-2 px-2 text-[11px]">
+            <p className="text-destructive">
+              {micErr ?? "Microphone is blocked for this site."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              className="flex flex-shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-accent hover:bg-accent/20"
+            >
+              <Settings2 className="h-3 w-3" />
+              Fix mic access
+            </button>
           </div>
         )}
       </div>
+      <MicPermissionSheet
+        open={helpOpen}
+        onOpenChange={setHelpOpen}
+        onRetry={() => void startRecording()}
+      />
     </form>
   );
 }
