@@ -24,14 +24,7 @@ const SaveInput = z.object({
   campaignId: z.string().uuid().optional(),
 });
 
-async function loadPersonaContext(
-  supabase: Awaited<
-    ReturnType<typeof import("@/integrations/supabase/auth-middleware").requireSupabaseAuth>
-  > extends never
-    ? never
-    : any,
-  userId: string,
-) {
+async function loadPersonaContext(supabase: any, userId: string) {
   const { data: profile } = await supabase
     .from("profiles")
     .select("persona_active_id, display_name")
