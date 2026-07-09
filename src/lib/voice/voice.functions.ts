@@ -14,41 +14,23 @@ import {
 
 // ---------- helpers ----------
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 async function upsertBrainNode(
-  supabase: {
-    from: (t: string) => {
-      select: (c: string) => { eq: (col: string, v: string) => { eq: (c2: string, v2: string) => { maybeSingle: () => Promise<{ data: { id: string } | null }> } } };
-      insert: (row: Record<string, unknown>) => { select: (c: string) => { single: () => Promise<{ data: { id: string } | null; error: unknown }> } };
-      update: (row: Record<string, unknown>) => { eq: (col: string, v: string) => { eq: (c2: string, v2: string) => Promise<unknown> } };
-      delete: () => { eq: (col: string, v: string) => { eq: (c2: string, v2: string) => Promise<unknown> } };
-    };
-  },
+  supabase: any,
   userId: string,
   voiceId: string,
   name: string,
 ) {
-  const meta = { voice_profile_id: voiceId };
-  const existing = await supabase
-    .from("entities")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("kind", "voice");
-  // Fallback: query with meta filter is not easy through supabase-js typings here.
-  // We instead re-upsert by name+kind; brain nodes are cheap.
-  void existing;
   await supabase.from("entities").insert({
     user_id: userId,
     kind: "voice",
     name,
-    meta: meta as unknown as Json,
+    meta: { voice_profile_id: voiceId } as unknown as Json,
   });
 }
 
-async function deleteBrainNodes(
-  supabase: { rpc?: unknown; from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
-  userId: string,
-  voiceId: string,
-) {
+async function deleteBrainNodes(supabase: any, userId: string, voiceId: string) {
   await supabase
     .from("entities")
     .delete()
@@ -58,7 +40,7 @@ async function deleteBrainNodes(
 }
 
 async function logAudit(
-  supabase: { from: (t: string) => any }, // eslint-disable-line @typescript-eslint/no-explicit-any
+  supabase: any,
   userId: string,
   action: string,
   meta: Record<string, unknown> = {},
@@ -73,6 +55,7 @@ async function logAudit(
     // audit failures should never break user flows
   }
 }
+
 
 // ---------- CRUD ----------
 
