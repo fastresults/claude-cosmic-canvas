@@ -47,6 +47,7 @@ export function ComposerBar() {
   const [transcribing, setTranscribing] = useState(false);
   const [micErr, setMicErr] = useState<string | null>(null);
   const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const draftFn = useServerFn(contentDraft);
   const transcribeFn = useServerFn(aiTranscribe);
