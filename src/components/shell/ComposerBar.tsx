@@ -3,7 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
 import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
+import { ActiveVoiceBadge } from "@/components/voice/ActiveVoiceBadge";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+
 
 const MIC_HELP_SHOWN_KEY = "eve:mic-help-shown";
 
