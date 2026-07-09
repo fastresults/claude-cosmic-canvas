@@ -169,8 +169,9 @@ export const updateVoiceProfile = createServerFn({ method: "POST" })
     }
     const { error } = await context.supabase
       .from("voice_profiles")
-      .update(patch)
+      .update(patch as never)
       .eq("id", id);
+
     if (error) throw error;
     // Keep brain node name in sync if it changed
     if (typeof patch.name === "string") {
