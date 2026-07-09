@@ -1,34 +1,40 @@
-# Surface the 54 seeded voices on the Voice & Style page
+# Plan: Replace native `confirm()` with themed confirmation modal
 
-## Where they are now
-- **Data**: 54 rows in `public.system_voices` across 10 categories (verified: `SELECT count(*) → 54`). Readable by any signed-in user via the existing `system_voices public read` RLS policy.
-- **Server fn**: `listSystemVoices` in `src/lib/voice/voice.functions.ts` already returns them; `adoptSystemVoice` copies one into the user's `voice_profiles` and creates a Brain node.
-- **UI (today)**: hidden inside the "+ New" bottom sheet, under a "Persona library" tab (`NewVoiceSheet` in `src/routes/_authenticated/settings.voice.tsx`, lines 274–391). This is why the screenshot only shows "Untitled voice".
+## Goal
+Native browser `confirm()` dialogs (unstyled OS modals) currently appear when deleting voices, knowledge entries, drafts, or disconnecting channels. Replace all of them with a modal that renders through our design system (shadcn `AlertDialog`), so every "system prompt" matches the app's look.
 
-## What to change
+## Approach
 
-Add a **Persona library** section directly on `/settings/voice`, below the user's voices list, so all 54 are visible without opening a modal.
+### 1. New primitive: `useConfirm()` hook + `<ConfirmDialogProvider />`
+Create `src/components/confirm-dialog.tsx`:
+- Context provider mounted once near the app root.
+- Exposes `const confirm = useConfirm()` returning a `Promise<boolean>`.
+- Signature: `confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })`.
+- Renders a single `<AlertDialog>` (shadcn) with themed content — destructive variant styles the confirm button with the `destructive` token.
+- Queues sequential calls (one modal at a time).
 
-### `src/routes/_authenticated/settings.voice.tsx` (only file touched)
+### 2. Mount the provider
+Wrap children in `src/routes/__root.tsx` (inside the existing providers) with `<ConfirmDialogProvider />` so every route has access.
 
-1. Query `listSystemVoices` at page level with `useQuery(["system-voices"])`.
-2. Render a new section `<PersonaLibrary />` below the user's voices list:
-   - Header row: "Persona library · 54 curated voices" + search input (filters by name/tagline/profession client-side).
-   - Category chip filter row (horizontal scroll on mobile): All · Public Figures · Business Leaders · Consulting · Marketing · Thought Leadership · Academic & Journalism · Journalism · Coaching & Self-Help · Investment · Spirituality. Uses category IDs already on rows.
-   - Grouped list by category; each row shows name, profession, tagline, F/H/T/C sliders as small pill, and an **Adopt** button that calls `adoptSystemVoice` → invalidates `voice-profiles` → navigates to `/settings/voice/$id`.
-   - Empty state if a filter yields zero rows.
-3. Keep the existing `NewVoiceSheet` "Persona library" tab as a shortcut, but the main page becomes the primary browsing surface.
-4. Mobile-first: single-column, tap targets ≥44px, sticky category chips scroll horizontally.
+### 3. Replace all `confirm(...)` call sites
+Five occurrences, each swapped for `await confirm({...})`:
+- `src/routes/_authenticated/settings.voice.tsx:234` — delete voice
+- `src/routes/_authenticated/settings.voice.$id.tsx:323` — delete voice (detail)
+- `src/routes/_authenticated/settings.knowledge.tsx:243` — delete knowledge entry
+- `src/routes/_authenticated/settings.distribution.tsx:63` — disconnect channel
+- `src/routes/_authenticated/library.tsx:549` — bulk delete drafts
 
-### Note about the preview
-The orange "Preview is showing an earlier version" banner in the screenshot means the current preview build predates the seed migration + library tab. After this change lands and the preview rebuilds, the 54 voices will render on the page directly.
+Each handler becomes async; destructive actions pass `destructive: true`.
+
+### 4. Lint guard (optional, lightweight)
+Add a short comment/README note in `src/components/confirm-dialog.tsx` instructing future code to use `useConfirm()` instead of `window.confirm` / `alert`. No ESLint rule added unless requested.
 
 ## Out of scope
-- No schema changes, no new server fns, no changes to `voice.functions.ts`.
-- No dedup (called out in the PRD as follow-up).
-- No changes to the composer, orchestrator, editor, or `ActiveVoiceBadge`.
+- `window.alert` / `window.prompt` — none currently used in the codebase; the hook is confirm-only for now (can extend later).
+- Toast/notification styling (already themed).
+- Any backend, schema, or business-logic changes.
 
 ## Technical notes
-- File touched: `src/routes/_authenticated/settings.voice.tsx`.
-- Category label map mirrors `docs/prd/voice-personas-catalog.md` §3.
-- Uses existing `Pill` primitive and lucide icons already imported.
+- Uses existing `src/components/ui/alert-dialog.tsx` — no new dependencies.
+- Provider uses `useState` for the current request + a ref queue; resolves the promise on confirm/cancel/close.
+- Destructive confirm button: `className={cn(buttonVariants({ variant: "destructive" }))}`.
