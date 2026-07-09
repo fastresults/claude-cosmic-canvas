@@ -398,6 +398,139 @@ function NewVoiceSheet({
   );
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  public_figures: "Public Figures",
+  business_leaders: "Business Leaders",
+  consulting_strategy: "Consulting & Strategy",
+  marketing_sales: "Marketing & Sales",
+  thought_leadership: "Thought Leadership",
+  academic_journalism: "Academic & Journalism",
+  journalism: "Journalism",
+  coaching_self_help: "Coaching & Self-Help",
+  investment_finance: "Investment & Finance",
+  spirituality: "Spirituality",
+  other: "Other",
+};
+const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
+
+function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
+  const listSysFn = useServerFn(listSystemVoices);
+  const adoptFn = useServerFn(adoptSystemVoice);
+  const { data: sys = [] } = useQuery({
+    queryKey: ["system-voices"],
+    queryFn: () => listSysFn({ data: {} }),
+    staleTime: 5 * 60_000,
+  });
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState<string>("all");
+  const adopt = useMutation({
+    mutationFn: (id: string) => adoptFn({ data: { id } }),
+    onSuccess: (row) => onAdopted(row.id),
+  });
+
+  const filtered = sys.filter((s) => {
+    if (cat !== "all" && s.category !== cat) return false;
+    if (!q) return true;
+    const hay = `${s.name} ${s.profession ?? ""} ${s.tagline ?? ""}`.toLowerCase();
+    return hay.includes(q.toLowerCase());
+  });
+  const grouped = new Map<string, typeof filtered>();
+  for (const cid of CATEGORY_ORDER) grouped.set(cid, []);
+  for (const s of filtered) {
+    const key = s.category && grouped.has(s.category) ? s.category : "other";
+    grouped.get(key)!.push(s);
+  }
+  const cats = ["all", ...CATEGORY_ORDER];
+
+  return (
+    <section className="mt-8">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">Persona library</h2>
+        <span className="text-[10px] text-muted-foreground">
+          {sys.length} curated voices
+        </span>
+      </div>
+      <div className="relative mb-2">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search personas…"
+          className="w-full rounded-md border border-input bg-surface-elev py-2 pl-8 pr-3 text-sm outline-none focus:border-accent"
+        />
+      </div>
+      <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
+        {cats.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCat(c)}
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${
+              cat === c
+                ? "border-accent bg-accent/15 text-accent"
+                : "border-border bg-card text-muted-foreground"
+            }`}
+          >
+            {c === "all" ? "All" : CATEGORY_LABELS[c] ?? c}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+          No personas match that filter.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {CATEGORY_ORDER.map((cid) => {
+            const rows = grouped.get(cid) ?? [];
+            if (rows.length === 0) return null;
+            return (
+              <div key={cid}>
+                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {CATEGORY_LABELS[cid]} · {rows.length}
+                </div>
+                <ul className="space-y-1.5">
+                  {rows.map((s) => (
+                    <li
+                      key={s.id}
+                      className="flex items-start gap-2 rounded-lg border border-border bg-card p-3"
+                    >
+                      <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{s.name}</div>
+                        {s.profession && (
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            {s.profession}
+                          </div>
+                        )}
+                        {s.tagline && (
+                          <div className="mt-0.5 text-[11px] italic text-foreground/70">
+                            {s.tagline}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={adopt.isPending}
+                        onClick={() => adopt.mutate(s.id)}
+                        className="h-11 shrink-0 rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground disabled:opacity-50"
+                      >
+                        Adopt
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
 function AnalyzeSheet({
   onClose,
   onCreated,
