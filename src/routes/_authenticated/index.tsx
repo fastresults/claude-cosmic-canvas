@@ -1,11 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Orb } from "@/components/primitives/Orb";
 import { Pill } from "@/components/primitives/Pill";
 import { DraftCard } from "@/components/primitives/DraftCard";
-import { contentDraft, listRecentDrafts } from "@/lib/content/content.functions";
+import { useWorkingDraft } from "@/lib/content/working-draft";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: Home,
@@ -19,25 +17,14 @@ const SUGGESTIONS = [
 ];
 
 function Home() {
-  const listFn = useServerFn(listRecentDrafts);
-  const draftFn = useServerFn(contentDraft);
-  const qc = useQueryClient();
+  const { draft, busy, saving, error, generate, refine, save, discard } =
+    useWorkingDraft();
 
-  const { data: drafts = [] } = useQuery({
-    queryKey: ["drafts", "recent"],
-    queryFn: () => listFn(),
-  });
-
-  const mutation = useMutation({
-    mutationFn: (prompt: string) => draftFn({ data: { prompt, format: "post" } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
-  });
-
-  const empty = drafts.length === 0 && !mutation.isPending;
+  const showEmpty = !draft && !busy;
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col px-4 pb-40 pt-8">
-      {empty ? (
+      {showEmpty ? (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -55,7 +42,7 @@ function Home() {
           </div>
           <div className="flex max-w-md flex-wrap items-center justify-center gap-2">
             {SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => mutation.mutate(s)}>
+              <button key={s} onClick={() => generate(s)}>
                 <Pill variant="ghost" size="sm">
                   {s}
                 </Pill>
@@ -67,47 +54,43 @@ function Home() {
         <div className="space-y-3">
           <header className="mb-4 flex items-center justify-between">
             <div>
-              <h1 className="font-display text-2xl text-foreground">Today</h1>
+              <h1 className="font-display text-2xl text-foreground">
+                Working draft
+              </h1>
               <p className="text-xs text-muted-foreground">
-                {drafts.length} draft{drafts.length === 1 ? "" : "s"} in the queue
+                Refine it, then save to your Library.
               </p>
             </div>
             <Orb size={56} />
           </header>
 
-          <AnimatePresence>
-            {mutation.isPending && (
-              <DraftCard
-                key="streaming"
-                state="streaming"
-                format="post"
-                domain="Eve"
-                body="Composing…"
-              />
-            )}
-          </AnimatePresence>
+          {busy && !draft && (
+            <DraftCard
+              state="streaming"
+              mode="working"
+              format="post"
+              domain="Eve"
+              body="Composing…"
+            />
+          )}
 
-          {drafts.map((d) => {
-            const score = (d.score ?? {}) as {
-              total?: number;
-              voiceMatch?: number;
-            };
-            return (
-              <DraftCard
-                key={d.id}
-                state="done"
-                format={d.format}
-                domain="Eve"
-                body={d.body}
-                imageUrl={d.image_url ?? undefined}
-                score={{
-                  total: score.total ?? 0,
-                  voiceMatch: score.voiceMatch ?? 0,
-                }}
-                sourceCount={1}
-              />
-            );
-          })}
+          {draft && (
+            <DraftCard
+              state="done"
+              mode="working"
+              format={draft.format}
+              domain="Eve"
+              body={draft.body}
+              busy={busy || saving}
+              onRefine={(kind) => void refine(kind)}
+              onSave={() => void save()}
+              onDiscard={discard}
+            />
+          )}
+
+          {error && (
+            <p className="px-1 text-xs text-destructive">{error}</p>
+          )}
         </div>
       )}
     </div>

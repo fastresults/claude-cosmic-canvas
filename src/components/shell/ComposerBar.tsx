@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
 import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
-import { contentDraft } from "@/lib/content/content.functions";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 
 const MIC_HELP_SHOWN_KEY = "eve:mic-help-shown";
@@ -40,7 +38,12 @@ function micErrorMessage(err: unknown) {
   return err instanceof Error ? err.message : "Mic error";
 }
 
-export function ComposerBar() {
+type ComposerBarProps = {
+  onGenerate: (prompt: string) => void;
+  busy?: boolean;
+};
+
+export function ComposerBar({ onGenerate, busy: externalBusy = false }: ComposerBarProps) {
   const [value, setValue] = useState("");
   const [listening, setListening] = useState(false);
   const [requestingMic, setRequestingMic] = useState(false);
@@ -49,9 +52,7 @@ export function ComposerBar() {
   const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const draftFn = useServerFn(contentDraft);
   const transcribeFn = useServerFn(aiTranscribe);
-  const qc = useQueryClient();
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -92,13 +93,13 @@ export function ComposerBar() {
     };
   }, []);
 
-  const mutation = useMutation({
-    mutationFn: (prompt: string) => draftFn({ data: { prompt, format: "post" } }),
-    onSuccess: () => {
-      setValue("");
-      qc.invalidateQueries({ queryKey: ["drafts"] });
-    },
-  });
+  function emit(prompt: string) {
+    const p = prompt.trim();
+    if (p.length < 2) return;
+    setValue("");
+    onGenerate(p);
+  }
+
 
   async function startRecording() {
     wantsRecordingRef.current = true;
@@ -154,8 +155,7 @@ export function ComposerBar() {
           });
           const clean = text?.trim();
           if (clean && clean.length > 1) {
-            setValue(clean);
-            mutation.mutate(clean);
+            emit(clean);
           }
         } catch (err) {
           setMicErr(err instanceof Error ? err.message : "Transcription failed");
@@ -206,13 +206,12 @@ export function ComposerBar() {
 
   function submit(e?: FormEvent) {
     e?.preventDefault();
-    const p = value.trim();
-    if (p.length < 2 || mutation.isPending) return;
-    mutation.mutate(p);
+    if (externalBusy) return;
+    emit(value);
   }
 
-  const busy = mutation.isPending || transcribing;
-  const placeholder = mutation.isPending
+  const busy = externalBusy || transcribing;
+  const placeholder = externalBusy
     ? "Eve is thinking…"
     : transcribing
       ? "Transcribing…"
