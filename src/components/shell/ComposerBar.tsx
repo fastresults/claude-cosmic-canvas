@@ -3,7 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
 import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
+import { ActiveVoiceBadge } from "@/components/voice/ActiveVoiceBadge";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+
 
 const MIC_HELP_SHOWN_KEY = "eve:mic-help-shown";
 
@@ -228,7 +230,11 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
       style={{ bottom: "calc(3.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-1 px-3 py-2">
+        <div className="flex items-center gap-2 pl-1">
+          <ActiveVoiceBadge />
+        </div>
         <div className="flex items-center gap-2">
+
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}
