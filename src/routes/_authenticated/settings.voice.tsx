@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Pill } from "@/components/primitives/Pill";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   Check,
   Copy,
@@ -56,6 +57,7 @@ function VoiceList() {
   const [openSheet, setOpenSheet] = useState<null | "menu" | "analyze">(null);
 
   const invalidate = () => {
+  const confirm = useConfirm();
     qc.invalidateQueries({ queryKey: ["voice-profiles"] });
     qc.invalidateQueries({ queryKey: ["voice-active"] });
   };
