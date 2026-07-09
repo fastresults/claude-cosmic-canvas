@@ -4,13 +4,17 @@ import { useRef, useState } from "react";
 type Props = {
   onStart?: () => void;
   onEnd?: () => void;
+  active?: boolean;
+  disabled?: boolean;
 };
 
-export function HoldToSpeakButton({ onStart, onEnd }: Props) {
+export function HoldToSpeakButton({ onStart, onEnd, active = false, disabled = false }: Props) {
   const [holding, setHolding] = useState(false);
   const pointerRef = useRef<number | null>(null);
 
   function start(e: React.PointerEvent<HTMLButtonElement>) {
+    if (disabled) return;
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     pointerRef.current = e.pointerId;
     setHolding(true);
@@ -21,6 +25,8 @@ export function HoldToSpeakButton({ onStart, onEnd }: Props) {
   }
 
   function end(e: React.PointerEvent<HTMLButtonElement>) {
+    if (disabled) return;
+    e.preventDefault();
     if (pointerRef.current !== null) {
       try {
         e.currentTarget.releasePointerCapture(pointerRef.current);
@@ -40,12 +46,14 @@ export function HoldToSpeakButton({ onStart, onEnd }: Props) {
   return (
     <button
       type="button"
-      aria-label="Hold to speak"
+      aria-label={holding || active ? "Recording voice" : "Hold to speak"}
+      disabled={disabled}
       onPointerDown={start}
       onPointerUp={end}
       onPointerCancel={end}
+      onContextMenu={(e) => e.preventDefault()}
       className={`grid h-10 w-10 flex-shrink-0 place-items-center rounded-full touch-none select-none transition-all ${
-        holding ? "bg-accent text-accent-foreground amber-glow" : "bg-primary text-primary-foreground"
+        holding || active ? "bg-accent text-accent-foreground amber-glow" : "bg-primary text-primary-foreground"
       }`}
     >
       <Mic className="h-4 w-4" />

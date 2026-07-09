@@ -30,7 +30,7 @@ function pickMime(): string | undefined {
 function micErrorMessage(err: unknown) {
   const name = err instanceof Error ? err.name : "";
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return "Mic blocked — allow microphone access in your browser site settings, then try again.";
+    return "Mic is blocked for this site. Enable it in the browser permission popup or site controls, then press again.";
   }
   if (name === "NotFoundError") return "No microphone found.";
   if (name === "NotReadableError") return "Mic is already in use by another app.";
@@ -40,8 +40,10 @@ function micErrorMessage(err: unknown) {
 export function ComposerBar() {
   const [value, setValue] = useState("");
   const [listening, setListening] = useState(false);
+  const [requestingMic, setRequestingMic] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [micErr, setMicErr] = useState<string | null>(null);
+  const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
 
   const draftFn = useServerFn(contentDraft);
   const transcribeFn = useServerFn(aiTranscribe);
@@ -65,11 +67,8 @@ export function ComposerBar() {
           if (cancelled) return;
           permissionStatus = status;
           const update = () => {
-            if (status.state === "denied") {
-              setMicErr("Mic blocked — allow microphone access in your browser site settings, then try again.");
-            } else {
-              setMicErr((current) => (current?.startsWith("Mic blocked") ? null : current));
-            }
+            setMicPermission(status.state);
+            if (status.state !== "denied") setMicErr(null);
           };
           permissionUpdate = update;
           status.addEventListener("change", update);
@@ -99,21 +98,33 @@ export function ComposerBar() {
 
   async function startRecording() {
     wantsRecordingRef.current = true;
+    setRequestingMic(true);
     setMicErr(null);
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setMicErr("Mic not supported");
+      setRequestingMic(false);
       setListening(false);
       return;
     }
     if (typeof MediaRecorder === "undefined") {
       setMicErr("Mic recording is not supported in this browser.");
+      setRequestingMic(false);
       setListening(false);
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      setMicPermission("granted");
       if (!wantsRecordingRef.current) {
         stream.getTracks().forEach((t) => t.stop());
+        setMicErr("Mic is ready — hold the button again to speak.");
+        setRequestingMic(false);
         setListening(false);
         return;
       }
@@ -151,16 +162,22 @@ export function ComposerBar() {
       rec.start();
       mimeRef.current = rec.mimeType || mimeRef.current;
       recorderRef.current = rec;
+      setRequestingMic(false);
       setListening(true);
       if (!wantsRecordingRef.current) stopRecording();
     } catch (err) {
+      if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) {
+        setMicPermission("denied");
+      }
       setMicErr(micErrorMessage(err));
+      setRequestingMic(false);
       setListening(false);
     }
   }
 
   function stopRecording() {
     wantsRecordingRef.current = false;
+    setRequestingMic(false);
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") {
       try {
@@ -184,7 +201,9 @@ export function ComposerBar() {
     ? "Eve is thinking…"
     : transcribing
       ? "Transcribing…"
-      : listening
+      : requestingMic
+        ? "Requesting mic…"
+        : listening
         ? "Listening…"
         : "Hold to speak, or type…";
 
@@ -214,6 +233,8 @@ export function ComposerBar() {
             </button>
           ) : (
             <HoldToSpeakButton
+              active={requestingMic || listening}
+              disabled={busy}
               onStart={() => {
                 void startRecording();
               }}
@@ -225,7 +246,18 @@ export function ComposerBar() {
           )}
         </div>
         {micErr && (
-          <p className="px-2 text-[11px] text-destructive">{micErr}</p>
+          <div className="flex items-center justify-between gap-2 px-2 text-[11px] text-destructive">
+            <p>{micErr}</p>
+            {micPermission === "denied" && (
+              <button
+                type="button"
+                onClick={() => void startRecording()}
+                className="flex-shrink-0 text-accent underline-offset-2 hover:underline"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         )}
       </div>
     </form>
