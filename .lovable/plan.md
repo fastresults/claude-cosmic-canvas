@@ -1,56 +1,94 @@
 
 ## Goal
-Stop auto-accumulating drafts in the Library. Generation on Home creates a single **working draft** the user can refine in place. Only "Save to drafts" persists it to the Library, and doing so clears Home so they can start fresh. Publish and Schedule move out of Home and live only in the Library.
+Make every Settings row navigate to a working sub-page, and give the user obvious places to add **personas**, **voice samples**, **knowledge (LinkedIn / resume / notes)**, and **domains of expertise** — the pieces that actually shape what Eve writes.
 
-## Flow (new)
+## Why nothing happens today
+`src/routes/_authenticated/settings.tsx` renders `<button>` rows with no `onClick` and no `<Link>`. There are also no child routes, so there's nowhere to go. Fix both.
+
+## Route layout (new)
+
+Convert `settings.tsx` into a layout + add child routes. TanStack file naming:
 
 ```
-Home:  speak/type ──► working draft (in memory)
-                        │
-                        ├── Regen / Tighten / Change tone  → overwrites same working draft
-                        ├── Discard                        → clears Home
-                        └── Save to drafts                 → inserts ONE row, clears Home
-Library: shows saved drafts only → Edit / Regen / Schedule / Publish
+src/routes/_authenticated/
+  settings.tsx                     ← layout: <Outlet /> + back-aware header
+  settings.index.tsx               ← the current list (rows become <Link>s)
+  settings.account.tsx             ← display name, email (read-only), sign out
+  settings.voice.tsx               ← Personas + Voice samples + Directives
+  settings.knowledge.tsx           ← Knowledge entries + Domains of expertise
+  settings.distribution.tsx        ← Channel connections (LinkedIn, X, etc.)
+  settings.notifications.tsx       ← Inbox rules placeholder (honest "coming soon")
 ```
 
-No more "generate = library row". No duplicate rows on refinement. Home always shows at most one working draft.
+Each child page gets a small `SettingsPageHeader` (title + back link to `/settings`).
 
-## Changes
+## Sub-page contents
 
-**1. `src/lib/content/content.functions.ts`**
-- `contentDraft` (current name kept for compatibility) — **remove the DB insert and the provenance edges**. Return `{ body, usage, prompt, format }` only. This becomes the pure "generate text" call.
-- New `refineDraft({ currentBody, instruction, format })` — Claude call that rewrites `currentBody` per instruction (`regen`, `tighten`, `tone:friendly`, free-form). Returns `{ body, usage }`. No DB write.
-- New `saveDraft({ body, format, prompt, campaignId? })` — inserts one row with `status: "draft"`, writes the same provenance edges the old `contentDraft` used to write (`GENERATED_BY_TOOL` from `you`, optional `SPEAKS_IN` from active persona), returns the inserted draft.
-- `listRecentDrafts` — unchanged (already filters by user via RLS); Library query stays the same.
+**1. Account (`settings.account.tsx`)**
+- Read `profiles` row (server fn `getMyProfile`).
+- Editable: `display_name`. Read-only: email (from `supabase.auth.getUser`).
+- "Sign out" button moves here from the list (keeps existing handler).
+- Server fn `updateMyProfile({ display_name })`.
 
-**2. `src/routes/_authenticated/index.tsx` (Home)**
-- Replace the "list all drafts" view with a single `workingDraft` React state: `{ body, format, prompt } | null`.
-- On submit from `ComposerBar` (voice or text), call `contentDraft` and set `workingDraft` — do NOT invalidate `["drafts"]`.
-- Render one `DraftCard` in **working** mode with actions: Regen, Tighten, Tone…, Discard, **Save to drafts** (primary). No Schedule / Post now here.
-- Refine actions call `refineDraft` and overwrite `workingDraft.body` in place (streaming shimmer while pending).
-- Save action calls `saveDraft`, then clears `workingDraft`, invalidates `["drafts"]`, and shows a small toast "Saved to Library". Empty state (Orb + suggestions) returns.
-- Discard just clears `workingDraft` locally.
+**2. Voice & Style (`settings.voice.tsx`)** — the primary "make Eve sound like me" page
+- **Personas** section
+  - List `personas` for the user; show which one is `profiles.persona_active_id` with a "Active" badge.
+  - Add persona (name), rename, delete, "Make active" (sets `profiles.persona_active_id`).
+- **Voice samples** section (per active persona)
+  - Loads `voice_profiles` row for the active persona (create on demand).
+  - Textarea list of samples in `voice_profiles.samples` (jsonb array of `{ text, source? }`). Add / remove.
+  - "How Eve uses this": one-liner explaining these feed the ghostwriter prompt.
+- **Directives** section
+  - Free-form rules stored in `voice_profiles.directives` (e.g. "Never use emoji", "Prefer active voice"). Add / remove chips.
+- Server fns: `listPersonas`, `createPersona`, `renamePersona`, `deletePersona`, `setActivePersona`, `getVoiceProfile`, `upsertVoiceProfile({ samples, directives })`.
 
-**3. `src/components/shell/ComposerBar.tsx`**
-- Today `ComposerBar` owns the mutation and writes into the drafts table via `contentDraft`. Lift that out: expose an `onGenerate(prompt: string)` prop (Home passes the handler that sets `workingDraft`). Composer keeps mic/transcription logic but no longer touches the query cache.
-- Voice path: on transcription success, call `onGenerate(text)` instead of `mutation.mutate`.
-- No behavior change to mic permission UX.
+**3. Knowledge (`settings.knowledge.tsx`)** — LinkedIn / resume / anything Eve should "know"
+- **Domains of expertise** section (small chips at top; makes the "what do you write about" bit obvious)
+  - Lists `domains`; add (respect existing two-word check constraint — show inline error if violated); delete.
+- **Knowledge entries** section
+  - Lists `knowledge_entries` with `kind` badge (`linkedin`, `resume`, `note`, `url`).
+  - "Add entry" opens a small form: kind (select), title, source URL (optional), content (textarea for pasted text — resume paste, LinkedIn About text, notes).
+  - Delete per row. No embeddings work here — we just persist text; embeddings can be added later without UI change.
+- Copy at top: "Paste your LinkedIn About, your resume, links, or notes. Eve uses these as source material — and never claims them as facts unless you say so."
+- Server fns: `listDomains`, `addDomain`, `deleteDomain`, `listKnowledge`, `addKnowledge`, `deleteKnowledge`.
 
-**4. `src/components/primitives/DraftCard.tsx`**
-- Add a `mode: "working" | "saved"` prop (default `"saved"` to keep Library behavior identical).
-- `working` mode renders: Regen / Tighten / Tone chips (wired to `onRefine(kind)`), plus a footer with **Discard** (secondary) and **Save to drafts** (primary). No Schedule / Post now.
-- `saved` mode renders the existing Schedule / Post now footer (used only by Library now).
-- Props added: `onRefine?(kind: "regen" | "tighten" | "tone")`, `onSave?()`, `onDiscard?()`. Keep `onSchedule` / `onPublish` for saved mode.
+**4. Distribution (`settings.distribution.tsx`)**
+- Lists `channel_connections` rows with status.
+- For now: show LinkedIn / X / Email rows with either "Connected as @handle" or a disabled "Connect" button + "Coming soon" note (no OAuth wiring in this change).
+- Delete existing connection is fine (calls `deleteChannel`).
+- Server fns: `listChannels`, `deleteChannel`. No new OAuth flow.
 
-**5. `src/routes/_authenticated/library.tsx`**
-- No structural change; it already lists saved drafts via `listRecentDrafts`. Confirm the card renders in `saved` mode so Schedule / Publish remain here. (Publish wiring is unchanged — this plan does not add the publish backend, just ensures the button lives only in Library.)
+**5. Notifications (`settings.notifications.tsx`)**
+- Honest placeholder: "Inbox rules and snoozes are coming soon." Link back to Settings.
+- No DB writes.
 
-## Data model
-- No schema migration. `drafts.status` already exists; we simply stop inserting the pre-refinement rows. Existing rows in the table are untouched.
-- Provenance edges (`brain_edges`) are still written — just at **save** time, not at generation time. Matches the "Second Brain records finalized artifacts" intent.
+## Wiring the list page
+
+`settings.index.tsx` replaces each `<button>` with a `<Link>`:
+
+```tsx
+<Link to="/settings/voice" ...>Voice & Style — Personas, samples, directives</Link>
+```
+
+Sign out row stays on the index for muscle-memory and is also on Account.
+
+## Server functions
+
+New file `src/lib/settings/settings.functions.ts` — one module for all list/mutate calls above. All use `.middleware([requireSupabaseAuth])`. Zod-validated inputs. No admin client, no schema changes. Provenance edges are out of scope for this pass (voice/knowledge edits don't need brain nodes yet).
+
+Client data reads use TanStack Query with keys like `["personas"]`, `["voice", personaId]`, `["knowledge"]`, `["domains"]`, `["channels"]`, `["profile"]`. Mutations invalidate their own key.
+
+## UI conventions
+- Reuse existing primitives: `Pill`, existing input/button styles, `frosted` cards.
+- Each section: heading, one-line explanation, then the interactive list. Empty states say what to add and why.
+- No new dependencies.
+
+## Verification
+- Typecheck.
+- Click through in Playwright: `/settings` → each row navigates → back arrow returns; add a persona, add a domain, add a knowledge entry, confirm they appear in the list after mutation.
 
 ## Out of scope
-- Streaming token-by-token refinement (current UX is shimmer + swap; fine for now).
-- Undo history for refinements (single working buffer only).
-- Publish backend (Schedule / Post now buttons in Library remain visual until publish is wired).
-- Any change to onboarding, mic permission sheet, or Brain canvas.
+- OAuth flows for LinkedIn / X (Distribution stays informational).
+- Embedding generation for knowledge entries (schema already has the column; add later).
+- Billing / referrals UI (Account keeps the name + sign-out for now).
+- Redesign of the settings home list — same rows, just clickable.

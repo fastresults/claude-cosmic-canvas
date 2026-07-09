@@ -19,6 +19,13 @@ import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
+import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
+import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
+import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
+import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
+import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
+import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -69,6 +76,48 @@ const AuthenticatedArcsRoute = AuthenticatedArcsRouteImport.update({
   path: '/arcs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsVoiceRoute =
+  AuthenticatedSettingsVoiceRouteImport.update({
+    id: '/voice',
+    path: '/voice',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsNotificationsRoute =
+  AuthenticatedSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsKnowledgeRoute =
+  AuthenticatedSettingsKnowledgeRouteImport.update({
+    id: '/knowledge',
+    path: '/knowledge',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsDistributionRoute =
+  AuthenticatedSettingsDistributionRouteImport.update({
+    id: '/distribution',
+    path: '/distribution',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsContentOpsRoute =
+  AuthenticatedSettingsContentOpsRouteImport.update({
+    id: '/content-ops',
+    path: '/content-ops',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsAccountRoute =
+  AuthenticatedSettingsAccountRouteImport.update({
+    id: '/account',
+    path: '/account',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -79,7 +128,14 @@ export interface FileRoutesByFullPath {
   '/brain': typeof AuthenticatedBrainRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/settings': typeof AuthenticatedSettingsRoute
+  '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
+  '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
+  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -89,8 +145,14 @@ export interface FileRoutesByTo {
   '/brain': typeof AuthenticatedBrainRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
+  '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
+  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/voice': typeof AuthenticatedSettingsVoiceRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,8 +164,15 @@ export interface FileRoutesById {
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/_authenticated/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
+  '/_authenticated/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
+  '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +186,13 @@ export interface FileRouteTypes {
     | '/library'
     | '/onboarding'
     | '/settings'
+    | '/settings/account'
+    | '/settings/content-ops'
+    | '/settings/distribution'
+    | '/settings/knowledge'
+    | '/settings/notifications'
+    | '/settings/voice'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -126,8 +202,14 @@ export interface FileRouteTypes {
     | '/brain'
     | '/library'
     | '/onboarding'
-    | '/settings'
     | '/'
+    | '/settings/account'
+    | '/settings/content-ops'
+    | '/settings/distribution'
+    | '/settings/knowledge'
+    | '/settings/notifications'
+    | '/settings/voice'
+    | '/settings'
   id:
     | '__root__'
     | '/_authenticated'
@@ -140,6 +222,13 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/'
+    | '/_authenticated/settings/account'
+    | '/_authenticated/settings/content-ops'
+    | '/_authenticated/settings/distribution'
+    | '/_authenticated/settings/knowledge'
+    | '/_authenticated/settings/notifications'
+    | '/_authenticated/settings/voice'
+    | '/_authenticated/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,15 +310,91 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArcsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/voice': {
+      id: '/_authenticated/settings/voice'
+      path: '/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/notifications': {
+      id: '/_authenticated/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/knowledge': {
+      id: '/_authenticated/settings/knowledge'
+      path: '/knowledge'
+      fullPath: '/settings/knowledge'
+      preLoaderRoute: typeof AuthenticatedSettingsKnowledgeRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/distribution': {
+      id: '/_authenticated/settings/distribution'
+      path: '/distribution'
+      fullPath: '/settings/distribution'
+      preLoaderRoute: typeof AuthenticatedSettingsDistributionRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/content-ops': {
+      id: '/_authenticated/settings/content-ops'
+      path: '/content-ops'
+      fullPath: '/settings/content-ops'
+      preLoaderRoute: typeof AuthenticatedSettingsContentOpsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/account': {
+      id: '/_authenticated/settings/account'
+      path: '/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
   }
 }
+
+interface AuthenticatedSettingsRouteChildren {
+  AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
+  AuthenticatedSettingsContentOpsRoute: typeof AuthenticatedSettingsContentOpsRoute
+  AuthenticatedSettingsDistributionRoute: typeof AuthenticatedSettingsDistributionRoute
+  AuthenticatedSettingsKnowledgeRoute: typeof AuthenticatedSettingsKnowledgeRoute
+  AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
+  AuthenticatedSettingsVoiceRoute: typeof AuthenticatedSettingsVoiceRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+}
+
+const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
+  AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
+  AuthenticatedSettingsContentOpsRoute: AuthenticatedSettingsContentOpsRoute,
+  AuthenticatedSettingsDistributionRoute:
+    AuthenticatedSettingsDistributionRoute,
+  AuthenticatedSettingsKnowledgeRoute: AuthenticatedSettingsKnowledgeRoute,
+  AuthenticatedSettingsNotificationsRoute:
+    AuthenticatedSettingsNotificationsRoute,
+  AuthenticatedSettingsVoiceRoute: AuthenticatedSettingsVoiceRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+}
+
+const AuthenticatedSettingsRouteWithChildren =
+  AuthenticatedSettingsRoute._addFileChildren(
+    AuthenticatedSettingsRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedArcsRoute: typeof AuthenticatedArcsRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -238,7 +403,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
