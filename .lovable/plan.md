@@ -1,75 +1,45 @@
-# Written Voice System — Implementation Plan
+# Voice Personas Catalog — PRD + Seeded Library
 
-Re-issuing the previously drafted plan so it renders in the UI. Nothing has been built yet; approving this plan switches to build mode and I'll execute it end-to-end.
+Two deliverables in one turn: (1) a self-contained PRD doc another app can ingest, and (2) the 54 personas actually seeded into `system_voices` so the current app's picker shows the full curated library (not just "Untitled voice").
 
-## Goal
+## 1. `docs/prd/voice-personas-catalog.md`
 
-Rebuild the voice system per the PRD: portable, AI-first, mobile-first. Every AI generation is gated by the user's currently selected voice, and every voice is a first-class node in the Second Brain.
+Sections, in order:
 
-## 1. Data model (single migration)
+1. **Overview** — what a "voice" is, and the promise that any app implementing this schema will produce comparable output.
+2. **Part 1 — Voice Schema (12 fields + meta)** — table verbatim from the request: `name`, `profession`, `tagline`, `category` (enum of 10), `tone`, `guidelines`, `formality`, `humor`, `technicality`, `conciseness`, `preferred_terms[]`, `avoid_terms[]`, plus `writing_samples[]`, `is_visible`, `sort_order`, `created_by`.
+3. **Slider semantics (0–100)** — canonical anchors for Formality / Humor / Technicality / Conciseness at 0, 50, 100.
+4. **Category taxonomy** — 10 IDs, labels, one-line descriptions, mirrored from the app's category list (public_figures, business_leaders, consulting_strategy, marketing_sales, thought_leadership, academic_journalism, journalism, coaching_self_help, investment_finance, spirituality, other).
+5. **Composition contract** — exact ordering Tone → Guidelines → Vocabulary (prefer/avoid) → Samples → optional `LEARNED PREFERENCES` (active directives, top 50 by evidence). Includes reference `formatStyleContext(profile, {activeDirectives})` pseudocode block matching `src/lib/voice/format-style-context.server.ts`.
+6. **Part 2 — Full catalog (54 rows)** — grouped tables per category exactly as supplied (Public Figures 4, Business Leaders 2, Consulting 4, Marketing 7, Thought Leadership 4, Academic/Journalism 8, Journalism 5, Coaching/Self-Help 9, Investment 1, Spirituality 10), each row: Name · Profession · Tagline · F/H/T/C.
+7. **Deduplication note** — flags Simon Sinek, Brené Brown, Mel Robbins, Oprah, Billy Graham, Timothy Keller, Charles Spurgeon, Priscilla Shirer, N.T. Wright duplicates; recommends which to keep; marks cleanup as follow-up, not executed.
+8. **Full-fidelity export note** — `tone`, `guidelines`, `preferred_terms`, `avoid_terms`, `writing_samples` are large; implementers should pull them from `system_voices` via a one-time export rather than inlining (>200 KB).
+9. **Companion JSON** — `docs/prd/voice-personas-catalog.json` generated alongside, 54 objects with all 12 schema fields (long-text fields included) — ready to seed another database.
 
-Extend `voice_profiles`:
-- `category text`, `tone text`, `guidelines text`
-- `vocabulary_preferred text[]`, `vocabulary_avoid text[]`
-- `formality`, `humor`, `technicality`, `conciseness` (int 0–100, default 50)
-- `is_default bool`, `source text` (`scratch|analyze|research|library|import`)
-- Partial unique index: one `is_default=true` per `(user_id, persona_id)`
+## 2. Seed `system_voices` (migration)
 
-New tables (each with GRANTs + RLS):
-- `system_voices` — global catalog (read-only to `authenticated`)
-- `voice_signals` — append-only ledger (`signal_type`, `original_text`, `edited_text`, `voice_profile_id`, `context jsonb`)
-- `voice_directives` — distilled rules (`directive_type`, `directive_text`, `evidence_count`, `status`)
-- `voice_learning_settings` — per-user learning toggles
+Currently the voices list only shows the user's "Untitled voice". Seed the 54 personas as `system_voices` rows so the picker/library reflects the catalog, and users can adopt one into their `voice_profiles` via the existing `adoptSystemVoice` flow.
 
-Add `profiles.active_voice_id uuid` (nullable FK).
+Migration will:
 
-## 2. Server infrastructure (`src/lib/voice/`)
+- Insert 54 rows into `public.system_voices` (`is_visible=true`, per-category `sort_order`, `created_by=null` system-owned).
+- Each row includes: name, profession, tagline, category, tone, guidelines (1–2 paragraph markdown), 4 sliders, preferred_terms (5–10), avoid_terms (5–10), 2 writing_samples.
+- Idempotent: `ON CONFLICT (name) DO NOTHING` (or add a unique index on name first if missing).
+- No schema changes — `system_voices` already exists from prior migration.
+- No RLS changes — table is already world-readable via existing grants.
 
-- `voice.functions.ts` — CRUD + `getActiveVoice`, `setActiveVoice`, `setDefaultVoiceProfile`, `duplicateVoiceProfile`, `adoptSystemVoice`, `listSystemVoices`, `resolveActiveVoice`
-- 8 AI pipelines: `analyzeOwnVoice`, `researchVoiceProfile`, `enrichVoiceProfile`, `generateVoiceSamples`, `captureVoiceSignal`, `distillVoiceDirectives`, `validateVoice`, `batchGenerateSystemVoices` — all return `{ fallback: true }` on error
-- `format-style-context.server.ts` — single integration point prepended to every generation
-- `schemas.ts` — Zod shapes shared client/server
-- `capture-signal.ts` — fire-and-forget client helper
+## 3. UI wiring (verify only, no new components)
 
-## 3. Generation gate (invariant)
-
-Every generation server fn calls `resolveActiveVoice` → `formatStyleContext` → prepends to system prompt. If no active voice, returns `{ needsVoice: true }` (never 500). Wire into `orchestrate.functions.ts`.
-
-## 4. Second Brain integration (invariant)
-
-On voice create / adopt / duplicate, upsert an `entities` node (`kind='voice'`) and `brain_edges` linking to persona + adopted `SystemVoice` + sample `knowledge_entries`. Rename/delete cascades.
-
-## 5. UI (mobile-first)
-
-- `/settings/voice` — list with active badge, search, "New" FAB opening a bottom sheet (Analyze / From scratch / Persona library)
-- `/settings/voice/$id` — single-column editor: 4 haptic sliders, Tone Preview, hold-to-record samples, "Generate more samples", "Voice DNA", "Set active"
-- `/settings/voice/$id/learned` — swipeable directive approvals
-- `ActiveVoiceBadge` in `ComposerBar` — 2-tap switch, warns when no voice
-
-## 6. Signal capture wiring
-
-`captureSignal()` fires on draft edit, regenerate, approve, reject in Library + composer.
-
-## 7. Rules
-
-- Slider clamp 0–100
-- Vocabulary case-insensitive dedupe, preferred/avoid mutually exclusive
-- Samples capped at 5 × 2,000 chars, markdown stripped
-- Directives sorted `evidence_count desc`, capped 50, `status='active'` only
-
-## 8. Acceptance targets
-
-- New user creates voice in ≤60s via Analyze
-- ≥5 profiles with ≤2-tap switcher
-- Auto-promotes ≥1 directive after 3 edits
-- `validateVoice` score improves with active directives
-- Default invariant holds under concurrent edits
-- Every generation resolves through `resolveActiveVoice`
-- Every voice appears as a Brain node
-- All AI pipelines degrade gracefully with `{ fallback: true }`
+Confirm `/settings/voice` list surfaces `system_voices` alongside user voices with an "Adopt" action calling existing `adoptSystemVoice` server fn. If the existing route only lists `voice_profiles`, add a "Browse library" section that reads `system_voices` and adopts on tap → creates a `voice_profiles` row + Brain node, then navigates to the editor. Scope: additive rendering in `src/routes/_authenticated/settings.voice.tsx` only.
 
 ## Out of scope
 
-- Wiring `formatStyleContext` into non-orchestrator generation flows (follow-up)
-- Multi-tenant business accounts
-- TTS / audio cloning
+- Dedup cleanup (called out in PRD, not executed).
+- Editing existing voice logic, orchestrator, or directives pipeline.
+- Regenerating any tone/guidelines text with AI — seed uses the curated values from the catalog.
+
+## Technical notes
+
+- Files created: `docs/prd/voice-personas-catalog.md`, `docs/prd/voice-personas-catalog.json`, one Supabase migration seeding 54 rows.
+- File touched: `src/routes/_authenticated/settings.voice.tsx` (only if system voices aren't already listed).
+- No secrets, no new dependencies, no edge functions.
