@@ -417,6 +417,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_voice_id: string | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -427,6 +428,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_voice_id?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -437,6 +439,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_voice_id?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -446,7 +449,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_voice_id_fkey"
+            columns: ["active_voice_id"]
+            isOneToOne: false
+            referencedRelation: "voice_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedules: {
         Row: {
@@ -492,6 +503,69 @@ export type Database = {
           },
         ]
       }
+      system_voices: {
+        Row: {
+          category: string | null
+          conciseness: number
+          created_at: string
+          formality: number
+          guidelines: string | null
+          humor: number
+          id: string
+          is_visible: boolean
+          name: string
+          profession: string | null
+          samples: Json
+          sort_order: number
+          tagline: string | null
+          technicality: number
+          tone: string | null
+          updated_at: string
+          vocabulary_avoid: string[]
+          vocabulary_preferred: string[]
+        }
+        Insert: {
+          category?: string | null
+          conciseness?: number
+          created_at?: string
+          formality?: number
+          guidelines?: string | null
+          humor?: number
+          id?: string
+          is_visible?: boolean
+          name: string
+          profession?: string | null
+          samples?: Json
+          sort_order?: number
+          tagline?: string | null
+          technicality?: number
+          tone?: string | null
+          updated_at?: string
+          vocabulary_avoid?: string[]
+          vocabulary_preferred?: string[]
+        }
+        Update: {
+          category?: string | null
+          conciseness?: number
+          created_at?: string
+          formality?: number
+          guidelines?: string | null
+          humor?: number
+          id?: string
+          is_visible?: boolean
+          name?: string
+          profession?: string | null
+          samples?: Json
+          sort_order?: number
+          tagline?: string | null
+          technicality?: number
+          tone?: string | null
+          updated_at?: string
+          vocabulary_avoid?: string[]
+          vocabulary_preferred?: string[]
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -513,42 +587,156 @@ export type Database = {
         }
         Relationships: []
       }
-      voice_profiles: {
+      voice_directives: {
         Row: {
           created_at: string
-          directives: Json
+          directive_text: string
+          directive_type: Database["public"]["Enums"]["voice_directive_type"]
+          evidence_count: number
           id: string
-          match_threshold: number
           persona_id: string | null
-          samples: Json
-          signals: Json
+          status: Database["public"]["Enums"]["voice_directive_status"]
           updated_at: string
           user_id: string
-          validated_at: string | null
+          voice_profile_id: string
         }
         Insert: {
           created_at?: string
-          directives?: Json
+          directive_text: string
+          directive_type: Database["public"]["Enums"]["voice_directive_type"]
+          evidence_count?: number
           id?: string
-          match_threshold?: number
           persona_id?: string | null
-          samples?: Json
-          signals?: Json
+          status?: Database["public"]["Enums"]["voice_directive_status"]
           updated_at?: string
           user_id: string
-          validated_at?: string | null
+          voice_profile_id: string
         }
         Update: {
           created_at?: string
-          directives?: Json
+          directive_text?: string
+          directive_type?: Database["public"]["Enums"]["voice_directive_type"]
+          evidence_count?: number
           id?: string
+          persona_id?: string | null
+          status?: Database["public"]["Enums"]["voice_directive_status"]
+          updated_at?: string
+          user_id?: string
+          voice_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_directives_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_directives_voice_profile_id_fkey"
+            columns: ["voice_profile_id"]
+            isOneToOne: false
+            referencedRelation: "voice_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_learning_settings: {
+        Row: {
+          auto_promote_threshold: number
+          created_at: string
+          enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_promote_threshold?: number
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_promote_threshold?: number
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      voice_profiles: {
+        Row: {
+          category: string | null
+          conciseness: number
+          created_at: string
+          directives: Json
+          formality: number
+          guidelines: string | null
+          humor: number
+          id: string
+          is_default: boolean
+          match_threshold: number
+          name: string
+          persona_id: string | null
+          samples: Json
+          signals: Json
+          source: string
+          technicality: number
+          tone: string | null
+          updated_at: string
+          user_id: string
+          validated_at: string | null
+          vocabulary_avoid: string[]
+          vocabulary_preferred: string[]
+        }
+        Insert: {
+          category?: string | null
+          conciseness?: number
+          created_at?: string
+          directives?: Json
+          formality?: number
+          guidelines?: string | null
+          humor?: number
+          id?: string
+          is_default?: boolean
           match_threshold?: number
+          name?: string
           persona_id?: string | null
           samples?: Json
           signals?: Json
+          source?: string
+          technicality?: number
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+          validated_at?: string | null
+          vocabulary_avoid?: string[]
+          vocabulary_preferred?: string[]
+        }
+        Update: {
+          category?: string | null
+          conciseness?: number
+          created_at?: string
+          directives?: Json
+          formality?: number
+          guidelines?: string | null
+          humor?: number
+          id?: string
+          is_default?: boolean
+          match_threshold?: number
+          name?: string
+          persona_id?: string | null
+          samples?: Json
+          signals?: Json
+          source?: string
+          technicality?: number
+          tone?: string | null
           updated_at?: string
           user_id?: string
           validated_at?: string | null
+          vocabulary_avoid?: string[]
+          vocabulary_preferred?: string[]
         }
         Relationships: [
           {
@@ -556,6 +744,60 @@ export type Database = {
             columns: ["persona_id"]
             isOneToOne: false
             referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_signals: {
+        Row: {
+          context: Json
+          created_at: string
+          edited_text: string | null
+          id: string
+          original_text: string
+          persona_id: string | null
+          processed_at: string | null
+          signal_type: Database["public"]["Enums"]["voice_signal_type"]
+          user_id: string
+          voice_profile_id: string | null
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          edited_text?: string | null
+          id?: string
+          original_text: string
+          persona_id?: string | null
+          processed_at?: string | null
+          signal_type: Database["public"]["Enums"]["voice_signal_type"]
+          user_id: string
+          voice_profile_id?: string | null
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          edited_text?: string | null
+          id?: string
+          original_text?: string
+          persona_id?: string | null
+          processed_at?: string | null
+          signal_type?: Database["public"]["Enums"]["voice_signal_type"]
+          user_id?: string
+          voice_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_signals_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_signals_voice_profile_id_fkey"
+            columns: ["voice_profile_id"]
+            isOneToOne: false
+            referencedRelation: "voice_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -577,6 +819,15 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "tester" | "admin" | "super_admin"
+      voice_directive_status: "suggested" | "active" | "dismissed"
+      voice_directive_type:
+        | "avoid_word"
+        | "prefer_word"
+        | "avoid_pattern"
+        | "prefer_pattern"
+        | "tone_shift"
+        | "structural"
+      voice_signal_type: "edit" | "approval" | "rejection" | "regeneration"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -705,6 +956,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "tester", "admin", "super_admin"],
+      voice_directive_status: ["suggested", "active", "dismissed"],
+      voice_directive_type: [
+        "avoid_word",
+        "prefer_word",
+        "avoid_pattern",
+        "prefer_pattern",
+        "tone_shift",
+        "structural",
+      ],
+      voice_signal_type: ["edit", "approval", "rejection", "regeneration"],
     },
   },
 } as const
