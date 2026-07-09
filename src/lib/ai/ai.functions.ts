@@ -84,18 +84,31 @@ const TranscribeInput = z.object({
   /** base64-encoded audio bytes */
   audioBase64: z.string().min(1),
   mimeType: z.string().default("audio/webm"),
-  model: z.string().default("openai/gpt-4o-mini-transcribe"),
+  model: z.string().default("openai/gpt-4o-transcribe"),
 });
 
 export const aiTranscribe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => TranscribeInput.parse(input))
   .handler(async ({ data }) => {
+    const cleanMimeType = data.mimeType.split(";")[0]?.trim().toLowerCase();
+    const ext =
+      cleanMimeType === "audio/webm"
+        ? "webm"
+        : cleanMimeType === "audio/mp4"
+          ? "mp4"
+          : cleanMimeType === "audio/mpeg"
+            ? "mp3"
+            : cleanMimeType === "audio/wav" || cleanMimeType === "audio/wave"
+              ? "wav"
+              : cleanMimeType === "audio/ogg"
+                ? "ogg"
+                : "webm";
     const { gatewayFetch } = await import("./gateway.server");
     const bytes = Uint8Array.from(atob(data.audioBase64), (c) => c.charCodeAt(0));
     const blob = new Blob([bytes], { type: data.mimeType });
     const form = new FormData();
-    form.append("file", blob, `audio.${data.mimeType.split("/")[1] ?? "webm"}`);
+    form.append("file", blob, `audio.${ext}`);
     form.append("model", data.model);
     const res = await gatewayFetch("/audio/transcriptions", {
       method: "POST",

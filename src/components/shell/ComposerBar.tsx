@@ -18,13 +18,23 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-function pickMime(): string {
-  if (typeof MediaRecorder === "undefined") return "audio/webm";
+function pickMime(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg"];
   for (const c of candidates) {
     if (MediaRecorder.isTypeSupported?.(c)) return c;
   }
-  return "audio/webm";
+  return undefined;
+}
+
+function micErrorMessage(err: unknown) {
+  const name = err instanceof Error ? err.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return "Mic blocked — allow microphone access in your browser site settings, then try again.";
+  }
+  if (name === "NotFoundError") return "No microphone found.";
+  if (name === "NotReadableError") return "Mic is already in use by another app.";
+  return err instanceof Error ? err.message : "Mic error";
 }
 
 export function ComposerBar() {
@@ -41,9 +51,40 @@ export function ComposerBar() {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const mimeRef = useRef<string>("audio/webm");
+  const wantsRecordingRef = useRef(false);
 
   useEffect(() => {
+    let permissionStatus: PermissionStatus | null = null;
+    let permissionUpdate: (() => void) | null = null;
+    let cancelled = false;
+
+    if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "microphone" as PermissionName })
+        .then((status) => {
+          if (cancelled) return;
+          permissionStatus = status;
+          const update = () => {
+            if (status.state === "denied") {
+              setMicErr("Mic blocked — allow microphone access in your browser site settings, then try again.");
+            } else {
+              setMicErr((current) => (current?.startsWith("Mic blocked") ? null : current));
+            }
+          };
+          permissionUpdate = update;
+          status.addEventListener("change", update);
+          update();
+        })
+        .catch(() => {
+          /* Safari may not support microphone permission queries. */
+        });
+    }
+
     return () => {
+      cancelled = true;
+      if (permissionStatus && permissionUpdate) {
+        permissionStatus.removeEventListener("change", permissionUpdate);
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
@@ -57,17 +98,29 @@ export function ComposerBar() {
   });
 
   async function startRecording() {
+    wantsRecordingRef.current = true;
     setMicErr(null);
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setMicErr("Mic not supported");
+      setListening(false);
+      return;
+    }
+    if (typeof MediaRecorder === "undefined") {
+      setMicErr("Mic recording is not supported in this browser.");
+      setListening(false);
       return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!wantsRecordingRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        setListening(false);
+        return;
+      }
       streamRef.current = stream;
       const mime = pickMime();
-      mimeRef.current = mime;
-      const rec = new MediaRecorder(stream, { mimeType: mime });
+      mimeRef.current = mime ?? "audio/webm";
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       chunksRef.current = [];
       rec.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
@@ -96,21 +149,18 @@ export function ComposerBar() {
         }
       };
       rec.start();
+      mimeRef.current = rec.mimeType || mimeRef.current;
       recorderRef.current = rec;
+      setListening(true);
+      if (!wantsRecordingRef.current) stopRecording();
     } catch (err) {
-      const name = err instanceof Error ? err.name : "";
-      setMicErr(
-        name === "NotAllowedError"
-          ? "Mic permission denied"
-          : err instanceof Error
-            ? err.message
-            : "Mic error",
-      );
+      setMicErr(micErrorMessage(err));
       setListening(false);
     }
   }
 
   function stopRecording() {
+    wantsRecordingRef.current = false;
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") {
       try {
@@ -165,7 +215,6 @@ export function ComposerBar() {
           ) : (
             <HoldToSpeakButton
               onStart={() => {
-                setListening(true);
                 void startRecording();
               }}
               onEnd={() => {
