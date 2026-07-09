@@ -1,39 +1,56 @@
+
 ## Goal
-Make the "mic blocked" moment feel guided instead of a dead-end by detecting the user's OS/browser and showing the exact steps (and, where possible, a direct link) to re-enable microphone access.
+Stop auto-accumulating drafts in the Library. Generation on Home creates a single **working draft** the user can refine in place. Only "Save to drafts" persists it to the Library, and doing so clears Home so they can start fresh. Publish and Schedule move out of Home and live only in the Library.
 
-## What changes
+## Flow (new)
 
-**1. New helper: `src/lib/platform/mic-help.ts`**
-- `detectPlatform()` — parses `navigator.userAgent` + `userAgentData` into one of: `ios-safari`, `ios-chrome`, `android-chrome`, `android-firefox`, `macos-safari`, `macos-chrome`, `macos-firefox`, `windows-chrome`, `windows-edge`, `windows-firefox`, `linux-*`, `unknown`.
-- `micHelpFor(platform)` — returns `{ title, steps: string[], deepLink?: { href, label } }`.
-  - iOS Safari/Chrome → "Settings → Safari (or Chrome) → Microphone". Deep link: `App-Prefs:` isn't reliable in Safari, so show steps only; on iOS Chrome offer `googlechrome://settings`.
-  - Android Chrome → deep link `intent://settings/site_settings/microphone#Intent;scheme=chrome;package=com.android.chrome;end` with fallback text steps.
-  - Desktop Chrome/Edge → link to `chrome://settings/content/microphone` / `edge://settings/content/microphone` shown as copy-to-clipboard (browsers block navigation to `chrome://` from a page, so we copy + instruct).
-  - Desktop Safari → steps: Safari → Settings → Websites → Microphone.
-  - Desktop Firefox → `about:preferences#privacy` (copy + instruct).
-  - Fallback → generic "click the lock icon in the address bar → Site settings → Microphone → Allow".
+```
+Home:  speak/type ──► working draft (in memory)
+                        │
+                        ├── Regen / Tighten / Change tone  → overwrites same working draft
+                        ├── Discard                        → clears Home
+                        └── Save to drafts                 → inserts ONE row, clears Home
+Library: shows saved drafts only → Edit / Regen / Schedule / Publish
+```
 
-**2. New component: `src/components/shell/MicPermissionSheet.tsx`**
-- Uses existing `EveSheet` primitive.
-- Shows: platform-specific title, numbered steps, the deep-link button (or "Copy address" for `chrome://` style URLs with a toast), plus a "Try mic again" primary action that calls back into `startRecording`.
-- Includes a small "Not your device?" link that reveals a `<select>` to manually pick another platform — covers misdetection.
+No more "generate = library row". No duplicate rows on refinement. Home always shows at most one working draft.
 
-**3. `src/components/shell/ComposerBar.tsx` updates**
-- Replace the inline "Mic blocked… Retry" strip with a single "Fix microphone access" button when `micPermission === "denied"` or `micErr` is set.
-- Clicking it opens `MicPermissionSheet` (new state `helpOpen`).
-- On first `NotAllowedError`, auto-open the sheet once per session (guarded by a `sessionStorage` flag so it doesn't nag).
-- Keep the current recording pipeline untouched.
+## Changes
 
-**4. Small polish**
-- When `micPermission === "granted"`, never show any warning UI.
-- When permission is `prompt`, the first tap continues to trigger the native browser prompt (no sheet); only failure opens the sheet.
+**1. `src/lib/content/content.functions.ts`**
+- `contentDraft` (current name kept for compatibility) — **remove the DB insert and the provenance edges**. Return `{ body, usage, prompt, format }` only. This becomes the pure "generate text" call.
+- New `refineDraft({ currentBody, instruction, format })` — Claude call that rewrites `currentBody` per instruction (`regen`, `tighten`, `tone:friendly`, free-form). Returns `{ body, usage }`. No DB write.
+- New `saveDraft({ body, format, prompt, campaignId? })` — inserts one row with `status: "draft"`, writes the same provenance edges the old `contentDraft` used to write (`GENERATED_BY_TOOL` from `you`, optional `SPEAKS_IN` from active persona), returns the inserted draft.
+- `listRecentDrafts` — unchanged (already filters by user via RLS); Library query stays the same.
 
-## Technical notes
-- Pure client code, no server functions, no schema changes.
-- No new dependencies.
-- Deep links that browsers refuse to navigate (`chrome://`, `edge://`, `about:`) are handled via `navigator.clipboard.writeText` + toast, since anchor navigation to those schemes is blocked by design.
-- iOS PWAs (`display-mode: standalone`) get an extra note that mic permission must be granted in the Safari-hosted first launch.
+**2. `src/routes/_authenticated/index.tsx` (Home)**
+- Replace the "list all drafts" view with a single `workingDraft` React state: `{ body, format, prompt } | null`.
+- On submit from `ComposerBar` (voice or text), call `contentDraft` and set `workingDraft` — do NOT invalidate `["drafts"]`.
+- Render one `DraftCard` in **working** mode with actions: Regen, Tighten, Tone…, Discard, **Save to drafts** (primary). No Schedule / Post now here.
+- Refine actions call `refineDraft` and overwrite `workingDraft.body` in place (streaming shimmer while pending).
+- Save action calls `saveDraft`, then clears `workingDraft`, invalidates `["drafts"]`, and shows a small toast "Saved to Library". Empty state (Orb + suggestions) returns.
+- Discard just clears `workingDraft` locally.
+
+**3. `src/components/shell/ComposerBar.tsx`**
+- Today `ComposerBar` owns the mutation and writes into the drafts table via `contentDraft`. Lift that out: expose an `onGenerate(prompt: string)` prop (Home passes the handler that sets `workingDraft`). Composer keeps mic/transcription logic but no longer touches the query cache.
+- Voice path: on transcription success, call `onGenerate(text)` instead of `mutation.mutate`.
+- No behavior change to mic permission UX.
+
+**4. `src/components/primitives/DraftCard.tsx`**
+- Add a `mode: "working" | "saved"` prop (default `"saved"` to keep Library behavior identical).
+- `working` mode renders: Regen / Tighten / Tone chips (wired to `onRefine(kind)`), plus a footer with **Discard** (secondary) and **Save to drafts** (primary). No Schedule / Post now.
+- `saved` mode renders the existing Schedule / Post now footer (used only by Library now).
+- Props added: `onRefine?(kind: "regen" | "tighten" | "tone")`, `onSave?()`, `onDiscard?()`. Keep `onSchedule` / `onPublish` for saved mode.
+
+**5. `src/routes/_authenticated/library.tsx`**
+- No structural change; it already lists saved drafts via `listRecentDrafts`. Confirm the card renders in `saved` mode so Schedule / Publish remain here. (Publish wiring is unchanged — this plan does not add the publish backend, just ensures the button lives only in Library.)
+
+## Data model
+- No schema migration. `drafts.status` already exists; we simply stop inserting the pre-refinement rows. Existing rows in the table are untouched.
+- Provenance edges (`brain_edges`) are still written — just at **save** time, not at generation time. Matches the "Second Brain records finalized artifacts" intent.
 
 ## Out of scope
-- Actually opening OS settings from the web is not possible on iOS Safari or desktop browsers — we can only guide. The plan is honest about that inside the sheet copy.
-- No changes to recording, transcription, or onboarding logic.
+- Streaming token-by-token refinement (current UX is shimmer + swap; fine for now).
+- Undo history for refinements (single working buffer only).
+- Publish backend (Schedule / Post now buttons in Library remain visual until publish is wired).
+- Any change to onboarding, mic permission sheet, or Brain canvas.
