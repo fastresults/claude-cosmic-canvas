@@ -34,6 +34,7 @@ import {
   type LibraryFilters,
   type LibrarySort,
 } from "@/lib/library/library.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/library")({
   component: Library,

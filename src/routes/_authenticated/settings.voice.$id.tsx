@@ -11,6 +11,7 @@ import {
   setDefaultVoiceProfile,
   updateVoiceProfile,
 } from "@/lib/voice/voice.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/voice/$id")({
   component: VoiceEditor,
@@ -22,6 +23,7 @@ function VoiceEditor() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const confirm = useConfirm();
 
   const getFn = useServerFn(getVoiceProfile);
   const saveFn = useServerFn(updateVoiceProfile);
@@ -319,8 +321,8 @@ function VoiceEditor() {
       <div className="mb-8 flex justify-between">
         <button
           type="button"
-          onClick={() => {
-            if (confirm(`Delete voice "${form.name}"?`)) del.mutate();
+          onClick={async () => {
+            if (await confirm({ title: `Delete voice "${form.name}"?`, destructive: true })) del.mutate();
           }}
           className="text-xs text-destructive"
         >

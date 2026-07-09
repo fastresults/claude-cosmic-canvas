@@ -13,6 +13,7 @@ import {
   listDomains,
   listKnowledge,
 } from "@/lib/settings/settings.functions";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/knowledge")({
   component: KnowledgeSettings,
