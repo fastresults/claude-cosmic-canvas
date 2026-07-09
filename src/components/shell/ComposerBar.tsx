@@ -170,8 +170,19 @@ export function ComposerBar() {
       setListening(true);
       if (!wantsRecordingRef.current) stopRecording();
     } catch (err) {
-      if (err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError")) {
+      const denied =
+        err instanceof Error && (err.name === "NotAllowedError" || err.name === "SecurityError");
+      if (denied) {
         setMicPermission("denied");
+        try {
+          const seen = sessionStorage.getItem(MIC_HELP_SHOWN_KEY);
+          if (!seen) {
+            sessionStorage.setItem(MIC_HELP_SHOWN_KEY, "1");
+            setHelpOpen(true);
+          }
+        } catch {
+          setHelpOpen(true);
+        }
       }
       setMicErr(micErrorMessage(err));
       setRequestingMic(false);
