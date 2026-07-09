@@ -1,64 +1,58 @@
+# Eve OS — Full Build Plan (7 Phases)
 
-# Eve OS — Kickoff Plan (M0 + M1.5 + Brain scaffold)
+Foundation (M0 + M1.5 + Brain scaffold) is already shipped: schema, auth, app shell, 5-tab nav, `<Orb>`/`<EveSheet>`/`<DraftCard>`, Brain canvas + realtime + `writeEdge`. The remaining work breaks into **7 phases**.
 
-Committing to my recommended defaults so we can build. Scoping to the first shippable slice; the rest of PRD §26 lands in follow-up turns.
+## Phase 1 — Orchestrator + AI Plumbing
+- Wire hybrid model layer: Claude Fable 5 (thinking) via existing orchestrator; Lovable AI Gateway for STT, image gen, embeddings.
+- `src/lib/ai/` clients: `claude.ts`, `gateway.ts`, `embeddings.ts`, `stt.ts`, `image.ts`.
+- Server fns: `ai.transcribe`, `ai.embed`, `ai.image`.
+- Provenance helper: every AI call auto-writes a `brain_edges` row (source, prompt hash, model, tokens).
 
-## Decisions (my picks — override anytime)
+## Phase 2 — Onboarding + Voice Profile
+- `/onboarding` flow: identity → domains → tone samples → goals.
+- Hold-to-speak capture → STT → Claude extracts `voice_profile` (tone axes, forbidden phrases, signature moves).
+- Persist to `personas` + `voice_profiles`; seed initial `brain_edges` (You → Persona → Domain → Voice).
+- First Brain "bloom" animation on completion.
 
-1. **Hybrid orchestration.** Claude Fable 5 (via the Anthropic client we already wired) handles the *thinking*: planning, drafting, tone/rewrite, campaign arcs, brain provenance reasoning. Lovable AI Gateway handles everything Anthropic can't do natively: **STT** (`openai/gpt-4o-mini-transcribe`), **image generation** (`google/gemini-3.1-flash-image` default, `openai/gpt-image-2` for text-in-image), **embeddings** for knowledge search. This gets Claude's reasoning quality on the critical path without giving up cheap fast multimodal.
-2. **`createServerFn` for app-internal.** All app calls (`content.draft`, `brain.query`, etc.) are TanStack server functions — faster, typed, easier to iterate. Edge Functions reserved for `process-social-queue` (pg_cron target) and OAuth webhooks (M2).
-3. **Progressive dark theme.** Dark-first only in v1; no light-mode toggle. Simplifies token surface.
+## Phase 3 — Content Drafting (Home)
+- `ComposerBar` → `content.draft` serverFn → Claude with persona + voice + retrieved knowledge (pgvector).
+- `<DraftCard>` state machine: idea → draft → revise → approved.
+- Rewrite/tone actions (shorter, punchier, on-brand) via Claude.
+- Every draft writes edges: Prompt → Draft → Sources → Persona.
+- Library tab: filter/search drafts, campaigns, arcs.
 
-## Step 1 — Enable Lovable Cloud
-Provisions Supabase (Postgres + RLS + Storage + Auth + Realtime + pg_cron), the managed `_authenticated/` gate, and generated client. Required for §16 schema.
+## Phase 4 — Second Brain (Full)
+- Node types: Persona, Domain, Knowledge, Entity, Draft, Campaign, Arc, Source.
+- View modes: Map, Timeline, Clusters.
+- Node inspector sheet (provenance, related, actions).
+- Search + semantic query (`brain.query` serverFn, pgvector).
+- Manual knowledge ingest (paste/upload → chunk → embed → nodes).
 
-## Step 2 — Design system (PRD §17)
-- Rewrite `src/styles.css` with Eve OS OKLCH tokens: `--background` (#08060f), `--surface` (#1a1428), `--accent` (amber #f5c14a), `--accent-2` (violet #8b5cf6), `--brain-teal`, `--brain-rose`, `--brain-blue`, semantic mappings for card/popover/muted/border.
-- `bun add @fontsource/instrument-serif @fontsource/inter-tight` and import in `src/main.tsx`; wire `--font-display` / `--font-body` in `@theme inline`.
-- Radii sm/md/lg/pill; motion timing tokens.
-- Update `__root.tsx` head: title "Eve OS — Speak once. Publish everywhere.", description, OG tags, twitter card.
+## Phase 5 — Arcs + Campaigns + Scheduling
+- Arcs tab: multi-step narrative planner (Claude generates arc_nodes).
+- Campaigns: group drafts, assign channels, schedule.
+- `schedules` + pg_cron worker (`/api/public/process-social-queue`) with HMAC.
+- Notifications center (in-app + optional email).
 
-## Step 3 — Database schema (single migration, PRD §16)
-Every table with RLS + explicit GRANTs for `authenticated` and `service_role` in the same migration:
-`profiles`, `personas`, `voice_profiles`, `domains` (2-word CHECK constraint), `knowledge_entries`, `entities`, `drafts`, `campaigns`, `arc_nodes`, `schedules`, `channel_connections` (oauth tokens encrypted), `mcp_clients`, `notifications`, `audit_log`, `user_roles` (`app_role` enum: admin/super_admin/tester/user) + `has_role()` SECURITY DEFINER, **`brain_edges`** with `(user_id, src_id)` and `(user_id, dst_id)` indexes.
-Extensions: `pgvector`, `pg_trgm`, `pg_cron`, `pg_net`. Auto-create-profile trigger on signup.
+## Phase 6 — Channel Connections (M2)
+- `channel_connections` OAuth flows: X, LinkedIn, Instagram, Threads, YouTube, TikTok, Substack.
+- Publish adapters per channel; retry + status on `DraftCard`.
+- OAuth callback routes under `/api/public/oauth/*` (signature-verified).
+- MCP client registry (`mcp_clients`) for external tool access via `@lovable.dev/mcp-js`.
 
-## Step 4 — Auth (PRD §26 step 3)
-Email/password + Google via `supabase--configure_social_auth`. Routes: `/auth` (unified sign-in/sign-up), `/forgot-password`, `/reset-password`. Managed `_authenticated/route.tsx` layout protects everything else.
+## Phase 7 — Polish, PWA, GA
+- PWA manifest, offline shell, install prompt, push (optional).
+- Settings: personas manager, voice tuning, data export, danger zone.
+- Accessibility pass (reduced motion, focus, contrast), perf budget, empty/error states.
+- Analytics + audit_log surfacing, admin role via `has_role`.
+- SEO metadata per route, social OG images, published launch.
 
-## Step 5 — App shell (M1.5, PRD §4)
-- `src/components/shell/AppShell.tsx` — TopBar (avatar · streak · bell) + `<Outlet />` + `ComposerBar` + `BottomNav`.
-- `BottomNav` — 5 tabs: Home (`/`), Library (`/library`), Arcs (`/arcs`), **Brain (`/brain`)**, Settings (`/settings`), plus `⚙`.
-- `ComposerBar` — always-visible input + `<HoldToSpeakButton>` (state machine only; STT wiring is M1).
-- Shell mounts inside `_authenticated/route.tsx` so every protected route inherits it.
+## Technical Notes
+- All AI calls server-side; keys never touch client.
+- Every mutation that changes user knowledge writes to `brain_edges` for zero-fabrication guarantee.
+- Semantic tokens only; dark-first; Instrument Serif + Inter Tight throughout.
+- `createServerFn` for internal; Edge/`/api/public/*` only for webhooks + cron.
+- RLS + GRANTs on every new public table in the same migration.
 
-## Step 6 — Core primitives (M1.5)
-- `<Orb>` — Framer Motion turbulence idle loop (6s, 30% breathing); amber halo listen state driven by Web Audio amplitude (stubbed constant for now).
-- `<EveSheet>` — single bottom-sheet primitive (Vaul, iOS rubber-band 250ms). Used everywhere; no ad-hoc modals.
-- `<DraftCard>` — full state machine (idle/streaming/done/error); header · body preview · toolbar (Regen/Tighten/Tone/Fit-to) · score · sources chip. Real data wires in M1.
-- `<Pill>`, `<HoldToSpeakButton>` (with `setPointerCapture`).
-
-## Step 7 — Empty Brain tab wired to realtime (M4.5 scaffold)
-- `/brain` route with React Flow canvas; custom frosted-glass node components using tokens; single **You** ✦ node at origin.
-- Supabase Realtime channel `brain:{user_id}` subscribed; upserts to `brain_edges` push into local React Flow state.
-- Peek Sheet stub opens on node tap. View switcher shell for Constellation / Timeline / Radial / List / Health (only Constellation renders in v0).
-- `src/lib/brain/edges.ts` — typed `writeEdge()` helper every future generation calls (`AUTHORED_BY`, `SOURCED_FROM`, etc.).
-- Brain intro animation: amber point → radial burst → settle (900ms, honors `prefers-reduced-motion`).
-
-## Step 8 — Home (Orb canvas)
-Replace the smoke-test index with the real Eve OS home: centered `<Orb>`, "Try asking" pills, ComposerBar. No generation yet — orb press just cycles state machine + haptic feedback.
-
-## Package installs
-`react-flow` (@xyflow/react), `framer-motion`, `vaul`, `d3-force`, `@fontsource/instrument-serif`, `@fontsource/inter-tight`. Supabase client comes with Lovable Cloud.
-
-## What lands in later turns (not this one)
-M1 `content.draft` (Claude Fable 5) · STT · image gen · M2 channels/scheduling · M3 MCP server · M4 ArcMap · M4.5 full Brain (Timeline/Radial/List/Health/search/prune) · M5 intelligence · admin surface · notifications · PWA · analytics.
-
-## Non-negotiables enforced
-- Semantic tokens only, never hardcoded colors.
-- RLS + GRANTs on every public-schema table in the same migration.
-- Roles in `user_roles`, never on `profiles`.
-- Zero fabrication: every generation writes brain edges recording sources.
-- `LOVABLE_API_KEY`, `ANTHROPIC_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` server-only.
-
-Approve and I'll build.
+## Proceeding
+On approval I'll start **Phase 1** immediately: AI client modules, three server fns, provenance helper, and a smoke test writing a Claude-sourced edge into the Brain.
