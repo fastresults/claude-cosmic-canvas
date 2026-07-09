@@ -4,6 +4,7 @@
  * All writes go through the authenticated Supabase client (RLS scopes to user).
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type NodeType =
   | "you"
@@ -42,31 +43,25 @@ export type WriteEdgeInput = {
   meta?: Record<string, unknown>;
 };
 
+function toRow(i: WriteEdgeInput) {
+  return {
+    user_id: i.userId,
+    src_type: i.srcType,
+    src_id: i.srcId,
+    edge_kind: i.edgeKind,
+    dst_type: i.dstType,
+    dst_id: i.dstId,
+    meta: (i.meta ?? {}) as Json,
+  };
+}
+
 export async function writeEdge(input: WriteEdgeInput) {
-  const { error } = await supabase.from("brain_edges").insert({
-    user_id: input.userId,
-    src_type: input.srcType,
-    src_id: input.srcId,
-    edge_kind: input.edgeKind,
-    dst_type: input.dstType,
-    dst_id: input.dstId,
-    meta: input.meta ?? {},
-  });
+  const { error } = await supabase.from("brain_edges").insert(toRow(input));
   if (error) console.error("[brain] writeEdge failed", error);
 }
 
 export async function writeEdges(inputs: WriteEdgeInput[]) {
   if (inputs.length === 0) return;
-  const { error } = await supabase.from("brain_edges").insert(
-    inputs.map((i) => ({
-      user_id: i.userId,
-      src_type: i.srcType,
-      src_id: i.srcId,
-      edge_kind: i.edgeKind,
-      dst_type: i.dstType,
-      dst_id: i.dstId,
-      meta: i.meta ?? {},
-    })),
-  );
+  const { error } = await supabase.from("brain_edges").insert(inputs.map(toRow));
   if (error) console.error("[brain] writeEdges failed", error);
 }
