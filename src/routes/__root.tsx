@@ -96,15 +96,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "A voice-first AI content OS with a visual Second Brain. For founders and creators who live on their phone.",
+          "Voice-first AI content OS. Hold the orb, say one sentence, and Eve produces a voice-matched draft, image, and scheduled post — with a living Second Brain that shows exactly where every generation came from.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Eve OS" },
+      { name: "twitter:title", content: "Eve OS — Speak once. Publish everywhere." },
       {
         name: "twitter:description",
-        content: "Speak once. Publish everywhere. Sound exactly like you.",
+        content: "Voice-first AI content OS. Hold the orb, say one sentence, and Eve produces a voice-matched draft, image, and scheduled post — with a living Second Brain that shows exactly where every generation came from.",
       },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2ada0bcf-99cb-4cc0-bb62-c8afe57fa885/id-preview-70aa527a--becd050e-6f8c-4768-aebd-94a443c94a9a.lovable.app-1783588533388.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2ada0bcf-99cb-4cc0-bb62-c8afe57fa885/id-preview-70aa527a--becd050e-6f8c-4768-aebd-94a443c94a9a.lovable.app-1783588533388.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
