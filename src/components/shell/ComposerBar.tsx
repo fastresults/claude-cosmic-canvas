@@ -55,6 +55,7 @@ export function ComposerBar() {
 
   useEffect(() => {
     let permissionStatus: PermissionStatus | null = null;
+    let permissionUpdate: (() => void) | null = null;
     let cancelled = false;
 
     if (typeof navigator !== "undefined" && navigator.permissions?.query) {
@@ -70,6 +71,7 @@ export function ComposerBar() {
               setMicErr((current) => (current?.startsWith("Mic blocked") ? null : current));
             }
           };
+          permissionUpdate = update;
           status.addEventListener("change", update);
           update();
         })
@@ -80,7 +82,9 @@ export function ComposerBar() {
 
     return () => {
       cancelled = true;
-      permissionStatus?.onchange?.(null);
+      if (permissionStatus && permissionUpdate) {
+        permissionStatus.removeEventListener("change", permissionUpdate);
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
@@ -115,7 +119,7 @@ export function ComposerBar() {
       }
       streamRef.current = stream;
       const mime = pickMime();
-      mimeRef.current = mime ?? stream.getAudioTracks()[0]?.getSettings?.().deviceId ? "audio/webm" : "audio/webm";
+      mimeRef.current = mime ?? "audio/webm";
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       chunksRef.current = [];
       rec.ondataavailable = (e) => {
