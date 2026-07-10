@@ -70,12 +70,27 @@ export function BrainCanvas() {
               y: Math.sin(angle) * radius,
             },
             data: {
-              label: row.dst_type,
+              label: prettyType(row.dst_type),
               nodeType: row.dst_type,
             } satisfies BrainNodeData,
           },
         ];
       });
+      void resolveLabel(row);
+    };
+
+    // Resolve a human-readable name for the node by looking up its source row.
+    const resolveLabel = async (row: { dst_type: NodeType; dst_id: string }) => {
+      const label = await fetchLabel(row.dst_type, row.dst_id);
+      if (!label || !mounted) return;
+      const nodeId = `${row.dst_type}:${row.dst_id}`;
+      setNodes((prev) =>
+        prev.map((n) =>
+          n.id === nodeId
+            ? { ...n, data: { ...(n.data as BrainNodeData), label } }
+            : n,
+        ),
+      );
     };
 
     (async () => {
