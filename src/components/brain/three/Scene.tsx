@@ -7,10 +7,12 @@ import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { Orb } from "./Orb";
 import { Filament } from "./Filament";
 import { Starfield } from "./Starfield";
-import { useBrainGraph, type GraphNode } from "./useBrainGraph";
+import type { GraphNode, GraphEdge } from "./useBrainGraph";
 import { computeLayout } from "./layout";
 
 type Props = {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
   onPeek: (node: GraphNode) => void;
   focusNodeId?: string | null;
 };
