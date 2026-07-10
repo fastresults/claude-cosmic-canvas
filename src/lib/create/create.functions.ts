@@ -73,8 +73,8 @@ export const saveCreateDraft = createServerFn({ method: "POST" })
       user_id: context.userId,
       format_id: data.formatId,
       title: data.title ?? null,
-      sections: data.sections,
-      brief_snapshot: data.briefSnapshot ?? null,
+      sections: (data.sections ?? []) as unknown as Json,
+      brief_snapshot: (data.briefSnapshot ?? null) as Json | null,
       status: data.status,
     };
     if (data.draftId) {
