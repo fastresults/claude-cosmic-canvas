@@ -9,6 +9,7 @@ type Props = {
   node: GraphNode;
   position: [number, number, number];
   dim?: boolean;
+  focused?: boolean;
   onHover?: (id: string | null) => void;
   onClick?: (node: GraphNode) => void;
   isYou?: boolean;
