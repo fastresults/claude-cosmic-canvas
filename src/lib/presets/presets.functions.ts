@@ -441,28 +441,8 @@ export const applyPreset = createServerFn({ method: "POST" })
 
 // ---------- Brain sync (internal) ----------
 
-async function syncPresetToBrainInternal(
-  // Loose typing to keep this file client-safe (no server-side imports).
-  supabase: {
-    from: (t: string) => {
-      select: (s: string) => {
-        eq: (a: string, b: unknown) => {
-          maybeSingle: () => Promise<{ data: unknown }>;
-        } & Promise<{ data: unknown }>;
-      };
-      delete: () => {
-        eq: (a: string, b: unknown) => {
-          eq: (a: string, b: unknown) => {
-            eq: (a: string, b: unknown) => Promise<{ error: unknown }>;
-          };
-        };
-      };
-      insert: (rows: unknown) => Promise<{ error: unknown }>;
-    };
-  },
-  userId: string,
-  presetId: string,
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncPresetToBrainInternal(supabase: any, userId: string, presetId: string) {
   // Fetch preset + docs.
   const { data: preset } = (await supabase
     .from("presets")

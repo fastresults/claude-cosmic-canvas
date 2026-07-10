@@ -12,6 +12,18 @@ import {
 
 export const PRESETS_KEY = ["presets"] as const;
 
+// Deliberately loose input types — the server fns own validation via Zod.
+type CreateInput = {
+  name: string;
+  description?: string | null;
+  brief_config?: Record<string, unknown>;
+  selected_domain_ids?: string[];
+  selected_audience_ids?: string[];
+  factor_weights?: Record<string, number>;
+  research_context?: Record<string, unknown>;
+};
+type UpdateInput = Partial<CreateInput> & { id: string };
+
 export function usePresets() {
   const qc = useQueryClient();
   const listFn = useServerFn(listPresets);
@@ -34,11 +46,11 @@ export function usePresets() {
     isLoading: query.isLoading,
     refetch: query.refetch,
     create: useMutation({
-      mutationFn: (v: Parameters<typeof createFn>[0]["data"]) => createFn({ data: v }),
+      mutationFn: (v: CreateInput) => createFn({ data: v as never }),
       onSuccess: invalidate,
     }),
     update: useMutation({
-      mutationFn: (v: Parameters<typeof updateFn>[0]["data"]) => updateFn({ data: v }),
+      mutationFn: (v: UpdateInput) => updateFn({ data: v as never }),
       onSuccess: invalidate,
     }),
     remove: useMutation({
@@ -59,3 +71,4 @@ export function usePresets() {
     }),
   };
 }
+
