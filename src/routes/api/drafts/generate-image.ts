@@ -10,14 +10,19 @@ export const Route = createFileRoute("/api/drafts/generate-image")({
       POST: async ({ request }) => {
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
-        let body: { prompt?: string; aspect?: string } = {};
+        let body: { prompt?: string; aspect?: string; negativePrompt?: string } = {};
         try {
-          body = (await request.json()) as { prompt?: string; aspect?: string };
+          body = (await request.json()) as { prompt?: string; aspect?: string; negativePrompt?: string };
         } catch {
           return new Response("Bad request", { status: 400 });
         }
         const prompt = (body.prompt ?? "").trim();
         if (!prompt) return new Response("Missing prompt", { status: 400 });
+        const aspect = (body.aspect ?? "16:9").trim();
+        const negative = (body.negativePrompt ?? "").trim();
+        const composed =
+          `${prompt}\n\n[ASPECT_RATIO] ${aspect}` +
+          (negative ? `\n[NEGATIVE] ${negative}` : "");
 
         const upstream = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
           method: "POST",
@@ -27,7 +32,7 @@ export const Route = createFileRoute("/api/drafts/generate-image")({
           },
           body: JSON.stringify({
             model: "google/gemini-3-pro-image",
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: composed }],
             modalities: ["image", "text"],
             stream: true,
           }),

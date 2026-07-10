@@ -529,6 +529,48 @@ export type Database = {
         }
         Relationships: []
       }
+      image_generation_styles: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          display_order: number
+          is_enabled: boolean
+          name: string
+          negative_prompt: string
+          preview_url: string | null
+          prompt_prefix: string
+          style_id: string
+          supported_types: string[]
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          is_enabled?: boolean
+          name: string
+          negative_prompt?: string
+          preview_url?: string | null
+          prompt_prefix?: string
+          style_id: string
+          supported_types?: string[]
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          is_enabled?: boolean
+          name?: string
+          negative_prompt?: string
+          preview_url?: string | null
+          prompt_prefix?: string
+          style_id?: string
+          supported_types?: string[]
+        }
+        Relationships: []
+      }
       knowledge_chunks: {
         Row: {
           chunk_index: number

@@ -5,7 +5,18 @@ import {
   attachDraftImage,
   removeDraftImage,
   generateImageConcepts,
+  listImageStyles,
 } from "@/lib/drafts/drafts.functions";
+
+export function useImageStyles(role: "cover" | "social" | "inline") {
+  const fn = useServerFn(listImageStyles);
+  return useQuery({
+    queryKey: ["image-styles", role],
+    queryFn: () => fn({ data: { role } }),
+    staleTime: 5 * 60_000,
+  });
+}
+
 
 export function useDraftImages(draftId: string | null | undefined) {
   const list = useServerFn(listDraftImages);
