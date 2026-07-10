@@ -1,69 +1,53 @@
-# Fix: Style templates don't load in Generate Image sheet
+# Seed style-template preview thumbnails
 
-## Diagnosis (from logs)
+## Goal
 
-- User tapped a `social` slot on a draft card → `ImageAssociationSheet` opened on the **Generate** tab.
-- `generateImageConcepts` server fn returned 200 with 4 concepts (network log confirms).
-- What actually "didn't load" isn't concepts — it's the **style-templates grid** the PRD (`docs/prd/draft-image-generation-lovable-prompt.md`) specifies as the primary picker above concepts. That UI and its backing table were never built in this app. Only the concept cards render today, so the user sees no style thumbnails and reads it as "templates failed to load."
+Give each of the 15 rows in `image_generation_styles` a `preview_url` pointing to a representative thumbnail that visibly conveys the style. Users pick a template and see exactly what aesthetic they're opting into.
 
-Fix: implement the missing style-template layer end-to-end (data → server fn → hook → UI) and wire it into the Generate tab, filtered by the current slot role.
+## Approach
 
-## Plan
+Generate one on-brand thumbnail per style with the agent-side `imagegen` tool, host each via Lovable CDN assets (stable URLs, global cache, out of the git repo), then `UPDATE` the `preview_url` column per row.
 
-### 1. DB migration — `image_generation_styles`
+Neutral subject across all 15 so the *style* is the variable — proposed subject: **an abstract mountain-and-sun composition** (works for photo, editorial, illustration, 3D, infographic without leaning any direction).
 
-Create the table per the PRD (already spec'd there), seed ~15 rows, add RLS + GRANTs. Non-negotiable order: `CREATE TABLE` → `GRANT` → `ENABLE RLS` → policies.
+Square 1024×1024 thumbs (the strip renders 112×80, so 1024 is more than enough and covers retina). `fast` tier for cost — quality plenty at thumbnail size.
 
-Columns: `style_id text pk`, `name`, `description`, `preview_url` (thumbnail), `prompt_prefix` (injected into image prompt), `negative_prompt`, `supported_types text[]` (subset of `cover|social|inline`), `display_order int`, `is_enabled bool default true`, `created_at`.
+## Steps
 
-Policies:
-- `SELECT` to `anon, authenticated` where `is_enabled = true`.
-- `ALL` to admins via `has_role(auth.uid(),'admin')`.
+### 1. Generate 15 thumbnails
 
-Seed rows across Photography, Editorial, Illustration, 3D, Infographic; each row's `supported_types` picks the roles it makes sense for (e.g. `social` styles = square-friendly, bold).
+For each style row, call `imagegen--generate_image` with `{promptPrefix} an abstract mountain-and-sun composition, thumbnail composition, no text, no watermark`, `1024x1024`, tier `fast`, target `src/assets/style-thumbs/{style_id}.jpg`.
 
-### 2. Server fn — `listImageStyles`
+Batch in parallel across all 15.
 
-New export in `src/lib/drafts/drafts.functions.ts`:
+### 2. Upload each to Lovable CDN
 
-- Input: `{ role: "cover"|"social"|"inline" }`.
-- Query `image_generation_styles` where `is_enabled = true` AND `role = ANY(supported_types)`, ordered by `display_order`.
-- Returns `Array<{ styleId, name, previewUrl, promptPrefix, negativePrompt }>`.
-- Public read (no auth middleware needed since RLS allows anon SELECT on enabled rows), or use `requireSupabaseAuth` for consistency — pick auth middleware to match sibling fns.
+```bash
+lovable-assets create --file src/assets/style-thumbs/{style_id}.jpg > src/assets/style-thumbs/{style_id}.jpg.asset.json
+rm src/assets/style-thumbs/{style_id}.jpg
+```
 
-### 3. Hook — `useImageStyles(role)`
+Result: 15 `.asset.json` pointer files. Extract each `url` field (form `/__l5e/assets-v1/{asset_id}/{style_id}.jpg`).
 
-Add to `src/hooks/useDraftImages.ts`. `useQuery` keyed by `["image-styles", role]`, calls the new server fn, `staleTime: 5 * 60_000` (styles rarely change).
+### 3. Update rows via `supabase--insert`
 
-### 4. UI — style grid in `ImageAssociationSheet` Generate tab
+Single `UPDATE ... FROM (VALUES ...)` statement mapping `style_id → url` for all 15 rows.
 
-In `src/components/drafts/ImageAssociationSheet.tsx` `GenerateTab`:
+### 4. Verify
 
-- Above the concept list, render a **Style templates** section:
-  - Loading skeleton while `useImageStyles` is pending (currently no visual feedback = "didn't load").
-  - Empty state: "No styles available for this slot yet." with a subtle admin hint if `has_role` admin.
-  - Error state with retry (invalidate query).
-  - Grid: 2-col horizontal-scroll strip on mobile (`<640px`), 3–4 col grid on larger. Each card shows `previewUrl` thumb + `name`. Selecting a style highlights it and passes `promptPrefix` + `negativePrompt` to `run()`.
-- When user picks a concept, the currently-selected style's `promptPrefix` gets prepended and `negativePrompt` passed through to the `/api/drafts/generate-image` request. If no style selected, generate as today (unchanged behavior).
-- Persist `selectedStyleId` in local component state; default to first style once loaded.
+- Reload `/library`, open a draft → Social slot → Generate tab.
+- Confirm the style strip shows real thumbnails (no more label-on-plain-tile).
+- Selected style highlights with an accent border and thumb is legible.
+- Repeat for a Cover slot — verify the different subset of styles renders their own thumbs.
 
-### 5. Wire style into generate + attach
+## Notes
 
-- Extend `streamDraftImage(prompt, cb, aspect, negativePrompt?)` signature to accept an optional negative prompt and forward it to `/api/drafts/generate-image`.
-- Update `src/routes/api/drafts/generate-image.ts` to accept `negativePrompt` and include it in the upstream body (append to the user content — Gemini image API takes a single message).
-- On attach (`useAttachDraftImage`), pass `styleId: selectedStyleId` so `create_media.style_id` is populated (column already exists per code).
-
-### 6. Acceptance
-
-- Open a draft → tap `+` on Social slot → sheet opens on Generate.
-- Style strip shows N thumbnails filtered to `supported_types` containing `social`, ordered by `display_order`.
-- Skeleton visible during load, error state shows retry, empty state readable.
-- Selecting a style highlights it; picking a concept generates with the style's prompt prefix + negative applied.
-- `create_media` row on attach carries the chosen `style_id`.
-- Cover and Inline slots each show their own filtered subset.
+- CDN URLs are immutable, so a later re-shoot means new asset IDs + a second UPDATE (fine — no cache-busting needed).
+- Storing on Lovable CDN (not the `draft-media` Supabase bucket) keeps these public, cache-friendly, and unrelated to per-user RLS.
+- `preview_url` column already exists; no migration required.
+- The `usePresets`-style component tile in `ImageAssociationSheet` already renders `background-image: url(previewUrl)` when set — no UI change needed.
 
 ## Out of scope
 
-- Admin CRUD UI for styles (SQL seed is enough).
-- Illustration / Infographic fast-path buttons from the PRD.
-- Crop / text-overlay states.
+- Regenerating thumbnails per-user, per-brand, or with brand color overrides.
+- Auto-refresh cron. Static seed is enough for now.
