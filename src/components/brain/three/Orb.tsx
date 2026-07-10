@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -43,6 +43,7 @@ export function Orb({ node, position, dim, onHover, onClick, isYou }: Props) {
   const core = useRef<THREE.Mesh>(null);
   const halo = useRef<THREE.Sprite>(null);
   const hoverRef = useRef(false);
+  const [isHover, setIsHover] = useState(false);
 
   const color = NODE_COLOR[node.nodeType];
   const baseRadius = isYou ? 1.4 : 0.35 + node.importance * 0.12;
@@ -88,11 +89,13 @@ export function Orb({ node, position, dim, onHover, onClick, isYou }: Props) {
         onPointerOver={(e) => {
           e.stopPropagation();
           hoverRef.current = true;
+          setIsHover(true);
           onHover?.(node.id);
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
           hoverRef.current = false;
+          setIsHover(false);
           onHover?.(null);
           document.body.style.cursor = "";
         }}
@@ -113,10 +116,23 @@ export function Orb({ node, position, dim, onHover, onClick, isYou }: Props) {
 
       {/* Pill label */}
       <Billboard follow position={[0, -baseRadius - 0.35, 0]}>
-        <Html center distanceFactor={12} zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
+        <Html
+          center
+          distanceFactor={12}
+          zIndexRange={[100, 0]}
+          style={{ pointerEvents: "none", zIndex: isHover ? 50 : 1 }}
+        >
           <div
-            className="rounded-md border border-white/10 bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-white/90 backdrop-blur-sm whitespace-nowrap"
-            style={{ opacity, textShadow: "0 1px 2px rgba(0,0,0,0.9)" }}
+            className="rounded-md border bg-black/80 font-medium tracking-wide text-white whitespace-nowrap backdrop-blur-md transition-all duration-200 ease-out origin-center"
+            style={{
+              opacity,
+              textShadow: "0 1px 2px rgba(0,0,0,0.9)",
+              transform: isHover ? "scale(2.6)" : "scale(1)",
+              padding: isHover ? "4px 10px" : "2px 6px",
+              fontSize: isHover ? "12px" : "10px",
+              borderColor: isHover ? "rgba(245,182,66,0.6)" : "rgba(255,255,255,0.1)",
+              boxShadow: isHover ? "0 4px 20px rgba(245,182,66,0.35)" : "none",
+            }}
           >
             {node.label}
           </div>
