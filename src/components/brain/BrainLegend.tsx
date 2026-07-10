@@ -19,7 +19,7 @@ export function BrainLegend({ visibleTypes }: Props) {
 
   return (
     <div
-      className="pointer-events-auto absolute bottom-3 left-3 z-10 max-h-[45vh] overflow-hidden rounded-md border border-border/60 bg-background/60 backdrop-blur"
+      className="pointer-events-auto absolute bottom-24 left-3 z-30 max-h-[45vh] overflow-hidden rounded-md border border-border/60 bg-background/80 backdrop-blur sm:bottom-3"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <button
