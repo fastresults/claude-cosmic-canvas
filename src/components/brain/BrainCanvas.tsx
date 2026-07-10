@@ -68,6 +68,9 @@ export function BrainCanvas() {
           <div className="h-full w-full">
             <Scene nodes={nodes} edges={edges} onPeek={setPeek} focusNodeId={focusId} />
           </div>
+          <BrainLegend
+            visibleTypes={new Set(nodes.map((n) => n.nodeType as NodeType))}
+          />
         </>
       )}
 
