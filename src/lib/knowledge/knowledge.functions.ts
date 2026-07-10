@@ -166,7 +166,12 @@ export const updateEntry = createServerFn({ method: "POST" })
       .parse(i),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      title?: string;
+      tags?: string[];
+      use_in_next_gen?: boolean;
+      content?: string;
+    } = {};
     if (data.title !== undefined) patch.title = data.title;
     if (data.tags !== undefined) patch.tags = data.tags;
     if (data.use_in_next_gen !== undefined) patch.use_in_next_gen = data.use_in_next_gen;
