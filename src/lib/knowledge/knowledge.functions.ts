@@ -55,10 +55,24 @@ export const createProfile = createServerFn({ method: "POST" })
   });
 
 // Resolve the inheritance chain: [profile, parent, grandparent, ...]
+type SupabaseAny = {
+  from: (t: string) => {
+    select: (c: string) => {
+      eq: (
+        a: string,
+        b: string,
+      ) => {
+        eq: (
+          a: string,
+          b: string,
+        ) => { maybeSingle: () => Promise<{ data: { parent_profile_id: string | null } | null }> };
+      };
+    };
+  };
+};
+
 async function resolveProfileChain(
-  supabase: Awaited<ReturnType<typeof import("@/integrations/supabase/auth-middleware").requireSupabaseAuth.server>>["context"]["supabase"] extends infer S
-    ? S
-    : never,
+  supabase: SupabaseAny,
   userId: string,
   profileId: string | null,
 ): Promise<string[]> {
@@ -69,21 +83,7 @@ async function resolveProfileChain(
   while (currentId && !seen.has(currentId) && chain.length < 5) {
     seen.add(currentId);
     chain.push(currentId);
-    const { data } = await (supabase as never as {
-      from: (t: string) => {
-        select: (c: string) => {
-          eq: (
-            a: string,
-            b: string,
-          ) => {
-            eq: (
-              a: string,
-              b: string,
-            ) => { maybeSingle: () => Promise<{ data: { parent_profile_id: string | null } | null }> };
-          };
-        };
-      };
-    })
+    const { data } = await supabase
       .from("knowledge_profiles")
       .select("parent_profile_id")
       .eq("id", currentId)
