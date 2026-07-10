@@ -1,0 +1,177 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Plus, X, Compass } from "lucide-react";
+import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { Pill } from "@/components/primitives/Pill";
+import {
+  listDomains,
+  addDomain,
+  deleteDomain,
+} from "@/lib/settings/settings.functions";
+
+export const Route = createFileRoute("/_authenticated/settings/domains")({
+  component: DomainsSettings,
+});
+
+const SUGGESTIONS = [
+  "Product",
+  "Founder life",
+  "AI",
+  "Design",
+  "Marketing",
+  "Engineering",
+  "Sales",
+  "Community",
+  "Leadership",
+  "Storytelling",
+  "Fitness",
+  "Parenting",
+  "Music",
+  "Travel",
+];
+
+type Domain = { id: string; name: string; created_at?: string };
+
+function DomainsSettings() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listDomains);
+  const addFn = useServerFn(addDomain);
+  const delFn = useServerFn(deleteDomain);
+
+  const { data: domains = [] } = useQuery({
+    queryKey: ["settings", "domains"],
+    queryFn: () => listFn() as Promise<Domain[]>,
+  });
+
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const add = useMutation({
+    mutationFn: (n: string) => addFn({ data: { name: n } }),
+    onSuccess: () => {
+      setName("");
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["settings", "domains"] });
+    },
+    onError: (e: unknown) =>
+      setError(e instanceof Error ? e.message : "Could not add domain"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "domains"] }),
+  });
+
+  const existing = new Set(domains.map((d) => d.name.toLowerCase()));
+  const available = SUGGESTIONS.filter((s) => !existing.has(s.toLowerCase()));
+
+  function submit(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    if (existing.has(trimmed.toLowerCase())) {
+      setError("You already have that domain.");
+      return;
+    }
+    add.mutate(trimmed);
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 pb-24 pt-4">
+      <SettingsPageHeader
+        title="Domains"
+        description="The areas of professional and personal passion and expertise you draw on for content. Domains become nodes in your Brain and steer what Eve pulls from your Curriculum Vitae."
+      />
+
+      <section className="mt-4 rounded-lg border border-border bg-card p-4">
+        <label className="mb-2 block text-sm font-medium text-foreground">
+          Add a domain
+        </label>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(name);
+          }}
+          className="flex gap-2"
+        >
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+            maxLength={40}
+            placeholder="e.g. Product-led growth, Endurance sports"
+            className="flex-1 rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button
+            type="submit"
+            disabled={!name.trim() || add.isPending}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" /> Add
+          </button>
+        </form>
+        {error && (
+          <p className="mt-2 text-xs text-destructive">{error}</p>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          Short phrases work best — a couple of words that name the space.
+        </p>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Your domains
+        </h2>
+        {domains.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
+            No domains yet. Add one above or tap a suggestion below.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {domains.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+              >
+                <Compass className="h-4 w-4 text-accent" />
+                <span className="flex-1 text-sm text-foreground">{d.name}</span>
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(d.id)}
+                  aria-label={`Remove ${d.name}`}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {available.length > 0 && (
+        <section className="mt-6">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Suggestions
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {available.map((s) => (
+              <Pill
+                key={s}
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => submit(s)}
+              >
+                + {s}
+              </Pill>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
