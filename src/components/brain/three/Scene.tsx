@@ -135,6 +135,7 @@ export function Scene({ nodes, edges, onPeek, focusNodeId, zoomRef }: Props) {
       <PerspectiveCamera makeDefault position={[0, 2, 22]} fov={55} />
       <AutoFit radius={graphRadius} />
       <FocusCamera target={focusTarget} radius={graphRadius} />
+      <ZoomBridge zoomRef={zoomRef} />
       <ambientLight intensity={0.4} />
 
       <Suspense fallback={null}>
