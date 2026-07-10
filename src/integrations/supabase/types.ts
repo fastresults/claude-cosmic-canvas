@@ -353,6 +353,7 @@ export type Database = {
           archived_at: string | null
           content: string | null
           created_at: string
+          domain_id: string | null
           embedding: string | null
           id: string
           kind: string
@@ -372,6 +373,7 @@ export type Database = {
           archived_at?: string | null
           content?: string | null
           created_at?: string
+          domain_id?: string | null
           embedding?: string | null
           id?: string
           kind: string
@@ -391,6 +393,7 @@ export type Database = {
           archived_at?: string | null
           content?: string | null
           created_at?: string
+          domain_id?: string | null
           embedding?: string | null
           id?: string
           kind?: string
@@ -407,6 +410,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "knowledge_entries_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "knowledge_entries_profile_id_fkey"
             columns: ["profile_id"]

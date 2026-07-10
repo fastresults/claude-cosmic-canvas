@@ -1,0 +1,2 @@
+ALTER TABLE public.knowledge_entries ADD COLUMN IF NOT EXISTS domain_id uuid REFERENCES public.domains(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS knowledge_entries_user_domain_idx ON public.knowledge_entries (user_id, domain_id);

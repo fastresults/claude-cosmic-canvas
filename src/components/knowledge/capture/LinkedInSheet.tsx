@@ -15,9 +15,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function LinkedInSheet({ open, onOpenChange, profileId }: Props) {
+export function LinkedInSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const [mode, setMode] = useState<"url" | "resume">("url");
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +160,7 @@ export function LinkedInSheet({ open, onOpenChange, profileId }: Props) {
           title={pending.title}
           sourceUrl={pending.sourceUrl}
           profileId={profileId}
+          domainId={domainId}
           onSaved={() => {
             setPending(null);
             onOpenChange(false);

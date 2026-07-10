@@ -15,9 +15,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function UploadSheet({ open, onOpenChange, profileId }: Props) {
+export function UploadSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const qc = useQueryClient();
   const parseFn = useServerFn(parseDocument);
   const extractFn = useServerFn(extractResume);
@@ -47,6 +48,7 @@ export function UploadSheet({ open, onOpenChange, profileId }: Props) {
         return ingestFn({
           data: {
             profile_id: profileId,
+          domain_id: domainId ?? null,
             source_type: "audio",
             title: file.name,
             content: text,
@@ -77,6 +79,7 @@ export function UploadSheet({ open, onOpenChange, profileId }: Props) {
       return ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: "upload",
           title: file.name,
           content: parsed.markdown,
@@ -139,6 +142,7 @@ export function UploadSheet({ open, onOpenChange, profileId }: Props) {
           title={pendingResume.fileName ?? "Résumé"}
           sourceUrl={null}
           profileId={profileId}
+          domainId={domainId}
           onSaved={() => {
             setPendingResume(null);
             onOpenChange(false);

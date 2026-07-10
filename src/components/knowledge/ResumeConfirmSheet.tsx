@@ -15,6 +15,7 @@ type Props = {
   title: string;
   sourceUrl: string | null;
   profileId: string | null;
+  domainId?: string | null;
   onSaved: () => void;
 };
 
@@ -27,6 +28,7 @@ export function ResumeConfirmSheet({
   title,
   sourceUrl,
   profileId,
+  domainId,
   onSaved,
 }: Props) {
   const qc = useQueryClient();
@@ -65,6 +67,7 @@ export function ResumeConfirmSheet({
       return ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: sourceType,
           title: profile.full_name || title,
           content,
