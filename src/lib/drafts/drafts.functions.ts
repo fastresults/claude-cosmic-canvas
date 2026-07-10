@@ -386,6 +386,40 @@ export const removeDraftImage = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// -------- Image style templates ------------------------------------------
+
+const ListStylesInput = z.object({
+  role: z.enum(["cover", "social", "inline"]).default("cover"),
+});
+
+export const listImageStyles = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => ListStylesInput.parse(input))
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const { data: rows, error } = await sb
+      .from("image_generation_styles")
+      .select("style_id, name, description, category, preview_url, prompt_prefix, negative_prompt, supported_types, display_order")
+      .eq("is_enabled", true)
+      .contains("supported_types", [data.role])
+      .order("display_order", { ascending: true });
+    if (error) throw error;
+    return (rows ?? []).map((r) => ({
+      styleId: r.style_id as string,
+      name: r.name as string,
+      description: (r.description ?? null) as string | null,
+      category: r.category as string,
+      previewUrl: (r.preview_url ?? null) as string | null,
+      promptPrefix: (r.prompt_prefix ?? "") as string,
+      negativePrompt: (r.negative_prompt ?? "") as string,
+    }));
+  });
+
+
 // -------- Image concepts (grounded) --------------------------------------
 
 export const generateImageConcepts = createServerFn({ method: "POST" })
