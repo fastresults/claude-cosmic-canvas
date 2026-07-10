@@ -98,13 +98,14 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const [err, setErr] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
   const loadedRef = useRef(false);
+  const defaultAspect = role === "social" ? "1:1" : "16:9";
 
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    concepts.mutate(draftId);
+    concepts.mutate({ draftId, role });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId]);
+  }, [draftId, role]);
 
   // Default-select first style once loaded.
   useEffect(() => {
@@ -231,6 +232,17 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
               <Loader2 className="h-4 w-4 animate-spin" /> Grounding concepts from your draft…
             </div>
           )}
+          {concepts.isError && (
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <span>Couldn't ground concepts. You can still generate from your own prompt.</span>
+              <button
+                onClick={() => concepts.mutate({ draftId, role })}
+                className="shrink-0 rounded-full border border-destructive/40 px-3 py-1 text-[11px]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
           {list.length > 0 && (
             <div className="grid gap-2">
               {list.map((c, i) => (
@@ -263,7 +275,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             <button
               onClick={() => {
                 if (!customPrompt.trim()) return;
-                const c = { prompt: customPrompt.trim(), style: "custom", aspect: "16:9", rationale: "" };
+                const c = { prompt: customPrompt.trim(), style: "custom", aspect: defaultAspect, rationale: "" };
                 setSelected(c);
                 void run(c.prompt, c.aspect);
               }}
@@ -306,19 +318,20 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           )}
           <div className="flex items-center gap-2">
             <button
-              disabled={streaming || !selected}
+              disabled={streaming || !selected || attach.isPending}
               onClick={() => selected && run(selected.prompt, selected.aspect)}
               className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs text-foreground disabled:opacity-50"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Reroll
             </button>
             <button
+              disabled={streaming || attach.isPending}
               onClick={() => {
                 setPreview(null);
                 setSelected(null);
                 setIsFinal(false);
               }}
-              className="rounded-full border border-border bg-surface px-4 py-2 text-xs text-muted-foreground"
+              className="rounded-full border border-border bg-surface px-4 py-2 text-xs text-muted-foreground disabled:opacity-50"
             >
               Back
             </button>
