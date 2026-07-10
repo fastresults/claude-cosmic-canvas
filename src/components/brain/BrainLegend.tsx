@@ -5,11 +5,13 @@ import { NODE_COLOR, TYPE_LABEL } from "./three/palette";
 
 type Props = {
   visibleTypes?: Set<NodeType>;
+  hiddenTypes: Set<NodeType>;
+  onToggle: (t: NodeType) => void;
 };
 
 const ALL_TYPES = Object.keys(TYPE_LABEL) as NodeType[];
 
-export function BrainLegend({ visibleTypes }: Props) {
+export function BrainLegend({ visibleTypes, hiddenTypes, onToggle }: Props) {
   const [expanded, setExpanded] = useState<boolean>(
     typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches,
   );
@@ -45,19 +47,31 @@ export function BrainLegend({ visibleTypes }: Props) {
         )}
       </button>
       {expanded && (
-        <ul className="max-h-[40vh] overflow-y-auto px-2.5 pb-2 pt-0.5">
-          {types.map((t) => (
-            <li
-              key={t}
-              className="flex items-center gap-2 py-1 text-xs text-muted-foreground"
-            >
-              <span
-                className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                style={{ background: NODE_COLOR[t], boxShadow: `0 0 6px ${NODE_COLOR[t]}` }}
-              />
-              <span className="text-foreground/80">{TYPE_LABEL[t]}</span>
-            </li>
-          ))}
+        <ul className="max-h-[40vh] overflow-y-auto px-1 pb-2 pt-0.5">
+          {types.map((t) => {
+            const hidden = hiddenTypes.has(t);
+            return (
+              <li key={t}>
+                <button
+                  type="button"
+                  onClick={() => onToggle(t)}
+                  aria-pressed={!hidden}
+                  className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-opacity hover:bg-white/5 ${
+                    hidden ? "opacity-40" : "opacity-100"
+                  }`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                    style={{
+                      background: NODE_COLOR[t],
+                      boxShadow: hidden ? "none" : `0 0 6px ${NODE_COLOR[t]}`,
+                    }}
+                  />
+                  <span className="text-foreground/85">{TYPE_LABEL[t]}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
