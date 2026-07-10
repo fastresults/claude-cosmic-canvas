@@ -74,7 +74,7 @@ function DraftsHub() {
           onBlur={() =>
             navigate({
               to: "/content/drafts",
-              search: (s) => ({ ...s, q: query || undefined }),
+              search: { ...search, q: query || undefined },
             })
           }
           placeholder="Search drafts…"
@@ -86,7 +86,7 @@ function DraftsHub() {
         <div className="flex items-center gap-2">
           <Chip
             active={!search.status}
-            onClick={() => navigate({ to: "/content/drafts", search: (s) => ({ ...s, status: undefined }) })}
+            onClick={() => navigate({ to: "/content/drafts", search: { ...search, status: undefined } })}
           >
             All
           </Chip>
@@ -94,7 +94,12 @@ function DraftsHub() {
             <Chip
               key={s}
               active={search.status === s}
-              onClick={() => navigate({ to: "/content/drafts", search: (v) => ({ ...v, status: v.status === s ? undefined : s }) })}
+              onClick={() =>
+                navigate({
+                  to: "/content/drafts",
+                  search: { ...search, status: search.status === s ? undefined : s },
+                })
+              }
             >
               {s}
             </Chip>
