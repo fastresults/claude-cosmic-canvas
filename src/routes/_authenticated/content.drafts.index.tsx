@@ -145,7 +145,7 @@ function DraftsHub() {
       {openId && (
         <DraftDetailSheet
           draftId={openId}
-          onClose={() => navigate({ to: "/content/drafts", search: (s) => ({ ...s, open: undefined }) })}
+          onClose={() => navigate({ to: "/content/drafts", search: { ...search, open: undefined } })}
         />
       )}
     </div>
