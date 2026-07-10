@@ -4,6 +4,9 @@
  */
 import { createParser } from "eventsource-parser";
 import { flushSync } from "react-dom";
+import { supabase } from "@/integrations/supabase/client";
+
+const IMAGE_STREAM_TIMEOUT_MS = 120_000;
 
 type ImageEventPayload =
   | { type: "image_generation.partial_image"; b64_json: string; partial_image_index: number }
@@ -16,12 +19,33 @@ export async function streamDraftImage(
   aspect = "16:9",
   negativePrompt?: string,
 ): Promise<void> {
-  const res = await fetch("/api/drafts/generate-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, aspect, negativePrompt }),
-  });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Sign in to generate images.");
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), IMAGE_STREAM_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch("/api/drafts/generate-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ prompt, aspect, negativePrompt }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    window.clearTimeout(timeoutId);
+    if (controller.signal.aborted) {
+      throw new Error("Image generation timed out. Try again with a shorter prompt.");
+    }
+    throw error;
+  }
   if (!res.ok || !res.body) {
+    window.clearTimeout(timeoutId);
     const t = await res.text().catch(() => "");
     throw new Error(`Image generation failed: ${res.status} ${t}`);
   }
@@ -41,13 +65,14 @@ export async function streamDraftImage(
           "Image generation failed";
         return;
       }
+      const eventType = event.event || payload?.type;
       if (
-        event.event !== "image_generation.partial_image" &&
-        event.event !== "image_generation.completed"
+        eventType !== "image_generation.partial_image" &&
+        eventType !== "image_generation.completed"
       )
         return;
       if (!payload) return;
-      const isFinal = event.event === "image_generation.completed";
+      const isFinal = eventType === "image_generation.completed";
       flushSync(() => {
         onFrame(`data:image/png;base64,${(payload as { b64_json: string }).b64_json}`, isFinal);
       });
@@ -61,7 +86,13 @@ export async function streamDraftImage(
       if (done) break;
       parser.feed(value);
     }
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Image generation timed out. Try again with a shorter prompt.");
+    }
+    throw error;
   } finally {
+    window.clearTimeout(timeoutId);
     reader.cancel().catch(() => {});
   }
   if (streamError) throw new Error(streamError);
