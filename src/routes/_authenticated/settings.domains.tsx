@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, X, Compass } from "lucide-react";
+import { Plus, X, Compass, Layers, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Pill } from "@/components/primitives/Pill";
 import {
