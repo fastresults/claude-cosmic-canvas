@@ -65,8 +65,10 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
       core.current.scale.setScalar(s);
     }
     if (halo.current) {
-      const target = hoverRef.current ? 1.4 : 1;
-      halo.current.scale.lerp(new THREE.Vector3(baseRadius * 6 * target, baseRadius * 6 * target, 1), 0.15);
+      const target = hoverRef.current || focused ? 1.6 : 1;
+      const pulse = focused ? 1 + Math.sin(t * 3) * 0.15 : 1;
+      const s = baseRadius * 6 * target * pulse;
+      halo.current.scale.lerp(new THREE.Vector3(s, s, 1), 0.15);
     }
   });
 
