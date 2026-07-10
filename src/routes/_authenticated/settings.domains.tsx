@@ -211,6 +211,12 @@ function DomainsSettings() {
           </div>
         </section>
       )}
+      <DomainDetailSheet
+        open={!!openDomain}
+        onOpenChange={(v) => !v && setOpenDomain(null)}
+        domainId={openDomain?.id ?? null}
+        domainName={openDomain?.name ?? ""}
+      />
     </div>
   );
 }
