@@ -102,6 +102,7 @@ export function DraftDetailSheet({
             items={cover}
             onAdd={() => setImgSheet({ open: true, role: "cover" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
           <ImageRow
             label="Social"
@@ -109,6 +110,7 @@ export function DraftDetailSheet({
             items={social}
             onAdd={() => setImgSheet({ open: true, role: "social" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
           <ImageRow
             label="Inline"
@@ -116,7 +118,9 @@ export function DraftDetailSheet({
             items={inline}
             onAdd={() => setImgSheet({ open: true, role: "inline" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
+
 
           {/* Body preview */}
           <section className="rounded-2xl border border-border bg-surface p-4">
