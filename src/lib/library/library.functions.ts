@@ -216,7 +216,7 @@ export const bulkDeleteDrafts = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkIds.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .delete()
       .in("id", data.ids);
     if (error) throw error;
@@ -233,7 +233,7 @@ export const bulkSetStatus = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkStatus.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .update({ status: data.status })
       .in("id", data.ids);
     if (error) throw error;
@@ -250,7 +250,7 @@ export const bulkAssignCampaign = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkCampaign.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .update({ campaign_id: data.campaignId })
       .in("id", data.ids);
     if (error) throw error;
