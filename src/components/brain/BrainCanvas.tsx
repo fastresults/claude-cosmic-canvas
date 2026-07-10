@@ -28,6 +28,138 @@ const VIEWS = [
 
 type ViewKey = (typeof VIEWS)[number]["key"];
 
+const TYPE_PRETTY: Record<NodeType, string> = {
+  you: "You",
+  persona: "Persona",
+  voice_sample: "Voice",
+  directive: "Directive",
+  domain: "Domain",
+  knowledge: "Knowledge",
+  entity: "Entity",
+  draft: "Draft",
+  image: "Image",
+  campaign: "Campaign",
+  channel: "Channel",
+  scheduled: "Scheduled",
+  mcp_client: "MCP Client",
+};
+
+function prettyType(t: NodeType) {
+  return TYPE_PRETTY[t] ?? t;
+}
+
+function truncate(s: string | null | undefined, n = 40) {
+  if (!s) return null;
+  const clean = s.replace(/\s+/g, " ").trim();
+  if (!clean) return null;
+  return clean.length > n ? `${clean.slice(0, n - 1)}…` : clean;
+}
+
+async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
+  switch (type) {
+    case "voice_sample": {
+      const { data } = await supabase
+        .from("voice_profiles")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.name);
+    }
+    case "persona": {
+      const { data } = await supabase
+        .from("personas")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.name);
+    }
+    case "directive": {
+      const { data } = await supabase
+        .from("voice_directives")
+        .select("directive_text")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.directive_text, 32);
+    }
+    case "domain": {
+      const { data } = await supabase
+        .from("domains")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.name);
+    }
+    case "knowledge": {
+      const { data } = await supabase
+        .from("knowledge_entries")
+        .select("title")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.title);
+    }
+    case "entity": {
+      const { data } = await supabase
+        .from("entities")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.name);
+    }
+    case "draft": {
+      const { data } = await supabase
+        .from("drafts")
+        .select("format, body")
+        .eq("id", id)
+        .maybeSingle();
+      if (!data) return null;
+      const snippet = truncate(data.body, 32);
+      return snippet ?? (data.format ? `${data.format} draft` : "Draft");
+    }
+    case "campaign": {
+      const { data } = await supabase
+        .from("campaigns")
+        .select("title")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.title);
+    }
+    case "channel": {
+      const { data } = await supabase
+        .from("channel_connections")
+        .select("channel, handle")
+        .eq("id", id)
+        .maybeSingle();
+      if (!data) return null;
+      return truncate(
+        data.handle ? `${data.channel} · ${data.handle}` : data.channel,
+      );
+    }
+    case "scheduled": {
+      const { data } = await supabase
+        .from("schedules")
+        .select("channel, scheduled_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (!data) return null;
+      const when = data.scheduled_at
+        ? new Date(data.scheduled_at).toLocaleDateString()
+        : null;
+      return truncate(when ? `${data.channel} · ${when}` : data.channel);
+    }
+    case "mcp_client": {
+      const { data } = await supabase
+        .from("mcp_clients")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      return truncate(data?.name);
+    }
+    default:
+      return null;
+  }
+}
+
+
 export function BrainCanvas() {
   const [view, setView] = useState<ViewKey>("constellation");
   const [peek, setPeek] = useState<BrainNodeData | null>(null);
