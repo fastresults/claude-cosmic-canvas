@@ -28,6 +28,7 @@ export function ResumeConfirmSheet({
   title,
   sourceUrl,
   profileId,
+  domainId,
   onSaved,
 }: Props) {
   const qc = useQueryClient();
