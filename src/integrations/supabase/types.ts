@@ -289,8 +289,47 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string
+          embedding: string | null
+          entry_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string
+          embedding?: string | null
+          entry_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          entry_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_entries: {
         Row: {
+          archived_at: string | null
           content: string | null
           created_at: string
           embedding: string | null
@@ -298,12 +337,18 @@ export type Database = {
           kind: string
           last_used_at: string | null
           meta: Json
+          pinned: boolean
+          profile_id: string | null
+          source_type: string
           source_url: string | null
+          tags: string[]
           title: string | null
           updated_at: string
+          use_in_next_gen: boolean
           user_id: string
         }
         Insert: {
+          archived_at?: string | null
           content?: string | null
           created_at?: string
           embedding?: string | null
@@ -311,12 +356,18 @@ export type Database = {
           kind: string
           last_used_at?: string | null
           meta?: Json
+          pinned?: boolean
+          profile_id?: string | null
+          source_type?: string
           source_url?: string | null
+          tags?: string[]
           title?: string | null
           updated_at?: string
+          use_in_next_gen?: boolean
           user_id: string
         }
         Update: {
+          archived_at?: string | null
           content?: string | null
           created_at?: string
           embedding?: string | null
@@ -324,12 +375,104 @@ export type Database = {
           kind?: string
           last_used_at?: string | null
           meta?: Json
+          pinned?: boolean
+          profile_id?: string | null
+          source_type?: string
           source_url?: string | null
+          tags?: string[]
           title?: string | null
+          updated_at?: string
+          use_in_next_gen?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_entries_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_ingestion_jobs: {
+        Row: {
+          created_at: string
+          entry_id: string | null
+          error: string | null
+          id: string
+          stage_message: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id?: string | null
+          error?: string | null
+          id?: string
+          stage_message?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string | null
+          error?: string | null
+          id?: string
+          stage_message?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_ingestion_jobs_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          parent_profile_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          parent_profile_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          parent_profile_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_profiles_parent_profile_id_fkey"
+            columns: ["parent_profile_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mcp_clients: {
         Row: {
@@ -813,6 +956,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_knowledge_chunks: {
+        Args: {
+          p_match_count?: number
+          p_profile_ids: string[]
+          p_query: string
+          p_tag_filter?: string[]
+          p_user_id: string
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          entry_id: string
+          entry_title: string
+          similarity: number
+          source_type: string
+        }[]
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
