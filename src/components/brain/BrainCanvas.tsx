@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Scene } from "./three/Scene";
+import { Plus, Minus } from "lucide-react";
+import { Scene, type ZoomController } from "./three/Scene";
 import { BrainSearch } from "./BrainSearch";
 import { BrainLegend } from "./BrainLegend";
 import { EveSheet } from "@/components/primitives/EveSheet";
@@ -21,7 +22,32 @@ export function BrainCanvas() {
   const [view, setView] = useState<ViewKey>("constellation");
   const [peek, setPeek] = useState<GraphNode | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set());
   const { nodes, edges } = useBrainGraph();
+  const zoomRef = useRef<ZoomController | null>(null);
+
+  const visibleTypes = useMemo(
+    () => new Set(nodes.map((n) => n.nodeType as NodeType)),
+    [nodes],
+  );
+
+  const filteredNodes = useMemo(
+    () => nodes.filter((n) => !hiddenTypes.has(n.nodeType as NodeType)),
+    [nodes, hiddenTypes],
+  );
+
+  const filteredEdges = useMemo(() => {
+    const ids = new Set(filteredNodes.map((n) => n.id));
+    return edges.filter((e) => ids.has(e.source) && ids.has(e.target));
+  }, [edges, filteredNodes]);
+
+  const toggleType = (t: NodeType) =>
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
 
   return (
     <div className="relative h-full w-full bg-background">
@@ -59,18 +85,47 @@ export function BrainCanvas() {
       {view === "constellation" && (
         <>
           <BrainSearch
-            nodes={nodes}
+            nodes={filteredNodes}
             onPick={(node) => {
               setFocusId(node.id);
               setPeek(node);
             }}
           />
           <div className="h-full w-full">
-            <Scene nodes={nodes} edges={edges} onPeek={setPeek} focusNodeId={focusId} />
+            <Scene
+              nodes={filteredNodes}
+              edges={filteredEdges}
+              onPeek={setPeek}
+              focusNodeId={focusId}
+              zoomRef={zoomRef}
+            />
           </div>
           <BrainLegend
-            visibleTypes={new Set(nodes.map((n) => n.nodeType as NodeType))}
+            visibleTypes={visibleTypes}
+            hiddenTypes={hiddenTypes}
+            onToggle={toggleType}
           />
+
+          {/* Zoom controls */}
+          <div className="pointer-events-auto absolute bottom-24 right-3 z-30 flex flex-col overflow-hidden rounded-md border border-border/60 bg-background/80 backdrop-blur sm:bottom-3">
+            <button
+              type="button"
+              onClick={() => zoomRef.current?.zoom(0.8)}
+              aria-label="Zoom in"
+              className="p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            <div className="h-px bg-border/60" />
+            <button
+              type="button"
+              onClick={() => zoomRef.current?.zoom(1.25)}
+              aria-label="Zoom out"
+              className="p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+          </div>
         </>
       )}
 

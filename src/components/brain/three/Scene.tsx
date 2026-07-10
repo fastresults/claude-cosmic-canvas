@@ -10,12 +10,34 @@ import { Starfield } from "./Starfield";
 import type { GraphNode, GraphEdge } from "./useBrainGraph";
 import { computeLayout } from "./layout";
 
+export type ZoomController = { zoom: (factor: number) => void };
+
 type Props = {
   nodes: GraphNode[];
   edges: GraphEdge[];
   onPeek: (node: GraphNode) => void;
   focusNodeId?: string | null;
+  zoomRef?: React.MutableRefObject<ZoomController | null>;
 };
+
+function ZoomBridge({ zoomRef }: { zoomRef?: React.MutableRefObject<ZoomController | null> }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    if (!zoomRef) return;
+    zoomRef.current = {
+      zoom: (factor: number) => {
+        const dir = camera.position.clone().normalize();
+        const dist = camera.position.length();
+        const next = THREE.MathUtils.clamp(dist * factor, 5, 200);
+        camera.position.copy(dir.multiplyScalar(next));
+      },
+    };
+    return () => {
+      if (zoomRef.current) zoomRef.current = null;
+    };
+  }, [camera, zoomRef]);
+  return null;
+}
 
 function AutoFit({ radius }: { radius: number }) {
   const { camera, size } = useThree();
@@ -70,7 +92,7 @@ function FocusCamera({
   return null;
 }
 
-export function Scene({ nodes, edges, onPeek, focusNodeId }: Props) {
+export function Scene({ nodes, edges, onPeek, focusNodeId, zoomRef }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const positions = useMemo(() => {
@@ -113,6 +135,7 @@ export function Scene({ nodes, edges, onPeek, focusNodeId }: Props) {
       <PerspectiveCamera makeDefault position={[0, 2, 22]} fov={55} />
       <AutoFit radius={graphRadius} />
       <FocusCamera target={focusTarget} radius={graphRadius} />
+      <ZoomBridge zoomRef={zoomRef} />
       <ambientLight intensity={0.4} />
 
       <Suspense fallback={null}>
