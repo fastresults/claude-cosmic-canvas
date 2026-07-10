@@ -24,6 +24,7 @@ import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/a
 import { Route as AuthenticatedWorkspacesIndexRouteImport } from './routes/_authenticated/workspaces.index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenticated/create.index'
+import { Route as ApiDraftsGenerateImageRouteImport } from './routes/api/drafts/generate-image'
 import { Route as AuthenticatedWorkspacesIdRouteImport } from './routes/_authenticated/workspaces.$id'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
@@ -34,6 +35,7 @@ import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
+import { Route as AuthenticatedContentDraftsIndexRouteImport } from './routes/_authenticated/content.drafts.index'
 import { Route as AuthenticatedSettingsVoiceIdRouteImport } from './routes/_authenticated/settings.voice.$id'
 import { Route as AuthenticatedSettingsVoiceIdLearnedRouteImport } from './routes/_authenticated/settings.voice.$id.learned'
 
@@ -114,6 +116,11 @@ const AuthenticatedCreateIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedCreateRoute,
   } as any)
+const ApiDraftsGenerateImageRoute = ApiDraftsGenerateImageRouteImport.update({
+  id: '/api/drafts/generate-image',
+  path: '/api/drafts/generate-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedWorkspacesIdRoute =
   AuthenticatedWorkspacesIdRouteImport.update({
     id: '/$id',
@@ -174,6 +181,12 @@ const AuthenticatedCreateFormatIdRoute =
     path: '/$formatId',
     getParentRoute: () => AuthenticatedCreateRoute,
   } as any)
+const AuthenticatedContentDraftsIndexRoute =
+  AuthenticatedContentDraftsIndexRouteImport.update({
+    id: '/content/drafts/',
+    path: '/content/drafts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsVoiceIdRoute =
   AuthenticatedSettingsVoiceIdRouteImport.update({
     id: '/$id',
@@ -209,10 +222,12 @@ export interface FileRoutesByFullPath {
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
+  '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
   '/create/': typeof AuthenticatedCreateIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
+  '/content/drafts/': typeof AuthenticatedContentDraftsIndexRoute
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
 export interface FileRoutesByTo {
@@ -234,10 +249,12 @@ export interface FileRoutesByTo {
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
+  '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
   '/create': typeof AuthenticatedCreateIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/workspaces': typeof AuthenticatedWorkspacesIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
+  '/content/drafts': typeof AuthenticatedContentDraftsIndexRoute
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
 export interface FileRoutesById {
@@ -264,10 +281,12 @@ export interface FileRoutesById {
   '/_authenticated/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/_authenticated/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
+  '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
   '/_authenticated/create/': typeof AuthenticatedCreateIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
   '/_authenticated/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
+  '/_authenticated/content/drafts/': typeof AuthenticatedContentDraftsIndexRoute
   '/_authenticated/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
 export interface FileRouteTypes {
@@ -294,10 +313,12 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/voice'
     | '/workspaces/$id'
+    | '/api/drafts/generate-image'
     | '/create/'
     | '/settings/'
     | '/workspaces/'
     | '/settings/voice/$id'
+    | '/content/drafts/'
     | '/settings/voice/$id/learned'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -319,10 +340,12 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/voice'
     | '/workspaces/$id'
+    | '/api/drafts/generate-image'
     | '/create'
     | '/settings'
     | '/workspaces'
     | '/settings/voice/$id'
+    | '/content/drafts'
     | '/settings/voice/$id/learned'
   id:
     | '__root__'
@@ -348,10 +371,12 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/presets'
     | '/_authenticated/settings/voice'
     | '/_authenticated/workspaces/$id'
+    | '/api/drafts/generate-image'
     | '/_authenticated/create/'
     | '/_authenticated/settings/'
     | '/_authenticated/workspaces/'
     | '/_authenticated/settings/voice/$id'
+    | '/_authenticated/content/drafts/'
     | '/_authenticated/settings/voice/$id/learned'
   fileRoutesById: FileRoutesById
 }
@@ -360,6 +385,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiDraftsGenerateImageRoute: typeof ApiDraftsGenerateImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -469,6 +495,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreateIndexRouteImport
       parentRoute: typeof AuthenticatedCreateRoute
     }
+    '/api/drafts/generate-image': {
+      id: '/api/drafts/generate-image'
+      path: '/api/drafts/generate-image'
+      fullPath: '/api/drafts/generate-image'
+      preLoaderRoute: typeof ApiDraftsGenerateImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/workspaces/$id': {
       id: '/_authenticated/workspaces/$id'
       path: '/$id'
@@ -538,6 +571,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/create/$formatId'
       preLoaderRoute: typeof AuthenticatedCreateFormatIdRouteImport
       parentRoute: typeof AuthenticatedCreateRoute
+    }
+    '/_authenticated/content/drafts/': {
+      id: '/_authenticated/content/drafts/'
+      path: '/content/drafts'
+      fullPath: '/content/drafts/'
+      preLoaderRoute: typeof AuthenticatedContentDraftsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/voice/$id': {
       id: '/_authenticated/settings/voice/$id'
@@ -655,6 +695,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedWorkspacesRoute: typeof AuthenticatedWorkspacesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedContentDraftsIndexRoute: typeof AuthenticatedContentDraftsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -666,6 +707,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedWorkspacesRoute: AuthenticatedWorkspacesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedContentDraftsIndexRoute: AuthenticatedContentDraftsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -676,6 +718,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiDraftsGenerateImageRoute: ApiDraftsGenerateImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
