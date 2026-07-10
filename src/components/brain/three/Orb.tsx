@@ -39,7 +39,7 @@ function getHalo() {
   return sharedHalo;
 }
 
-export function Orb({ node, position, dim, onHover, onClick, isYou }: Props) {
+export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: Props) {
   const group = useRef<THREE.Group>(null);
   const core = useRef<THREE.Mesh>(null);
   const halo = useRef<THREE.Sprite>(null);
