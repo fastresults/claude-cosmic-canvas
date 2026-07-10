@@ -1,16 +1,20 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import type { PerspectiveCamera as PerspectiveCameraImpl } from "three";
+import * as THREE from "three";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { Orb } from "./Orb";
 import { Filament } from "./Filament";
 import { Starfield } from "./Starfield";
-import { useBrainGraph, type GraphNode } from "./useBrainGraph";
+import type { GraphNode, GraphEdge } from "./useBrainGraph";
 import { computeLayout } from "./layout";
 
 type Props = {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
   onPeek: (node: GraphNode) => void;
+  focusNodeId?: string | null;
 };
 
 function AutoFit({ radius }: { radius: number }) {
@@ -21,12 +25,10 @@ function AutoFit({ radius }: { radius: number }) {
     const cam = camera as PerspectiveCameraImpl;
     const aspect = size.width / size.height;
     const vFov = (cam.fov * Math.PI) / 180;
-    // Distance needed so a sphere of `radius` fits both axes with padding.
     const distV = radius / Math.sin(vFov / 2);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const distH = radius / Math.sin(hFov / 2);
     const dist = Math.max(distV, distH) * 1.05;
-    // Only re-apply when radius or viewport meaningfully changes.
     if (Math.abs(applied.current - dist) < 0.5) return;
     applied.current = dist;
     cam.position.set(0, radius * 0.15, dist);
@@ -35,8 +37,40 @@ function AutoFit({ radius }: { radius: number }) {
   return null;
 }
 
-export function Scene({ onPeek }: Props) {
-  const { nodes, edges } = useBrainGraph();
+function FocusCamera({
+  target,
+  radius,
+}: {
+  target: [number, number, number] | null;
+  radius: number;
+}) {
+  const { camera } = useThree();
+  const desired = useRef<THREE.Vector3 | null>(null);
+  const activeUntil = useRef(0);
+
+  useEffect(() => {
+    if (!target) return;
+    const t = new THREE.Vector3(...target);
+    // Move camera toward the node, keep it at a comfortable viewing distance.
+    const dir = t.clone().normalize();
+    const dist = Math.max(radius * 0.35, 6);
+    desired.current = t.clone().add(dir.multiplyScalar(dist * 0.6));
+    activeUntil.current = performance.now() + 1400;
+  }, [target, radius]);
+
+  useFrame(() => {
+    if (!desired.current) return;
+    if (performance.now() > activeUntil.current) {
+      desired.current = null;
+      return;
+    }
+    camera.position.lerp(desired.current, 0.08);
+    camera.lookAt(0, 0, 0);
+  });
+  return null;
+}
+
+export function Scene({ nodes, edges, onPeek, focusNodeId }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const positions = useMemo(() => {
@@ -46,17 +80,20 @@ export function Scene({ onPeek }: Props) {
     return map;
   }, [nodes, edges]);
 
-  // Bounding radius of the whole graph, used to auto-fit the camera on load & resize.
   const graphRadius = useMemo(() => {
     let max = 6;
     for (const [, [x, y, z]] of positions) {
       const r = Math.sqrt(x * x + y * y + z * z);
       if (r > max) max = r;
     }
-    return max + 2; // padding for orb radius + halo
+    return max + 2;
   }, [positions]);
 
-  // Which ids are "related" to the hovered node.
+  const focusTarget = useMemo<[number, number, number] | null>(() => {
+    if (!focusNodeId) return null;
+    return positions.get(focusNodeId) ?? null;
+  }, [focusNodeId, positions]);
+
   const related = useMemo(() => {
     if (!hovered) return null;
     const s = new Set<string>([hovered]);
@@ -75,6 +112,7 @@ export function Scene({ onPeek }: Props) {
     >
       <PerspectiveCamera makeDefault position={[0, 2, 22]} fov={55} />
       <AutoFit radius={graphRadius} />
+      <FocusCamera target={focusTarget} radius={graphRadius} />
       <ambientLight intensity={0.4} />
 
       <Suspense fallback={null}>
@@ -98,6 +136,7 @@ export function Scene({ onPeek }: Props) {
               node={n}
               position={p}
               dim={dim}
+              focused={focusNodeId === n.id}
               isYou={n.id === "you"}
               onHover={setHovered}
               onClick={onPeek}
@@ -117,7 +156,7 @@ export function Scene({ onPeek }: Props) {
         dampingFactor={0.08}
         minDistance={5}
         maxDistance={200}
-        autoRotate
+        autoRotate={!focusNodeId}
         autoRotateSpeed={0.35}
       />
     </Canvas>
