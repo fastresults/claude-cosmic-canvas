@@ -177,10 +177,6 @@ export const addDomain = createServerFn({ method: "POST" })
     z.object({ name: z.string().trim().min(1).max(40) }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    const words = data.name.trim().split(/\s+/);
-    if (words.length > 2) {
-      throw new Error("Domain must be one or two words.");
-    }
     const { data: row, error } = await context.supabase
       .from("domains")
       .insert({ user_id: context.userId, name: data.name.trim() })
