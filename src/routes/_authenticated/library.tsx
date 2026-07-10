@@ -93,7 +93,7 @@ function Library() {
   const [sort, setSort] = useState<LibrarySort>("recent");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [openDraftId, setOpenDraftId] = useState<string | null>(null);
   const [aiParsing, setAiParsing] = useState(false);
 
   const { data: campaigns = [] } = useQuery({
