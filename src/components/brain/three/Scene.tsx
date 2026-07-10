@@ -1,6 +1,7 @@
-import { Suspense, useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import type { PerspectiveCamera as PerspectiveCameraImpl } from "three";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { Orb } from "./Orb";
 import { Filament } from "./Filament";
@@ -11,6 +12,28 @@ import { computeLayout } from "./layout";
 type Props = {
   onPeek: (node: GraphNode) => void;
 };
+
+function AutoFit({ radius }: { radius: number }) {
+  const { camera, size } = useThree();
+  const applied = useRef(0);
+  useEffect(() => {
+    if (!(camera as PerspectiveCameraImpl).isPerspectiveCamera) return;
+    const cam = camera as PerspectiveCameraImpl;
+    const aspect = size.width / size.height;
+    const vFov = (cam.fov * Math.PI) / 180;
+    // Distance needed so a sphere of `radius` fits both axes with padding.
+    const distV = radius / Math.sin(vFov / 2);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const distH = radius / Math.sin(hFov / 2);
+    const dist = Math.max(distV, distH) * 1.05;
+    // Only re-apply when radius or viewport meaningfully changes.
+    if (Math.abs(applied.current - dist) < 0.5) return;
+    applied.current = dist;
+    cam.position.set(0, radius * 0.15, dist);
+    cam.updateProjectionMatrix();
+  }, [camera, size.width, size.height, radius]);
+  return null;
+}
 
 export function Scene({ onPeek }: Props) {
   const { nodes, edges } = useBrainGraph();
