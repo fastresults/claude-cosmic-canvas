@@ -102,6 +102,8 @@ export const listEntries = createServerFn({ method: "POST" })
     z
       .object({
         profile_id: z.string().uuid().nullable().optional(),
+        // Omitted = all. Explicit null = CV only (no domain). UUID = that domain only.
+        domain_id: z.string().uuid().nullable().optional(),
         include_archived: z.boolean().default(false),
       })
       .parse(i),
@@ -110,16 +112,35 @@ export const listEntries = createServerFn({ method: "POST" })
     let query = context.supabase
       .from("knowledge_entries")
       .select(
-        "id, title, kind, source_type, source_url, tags, pinned, archived_at, use_in_next_gen, meta, content, profile_id, created_at, updated_at",
+        "id, title, kind, source_type, source_url, tags, pinned, archived_at, use_in_next_gen, meta, content, profile_id, domain_id, created_at, updated_at",
       )
       .eq("user_id", context.userId)
       .order("pinned", { ascending: false })
       .order("created_at", { ascending: false });
     if (!data.include_archived) query = query.is("archived_at", null);
     if (data.profile_id) query = query.eq("profile_id", data.profile_id);
+    if (data.domain_id === null) query = query.is("domain_id", null);
+    else if (typeof data.domain_id === "string") query = query.eq("domain_id", data.domain_id);
     const { data: rows, error } = await query;
     if (error) throw error;
     return rows ?? [];
+  });
+
+export const countEntriesByDomain = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("knowledge_entries")
+      .select("domain_id")
+      .eq("user_id", context.userId)
+      .is("archived_at", null)
+      .not("domain_id", "is", null);
+    if (error) throw error;
+    const counts: Record<string, number> = {};
+    for (const r of data ?? []) {
+      if (r.domain_id) counts[r.domain_id] = (counts[r.domain_id] ?? 0) + 1;
+    }
+    return counts;
   });
 
 export const pinEntry = createServerFn({ method: "POST" })
