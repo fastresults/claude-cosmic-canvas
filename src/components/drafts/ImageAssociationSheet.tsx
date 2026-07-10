@@ -97,6 +97,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [groundingTimedOut, setGroundingTimedOut] = useState(false);
   const loadedKeyRef = useRef<string | null>(null);
   const defaultAspect = role === "social" ? "1:1" : "16:9";
 
@@ -104,9 +105,16 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     const key = `${draftId}:${role}`;
     if (loadedKeyRef.current === key) return;
     loadedKeyRef.current = key;
+    setGroundingTimedOut(false);
     concepts.mutate({ draftId, role });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId, role]);
+
+  useEffect(() => {
+    if (!concepts.isPending) return;
+    const id = window.setTimeout(() => setGroundingTimedOut(true), 8_000);
+    return () => window.clearTimeout(id);
+  }, [concepts.isPending, draftId, role]);
 
   // Default-select first style once loaded.
   useEffect(() => {
@@ -115,7 +123,30 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     }
   }, [styles.data, styleId]);
 
-  const list = concepts.data?.concepts ?? [];
+  const fallbackList = useMemo<Concept[]>(
+    () => [
+      {
+        prompt: `Editorial ${role} image for this draft, clean composition, clear focal point, brand-safe`,
+        style: "editorial",
+        aspect: defaultAspect,
+        rationale: "Fast, polished default.",
+      },
+      {
+        prompt: "Documentary-style image capturing the central idea, natural light, human context",
+        style: "photo",
+        aspect: defaultAspect,
+        rationale: "Grounded and relatable.",
+      },
+      {
+        prompt: "Bold vector illustration representing the draft's main idea, simple shapes, high contrast",
+        style: "illustration",
+        aspect: defaultAspect,
+        rationale: "Readable at small sizes.",
+      },
+    ],
+    [defaultAspect, role],
+  );
+  const list = concepts.data?.concepts ?? (groundingTimedOut ? fallbackList : []);
   const activeStyle = useMemo(
     () => styles.data?.find((s) => s.styleId === styleId) ?? null,
     [styles.data, styleId],
@@ -228,9 +259,14 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             )}
           </div>
 
-          {concepts.isPending && (
+          {concepts.isPending && !groundingTimedOut && (
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Grounding concepts from your draft…
+            </div>
+          )}
+          {concepts.isPending && groundingTimedOut && (
+            <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
+              Using quick-start concepts while draft grounding finishes.
             </div>
           )}
           {concepts.isError && (
