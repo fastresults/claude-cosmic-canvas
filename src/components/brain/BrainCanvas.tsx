@@ -1,22 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-  type Node,
-  type Edge,
-} from "@xyflow/react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
-import { YouNode } from "./YouNode";
-import { BrainNode, type BrainNodeData } from "./BrainNode";
+import { Scene } from "./three/Scene";
 import { EveSheet } from "@/components/primitives/EveSheet";
-import type { NodeType } from "@/lib/brain/edges";
-
-const nodeTypes = { you: YouNode, brain: BrainNode };
+import type { GraphNode } from "./three/useBrainGraph";
 
 const VIEWS = [
   { key: "constellation", label: "Constellation" },
@@ -28,251 +14,9 @@ const VIEWS = [
 
 type ViewKey = (typeof VIEWS)[number]["key"];
 
-const TYPE_PRETTY: Record<NodeType, string> = {
-  you: "You",
-  persona: "Persona",
-  voice_sample: "Voice",
-  directive: "Directive",
-  domain: "Domain",
-  knowledge: "Knowledge",
-  entity: "Entity",
-  draft: "Draft",
-  image: "Image",
-  campaign: "Campaign",
-  channel: "Channel",
-  scheduled: "Scheduled",
-  mcp_client: "MCP Client",
-};
-
-function prettyType(t: NodeType) {
-  return TYPE_PRETTY[t] ?? t;
-}
-
-function truncate(s: string | null | undefined, n = 40) {
-  if (!s) return null;
-  const clean = s.replace(/\s+/g, " ").trim();
-  if (!clean) return null;
-  return clean.length > n ? `${clean.slice(0, n - 1)}…` : clean;
-}
-
-async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
-  switch (type) {
-    case "voice_sample": {
-      const { data } = await supabase
-        .from("voice_profiles")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.name);
-    }
-    case "persona": {
-      const { data } = await supabase
-        .from("personas")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.name);
-    }
-    case "directive": {
-      const { data } = await supabase
-        .from("voice_directives")
-        .select("directive_text")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.directive_text, 32);
-    }
-    case "domain": {
-      const { data } = await supabase
-        .from("domains")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.name);
-    }
-    case "knowledge": {
-      const { data } = await supabase
-        .from("knowledge_entries")
-        .select("title")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.title);
-    }
-    case "entity": {
-      const { data } = await supabase
-        .from("entities")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.name);
-    }
-    case "draft": {
-      const { data } = await supabase
-        .from("drafts")
-        .select("format, body")
-        .eq("id", id)
-        .maybeSingle();
-      if (!data) return null;
-      const snippet = truncate(data.body, 32);
-      return snippet ?? (data.format ? `${data.format} draft` : "Draft");
-    }
-    case "campaign": {
-      const { data } = await supabase
-        .from("campaigns")
-        .select("title")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.title);
-    }
-    case "channel": {
-      const { data } = await supabase
-        .from("channel_connections")
-        .select("channel, handle")
-        .eq("id", id)
-        .maybeSingle();
-      if (!data) return null;
-      return truncate(
-        data.handle ? `${data.channel} · ${data.handle}` : data.channel,
-      );
-    }
-    case "scheduled": {
-      const { data } = await supabase
-        .from("schedules")
-        .select("channel, scheduled_at")
-        .eq("id", id)
-        .maybeSingle();
-      if (!data) return null;
-      const when = data.scheduled_at
-        ? new Date(data.scheduled_at).toLocaleDateString()
-        : null;
-      return truncate(when ? `${data.channel} · ${when}` : data.channel);
-    }
-    case "mcp_client": {
-      const { data } = await supabase
-        .from("mcp_clients")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      return truncate(data?.name);
-    }
-    default:
-      return null;
-  }
-}
-
-
 export function BrainCanvas() {
   const [view, setView] = useState<ViewKey>("constellation");
-  const [peek, setPeek] = useState<BrainNodeData | null>(null);
-
-  const initial = useMemo<{ nodes: Node[]; edges: Edge[] }>(
-    () => ({
-      nodes: [
-        {
-          id: "you",
-          type: "you",
-          position: { x: 0, y: 0 },
-          data: { label: "You", nodeType: "you" satisfies NodeType },
-        },
-      ],
-      edges: [],
-    }),
-    [],
-  );
-
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initial.nodes);
-  const [edges, , onEdgesChange] = useEdgesState<Edge>(initial.edges);
-
-  // Load existing brain_edges + subscribe to realtime inserts.
-  useEffect(() => {
-    let mounted = true;
-
-    const addNode = (row: { dst_type: NodeType; dst_id: string }) => {
-      const nodeId = `${row.dst_type}:${row.dst_id}`;
-      setNodes((prev) => {
-        if (prev.some((n) => n.id === nodeId)) return prev;
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 180 + Math.random() * 120;
-        return [
-          ...prev,
-          {
-            id: nodeId,
-            type: "brain",
-            position: {
-              x: Math.cos(angle) * radius,
-              y: Math.sin(angle) * radius,
-            },
-            data: {
-              label: prettyType(row.dst_type),
-              nodeType: row.dst_type,
-            } satisfies BrainNodeData,
-          },
-        ];
-      });
-      void resolveLabel(row);
-    };
-
-    // Resolve a human-readable name for the node by looking up its source row.
-    const resolveLabel = async (row: { dst_type: NodeType; dst_id: string }) => {
-      const label = await fetchLabel(row.dst_type, row.dst_id);
-      if (!label || !mounted) return;
-      const nodeId = `${row.dst_type}:${row.dst_id}`;
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.id === nodeId
-            ? { ...n, data: { ...(n.data as BrainNodeData), label } }
-            : n,
-        ),
-      );
-    };
-
-    (async () => {
-      const { data: user } = await supabase.auth.getUser();
-      const uid = user.user?.id;
-      if (!uid) return;
-
-      // Backfill existing edges so nodes appear on load.
-      const { data: existing } = await supabase
-        .from("brain_edges")
-        .select("dst_type, dst_id")
-        .eq("user_id", uid);
-      if (mounted && existing) {
-        for (const row of existing) {
-          addNode(row as { dst_type: NodeType; dst_id: string });
-        }
-      }
-
-      const channel = supabase
-        .channel(`brain:${uid}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "brain_edges",
-            filter: `user_id=eq.${uid}`,
-          },
-          (payload) => {
-            if (!mounted) return;
-            const row = payload.new as {
-              id: string;
-              dst_type: NodeType;
-              dst_id: string;
-              edge_kind: string;
-            };
-            addNode(row);
-          },
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [setNodes]);
+  const [peek, setPeek] = useState<GraphNode | null>(null);
 
   return (
     <div className="relative h-full w-full bg-background">
@@ -280,14 +24,16 @@ export function BrainCanvas() {
       <motion.div
         aria-hidden
         initial={{ opacity: 1, scale: 0 }}
-        animate={{ opacity: 0, scale: 4 }}
-        transition={{ duration: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
-        className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full amber-glow"
-        style={{ background: "oklch(0.82 0.14 82)" }}
+        animate={{ opacity: 0, scale: 6 }}
+        transition={{ duration: 1.1, ease: [0.2, 0.8, 0.2, 1] }}
+        className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background: "radial-gradient(circle, #f5e6c8 0%, #f5b642 40%, transparent 70%)",
+        }}
       />
 
       {/* View switcher */}
-      <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-border frosted p-1">
+      <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/50 p-1 backdrop-blur-md">
         <div className="flex gap-0.5">
           {VIEWS.map((v) => (
             <button
@@ -295,8 +41,8 @@ export function BrainCanvas() {
               onClick={() => setView(v.key)}
               className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
                 view === v.key
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-white/15 text-white"
+                  : "text-white/50 hover:text-white/80"
               }`}
             >
               {v.label}
@@ -306,33 +52,9 @@ export function BrainCanvas() {
       </div>
 
       {view === "constellation" && (
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          minZoom={0.3}
-          maxZoom={2}
-          proOptions={{ hideAttribution: true }}
-          onNodeClick={(_, node) => {
-            setPeek(node.data as BrainNodeData);
-          }}
-          colorMode="dark"
-        >
-          <Background gap={32} size={1} color="oklch(0.35 0.03 285 / 0.4)" />
-          <Controls
-            showInteractive={false}
-            className="!rounded-lg !border !border-border !bg-surface"
-          />
-          <MiniMap
-            pannable
-            zoomable
-            maskColor="oklch(0.13 0.03 285 / 0.6)"
-            className="!hidden !rounded-lg !border !border-border !bg-surface sm:!block"
-          />
-        </ReactFlow>
+        <div className="h-full w-full">
+          <Scene onPeek={setPeek} />
+        </div>
       )}
 
       {view !== "constellation" && (
