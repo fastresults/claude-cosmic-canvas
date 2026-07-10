@@ -10,9 +10,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function SpeakSheet({ open, onOpenChange, profileId }: Props) {
+export function SpeakSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const qc = useQueryClient();
   const transcribeFn = useServerFn(aiTranscribe);
   const ingestFn = useServerFn(ingestEntry);
@@ -74,6 +75,7 @@ export function SpeakSheet({ open, onOpenChange, profileId }: Props) {
       ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: "voice_memo",
           content: transcript.trim(),
           tags: [],

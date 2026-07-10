@@ -9,9 +9,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function PasteSheet({ open, onOpenChange, profileId }: Props) {
+export function PasteSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const qc = useQueryClient();
   const ingestFn = useServerFn(ingestEntry);
   const [content, setContent] = useState("");
@@ -24,6 +25,7 @@ export function PasteSheet({ open, onOpenChange, profileId }: Props) {
       ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: "paste",
           content: content.trim(),
           tags,

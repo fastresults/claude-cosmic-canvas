@@ -15,9 +15,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function LinkedInSheet({ open, onOpenChange, profileId }: Props) {
+export function LinkedInSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const [mode, setMode] = useState<"url" | "resume">("url");
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -9,9 +9,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profileId: string | null;
+  domainId?: string | null;
 };
 
-export function UrlSheet({ open, onOpenChange, profileId }: Props) {
+export function UrlSheet({ open, onOpenChange, profileId, domainId }: Props) {
   const qc = useQueryClient();
   const scrapeFn = useServerFn(scrapeUrl);
   const ingestFn = useServerFn(ingestEntry);
@@ -24,6 +25,7 @@ export function UrlSheet({ open, onOpenChange, profileId }: Props) {
       return ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: "url",
           title: scraped.title ?? url,
           content: `${scraped.title ?? ""}\n\n${scraped.markdown}`.trim(),
