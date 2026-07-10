@@ -59,6 +59,27 @@ export type Database = {
           },
         ]
       }
+      audiences: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -554,6 +575,161 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      preset_documents: {
+        Row: {
+          extracted_text: string | null
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
+          id: string
+          knowledge_entry_id: string | null
+          preset_id: string
+          priority: string
+          saved_at: string
+          source_type: string
+          source_url: string | null
+          structured: Json | null
+          user_id: string
+        }
+        Insert: {
+          extracted_text?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          knowledge_entry_id?: string | null
+          preset_id: string
+          priority?: string
+          saved_at?: string
+          source_type: string
+          source_url?: string | null
+          structured?: Json | null
+          user_id: string
+        }
+        Update: {
+          extracted_text?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          knowledge_entry_id?: string | null
+          preset_id?: string
+          priority?: string
+          saved_at?: string
+          source_type?: string
+          source_url?: string | null
+          structured?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preset_documents_knowledge_entry_id_fkey"
+            columns: ["knowledge_entry_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "preset_documents_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      preset_usage: {
+        Row: {
+          id: string
+          preset_id: string
+          surface: string | null
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          preset_id: string
+          surface?: string | null
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          preset_id?: string
+          surface?: string | null
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preset_usage_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      presets: {
+        Row: {
+          archived_at: string | null
+          brief_config: Json
+          created_at: string
+          description: string | null
+          factor_weights: Json
+          id: string
+          is_default: boolean
+          is_favorite: boolean
+          last_used_at: string | null
+          last_used_snapshot: Json | null
+          name: string
+          research_context: Json
+          selected_audience_ids: string[]
+          selected_domain_ids: string[]
+          updated_at: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          brief_config?: Json
+          created_at?: string
+          description?: string | null
+          factor_weights?: Json
+          id?: string
+          is_default?: boolean
+          is_favorite?: boolean
+          last_used_at?: string | null
+          last_used_snapshot?: Json | null
+          name: string
+          research_context?: Json
+          selected_audience_ids?: string[]
+          selected_domain_ids?: string[]
+          updated_at?: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          brief_config?: Json
+          created_at?: string
+          description?: string | null
+          factor_weights?: Json
+          id?: string
+          is_default?: boolean
+          is_favorite?: boolean
+          last_used_at?: string | null
+          last_used_snapshot?: Json | null
+          name?: string
+          research_context?: Json
+          selected_audience_ids?: string[]
+          selected_domain_ids?: string[]
+          updated_at?: string
+          use_count?: number
           user_id?: string
         }
         Relationships: []
