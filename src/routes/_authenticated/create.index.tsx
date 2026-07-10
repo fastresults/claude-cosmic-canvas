@@ -19,14 +19,16 @@ export const Route = createFileRoute("/_authenticated/create/")({
   component: CreateHub,
 });
 
+type Filter = CreateCategory | "all" | "milestones";
+
 function CreateHub() {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CreateCategory | "all">("all");
+  const [category, setCategory] = useState<Filter>("all");
   const [sheetOpen, setSheetOpen] = useState(false);
   const { data: recent = [] } = useRecentCreateDrafts();
   const { data: workspaces = [] } = useWorkspaces(false);
   const activeWorkspaces = useMemo(
-    () => workspaces.filter((w) => w.status === "active").slice(0, 5),
+    () => workspaces.filter((w) => w.status === "active").slice(0, 8),
     [workspaces],
   );
 
@@ -38,16 +40,18 @@ function CreateHub() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return CREATE_FORMATS.filter((f) => {
-      if (category !== "all" && f.category !== category) return false;
+      if (category !== "all" && category !== "milestones" && f.category !== category) return false;
       if (!q) return true;
       return f.label.toLowerCase().includes(q) || f.description.toLowerCase().includes(q);
     });
   }, [query, category]);
 
   const grouped = useMemo(() => {
-    if (category !== "all") return [[category, filtered] as const];
+    if (category !== "all") return [[category as CreateCategory, filtered] as const];
     return formatsByCategory().map(([c, list]) => [c, list.filter((f) => filtered.includes(f))] as const);
   }, [filtered, category]);
+
+  const showMilestones = category === "milestones";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-24 pt-6">
@@ -71,68 +75,13 @@ function CreateHub() {
         />
       </div>
 
-      {/* Milestones row */}
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Milestones</h2>
-          <Link to="/workspaces" className="text-xs text-muted-foreground hover:text-foreground">
-            View all →
-          </Link>
-        </div>
-        <div className="-mx-4 overflow-x-auto px-4">
-          <div className="flex items-stretch gap-2">
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex min-w-[160px] shrink-0 items-center gap-2 rounded-2xl border border-dashed border-accent/50 bg-accent/5 px-3 py-2.5 text-left text-sm text-foreground hover:bg-accent/10"
-            >
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-accent/20 text-accent">
-                <Plus className="h-4 w-4" />
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span>New milestone</span>
-                <span className="text-[10px] text-muted-foreground">Plan a full arc</span>
-              </span>
-            </button>
-            {activeWorkspaces.map((w) => {
-              const isActive = w.id === workspaceId;
-              return (
-                <button
-                  key={w.id}
-                  onClick={() => setContext(isActive ? null : w.id, null)}
-                  className={`flex min-w-[180px] max-w-[220px] shrink-0 flex-col justify-between gap-1 rounded-2xl border p-3 text-left text-sm transition-colors ${
-                    isActive
-                      ? "border-accent bg-accent/15 text-foreground"
-                      : "border-border bg-surface text-foreground hover:border-accent/60"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Target className={`h-3 w-3 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {w.moment_type}
-                    </span>
-                  </div>
-                  <div className="line-clamp-2 leading-snug">{w.title}</div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span>
-                      {w.completed_items ?? 0}/{w.total_items ?? 0}
-                    </span>
-                    {isActive ? <span className="text-accent">Active</span> : <ChevronRight className="h-3 w-3" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {workspaceId && activeTitle && (
-          <p className="text-[11px] text-muted-foreground">
-            Scoped to <span className="text-foreground">{activeTitle}</span> — new drafts save into this milestone.
-          </p>
-        )}
-      </section>
-
       <div className="-mx-4 overflow-x-auto px-4">
         <div className="flex items-center gap-2">
           <Chip active={category === "all"} onClick={() => setCategory("all")}>All</Chip>
+          <Chip active={category === "milestones"} onClick={() => setCategory("milestones")}>
+            <Target className="mr-1 inline h-3 w-3 -translate-y-[1px]" />
+            Milestones
+          </Chip>
           {(Object.keys(CATEGORY_LABELS) as CreateCategory[]).map((c) => (
             <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
               {CATEGORY_LABELS[c]}
@@ -141,37 +90,107 @@ function CreateHub() {
         </div>
       </div>
 
-      {recent.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recent drafts</h2>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {recent.slice(0, 8).map((d) => (
-              <Link
-                key={d.id}
-                to="/create/$formatId"
-                params={{ formatId: d.format_id }}
-                search={{ draftId: d.id }}
-                className="min-w-[180px] max-w-[220px] shrink-0 rounded-2xl border border-border bg-surface p-3"
-              >
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.format_id}</div>
-                <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title ?? "Untitled draft"}</div>
-              </Link>
-            ))}
-          </div>
-        </section>
+      {workspaceId && activeTitle && !showMilestones && (
+        <p className="-mt-2 text-[11px] text-muted-foreground">
+          Scoped to <span className="text-foreground">{activeTitle}</span> — new drafts save into this milestone.
+        </p>
       )}
 
-      {grouped.map(([c, list]) =>
-        list.length === 0 ? null : (
-          <section key={c}>
-            <h2 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{CATEGORY_LABELS[c]}</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {list.map((f) => (
-                <FormatCard key={f.id} format={f} wsId={workspaceId} wsItemId={workspaceItemId} />
-              ))}
-            </div>
-          </section>
-        ),
+      {showMilestones ? (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Your milestones</h2>
+            <Link to="/workspaces" className="text-xs text-muted-foreground hover:text-foreground">
+              View all →
+            </Link>
+          </div>
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="flex items-center gap-2 rounded-2xl border border-dashed border-accent/50 bg-accent/5 px-3 py-3 text-left text-sm text-foreground hover:bg-accent/10"
+          >
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-accent/20 text-accent">
+              <Plus className="h-4 w-4" />
+            </span>
+            <span className="flex flex-col leading-tight">
+              <span>New milestone</span>
+              <span className="text-[10px] text-muted-foreground">Plan a full content arc</span>
+            </span>
+          </button>
+          {activeWorkspaces.length === 0 ? (
+            <p className="rounded-2xl border border-border bg-surface p-4 text-xs text-muted-foreground">
+              No active milestones yet. Create one to scope drafts to a launch, keynote, or campaign.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {activeWorkspaces.map((w) => {
+                const isActive = w.id === workspaceId;
+                return (
+                  <li key={w.id}>
+                    <button
+                      onClick={() => setContext(isActive ? null : w.id, null)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-2xl border p-3 text-left text-sm transition-colors ${
+                        isActive
+                          ? "border-accent bg-accent/15 text-foreground"
+                          : "border-border bg-surface text-foreground hover:border-accent/60"
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <Target className={`h-3 w-3 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {w.moment_type}
+                          </span>
+                        </div>
+                        <div className="truncate">{w.title}</div>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                          {w.completed_items ?? 0}/{w.total_items ?? 0}
+                        </span>
+                        {isActive ? <span className="text-accent">Active</span> : <ChevronRight className="h-3 w-3" />}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <>
+          {recent.length > 0 && (
+            <section>
+              <h2 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recent drafts</h2>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {recent.slice(0, 8).map((d) => (
+                  <Link
+                    key={d.id}
+                    to="/create/$formatId"
+                    params={{ formatId: d.format_id }}
+                    search={{ draftId: d.id }}
+                    className="min-w-[180px] max-w-[220px] shrink-0 rounded-2xl border border-border bg-surface p-3"
+                  >
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.format_id}</div>
+                    <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title ?? "Untitled draft"}</div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {grouped.map(([c, list]) =>
+            list.length === 0 ? null : (
+              <section key={c}>
+                <h2 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">{CATEGORY_LABELS[c]}</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {list.map((f) => (
+                    <FormatCard key={f.id} format={f} wsId={workspaceId} wsItemId={workspaceItemId} />
+                  ))}
+                </div>
+              </section>
+            ),
+          )}
+        </>
       )}
 
       <MilestonePrepSheet open={sheetOpen} onOpenChange={setSheetOpen} />
