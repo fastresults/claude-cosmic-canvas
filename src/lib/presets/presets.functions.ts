@@ -119,7 +119,7 @@ export const updatePreset = createServerFn({ method: "POST" })
     if (rest.factor_weights !== undefined) patch.factor_weights = rest.factor_weights;
     if (rest.research_context !== undefined) patch.research_context = rest.research_context;
 
-    const { error } = await context.supabase.from("presets").update(patch).eq("id", id);
+    const { error } = await context.supabase.from("presets").update(patch as never).eq("id", id);
     if (error) throw error;
     await syncPresetToBrainInternal(context.supabase, context.userId, id);
     return { ok: true };
