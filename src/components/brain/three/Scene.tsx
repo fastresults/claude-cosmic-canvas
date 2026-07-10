@@ -70,8 +70,7 @@ function FocusCamera({
   return null;
 }
 
-export function Scene({ onPeek, focusNodeId }: Props) {
-  const { nodes, edges } = useBrainGraph();
+export function Scene({ nodes, edges, onPeek, focusNodeId }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const positions = useMemo(() => {
