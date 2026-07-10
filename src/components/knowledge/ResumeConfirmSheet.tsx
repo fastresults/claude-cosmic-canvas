@@ -15,6 +15,7 @@ type Props = {
   title: string;
   sourceUrl: string | null;
   profileId: string | null;
+  domainId?: string | null;
   onSaved: () => void;
 };
 
