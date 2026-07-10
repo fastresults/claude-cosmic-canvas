@@ -124,7 +124,7 @@ function DraftsHub() {
           {rows.map((d) => (
             <button
               key={d.id}
-              onClick={() => navigate({ to: "/content/drafts", search: (s) => ({ ...s, open: d.id }) })}
+              onClick={() => navigate({ to: "/content/drafts", search: { ...search, open: d.id } })}
               className="text-left"
             >
               <DraftCard draft={d} />
