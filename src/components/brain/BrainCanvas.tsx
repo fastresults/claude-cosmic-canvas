@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Scene } from "./three/Scene";
+import { BrainSearch } from "./BrainSearch";
 import { EveSheet } from "@/components/primitives/EveSheet";
-import type { GraphNode } from "./three/useBrainGraph";
+import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
 
 const VIEWS = [
   { key: "constellation", label: "Constellation" },
@@ -17,6 +18,8 @@ type ViewKey = (typeof VIEWS)[number]["key"];
 export function BrainCanvas() {
   const [view, setView] = useState<ViewKey>("constellation");
   const [peek, setPeek] = useState<GraphNode | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const { nodes, edges } = useBrainGraph();
 
   return (
     <div className="relative h-full w-full bg-background">
@@ -52,9 +55,18 @@ export function BrainCanvas() {
       </div>
 
       {view === "constellation" && (
-        <div className="h-full w-full">
-          <Scene onPeek={setPeek} />
-        </div>
+        <>
+          <BrainSearch
+            nodes={nodes}
+            onPick={(node) => {
+              setFocusId(node.id);
+              setPeek(node);
+            }}
+          />
+          <div className="h-full w-full">
+            <Scene nodes={nodes} edges={edges} onPeek={setPeek} focusNodeId={focusId} />
+          </div>
+        </>
       )}
 
       {view !== "constellation" && (
@@ -72,7 +84,12 @@ export function BrainCanvas() {
 
       <EveSheet
         open={peek !== null}
-        onOpenChange={(o) => !o && setPeek(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPeek(null);
+            setFocusId(null);
+          }
+        }}
         title={peek?.label}
       >
         {peek && (
