@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -43,6 +43,7 @@ export function Orb({ node, position, dim, onHover, onClick, isYou }: Props) {
   const core = useRef<THREE.Mesh>(null);
   const halo = useRef<THREE.Sprite>(null);
   const hoverRef = useRef(false);
+  const [isHover, setIsHover] = useState(false);
 
   const color = NODE_COLOR[node.nodeType];
   const baseRadius = isYou ? 1.4 : 0.35 + node.importance * 0.12;
