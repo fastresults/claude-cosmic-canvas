@@ -67,6 +67,7 @@ export function ResumeConfirmSheet({
       return ingestFn({
         data: {
           profile_id: profileId,
+          domain_id: domainId ?? null,
           source_type: sourceType,
           title: profile.full_name || title,
           content,
