@@ -1,71 +1,100 @@
-## Goal
 
-Add a discreet search on `/brain` that lets the user find and focus any node in the constellation — with an optional voice-to-text mode for hands-free searching.
+# Presets — Settings + Second Brain wiring
 
-## UX
+Adapts the PRD to this project's stack: **TanStack `createServerFn`** (not Supabase Edge Functions), the existing **`brain_edges`** graph (not a parallel `second_brain_*` schema), and the existing Lovable AI Gateway. Mounted as a new Settings entry sitting directly beneath **Domains** in the Settings index, since Presets compose Domains + Voice + Knowledge + Audience.
 
-1. **Discreet entry point.** A small circular icon button (magnifier) tucked in the top-right of the Brain view, mirroring the aesthetic of the existing pill view-switcher (border `white/10`, `bg-black/50`, backdrop blur). No prominent search bar by default — it stays out of the way of the 3D scene.
+## 1. Placement in Settings
 
-2. **Expanded state.** Tapping the icon expands it inline into a slim pill containing:
-   - Text input (`placeholder: "Search your brain"`, auto-focus)
-   - Mic button on the right (uses existing `HoldToSpeakButton` visual, hold-to-record)
-   - Close (×) collapses back to icon
-   - Keyboard shortcut `/` opens it on desktop; `Esc` closes.
+`src/routes/_authenticated/settings.index.tsx` — insert a new row after **Domains**:
+- `{ to: "/settings/presets", icon: Layers, label: "Presets", hint: "Reusable content lenses (voice + domains + audience + refs)" }`
 
-3. **Results dropdown.** Under the pill, a translucent panel lists up to 8 matches. Each row: type dot (colored per `palette.ts`), label, small type caption. Tap a row →
-   - Closes search
-   - Opens the existing `EveSheet` peek for that node (same `onPeek` used by orb clicks)
-   - Emits a "focus" signal the Scene consumes to smoothly move the camera toward that node and briefly pulse its halo.
+New routes:
+- `/settings/presets` — list
+- `/settings/presets/$id` — detail (edit-in-place sheet host)
 
-4. **Voice mode.** Press-and-hold the mic → records via Web Audio → on release, POSTs a WAV to a new server fn `transcribeQuery` (Lovable AI `openai/gpt-4o-transcribe`, non-streaming for simplicity, ~1s clip). Transcript populates the input and triggers the same filter. Visual state: mic glows amber while holding (reuses `HoldToSpeakButton`).
+## 2. Database (one migration)
 
-5. **Empty / permission states.** If mic is denied, mic button hides and a tiny "Enable mic" hint appears (reuses `platform/mic-help`). If no matches: "Nothing yet — try a different word."
+New tables in `public` (RLS `user_id = auth.uid()`, GRANTs to `authenticated` + `service_role`, `updated_at` trigger via existing `tg_set_updated_at`).
 
-## Matching
+- `presets` — `id, user_id, name, description, brief_config jsonb, selected_domain_ids uuid[], selected_audiences text[], factor_weights jsonb, research_context jsonb, is_default bool, is_favorite bool, use_count int, last_used_at timestamptz, created_at, updated_at`. Partial unique index `(user_id) WHERE is_default`.
+- `preset_documents` — `id, preset_id, user_id, source_type text CHECK IN ('url','file','paste','linkedin','resume','voice'), source_url, file_name, file_type, file_size, extracted_text, structured jsonb, priority text CHECK IN ('low','normal','high') DEFAULT 'normal', saved_at`.
+- `preset_usage` — `id, preset_id, user_id, used_at, surface text`.
+- `audiences` — `id, user_id, name` (mirrors `domains`; needed so audiences can become brain nodes with stable ids).
 
-Client-side fuzzy filter over the already-loaded `nodes` from `useBrainGraph` (`label`, `nodeType`, and the pretty type name). Case-insensitive substring first, then a light rank by:
-1. exact label match
-2. label starts-with
-3. label contains
-4. type-name contains
+Reuse `brain_edges` for the graph. Extend `NodeType` in `src/lib/brain/edges.ts` with `"preset"`, `"audience"`, `"document"` and add `EdgeKind`s `"REFERENCES_DOC"`, `"USES_VOICE"`, `"TARGETS_AUDIENCE"`, `"SCOPES_DOMAIN"`. (`AUTHORED_BY`, `SPEAKS_IN`, `EXPERT_IN`, `SOURCED_FROM` already exist and are reused where they fit.) Extend `TYPE_PRETTY` and `fetchLabel` in `useBrainGraph.ts` for the three new node types so orbs render with real names.
 
-No new DB call for search — the graph is already in memory. Cap at 8 hits, exclude the `you` node.
+No `second_brain_nodes` / `second_brain_edges` / vector table — the brain view already resolves labels on demand from source tables, and semantic recall goes through the existing `knowledge_chunks` + `match_knowledge_chunks` RPC.
 
-## Scene focus behavior
+## 3. Server functions — `src/lib/presets/presets.functions.ts`
 
-Add an optional `focusNodeId` prop to `Scene`. When it changes, a small effect inside the Canvas (using `useThree`) tweens `camera.position` toward the node's laid-out position (keeping distance ≈ `graphRadius * 0.4`) and temporarily disables `autoRotate` for 3s. The target orb receives a brief scale/emissive pulse (add a `focused` prop to `Orb`).
+All `.middleware([requireSupabaseAuth])`, Zod-validated:
 
-## Voice transcription server fn
+- `listPresets`, `getPreset`, `createPreset`, `updatePreset`, `deletePreset`, `favoritePreset`, `setDefaultPreset`, `recordPresetUsage`.
+- `buildPresetFromSeed({ seed, urls?, files? })` — non-streaming for v1. Calls Lovable AI Gateway (`openai/gpt-5.5`, structured output) to produce `{ name, description, brief_config, suggested_domains[], suggested_audiences[], research_context }`. Attachments are stored as `preset_documents` (files via base64 like existing `parsing.functions.ts`; LinkedIn URL detection triggers `scrapeLinkedIn`; résumé detection via `detectDocKind` triggers `extractResume`).
+- `extractResume`, `scrapeLinkedInProfile` — thin wrappers reusing `parsing.server.ts` + a gateway call returning `{ full_name, headline, about, roles[], education[], skills[], achievements[] }` into `preset_documents.structured`.
+- `applyPreset({ preset_id, task })` — hydrates `[DOMAIN]/[VOICE]/[KNOWLEDGE]/[PRESET]/[TASK]` using existing `buildGroundedPrompt`, calls `match_knowledge_chunks` for top-K (filtered by any preset-linked knowledge entry ids first, then general), increments `use_count`, writes `preset_usage`, returns the built prompt (generation call sites hook this in later).
+- `syncPresetToBrain(preset_id)` — called from `createPreset`/`updatePreset`. Uses `writeEdges`:
+  - `you --EXPERT_IN--> preset`
+  - `preset --SCOPES_DOMAIN--> domain` (per selected domain)
+  - `preset --TARGETS_AUDIENCE--> audience`
+  - `preset --USES_VOICE--> persona` (active persona)
+  - `preset --REFERENCES_DOC--> document` (per `preset_documents`, weight in `meta`)
+  - `preset --SOURCED_FROM--> knowledge` (when a document row also lives in `knowledge_entries`)
+  Idempotency: delete existing outgoing edges for the preset first, then reinsert.
+- `deletePreset` cascades preset rows; brain edges owned by the preset are removed, target nodes untouched.
 
-New `src/lib/brain/search.functions.ts`:
+No new edge functions; all logic lives in server functions per project convention.
 
-- `transcribeQuery` — `createServerFn({ method: "POST" })` with `requireSupabaseAuth`, accepts `FormData` with an audio blob (WAV), forwards to `https://ai.gateway.lovable.dev/v1/audio/transcriptions` with `model: openai/gpt-4o-transcribe`, returns `{ text }`. Uses `gatewayFetch` from `@/lib/ai/gateway.server` if compatible, otherwise `fetch` directly with `LOVABLE_API_KEY`. Rejects blobs > 1 MB. Non-streaming.
+## 4. Frontend
 
-(Note: `createServerFn` supports FormData via `inputValidator`. We'll validate `data instanceof FormData` and pull `audio`.)
+Reuse existing primitives (`EveSheet`, `Pill`, `SettingsPageHeader`, `CaptureFab`, `Button`, etc.). Mobile-first, one-thumb at 375px, host tokens only.
 
-## Files
+New files:
+- `src/hooks/usePresets.ts` — react-query CRUD, favorite, set-default, invalidation.
+- `src/hooks/useActivePreset.ts` — resolves `?preset=` override, else `is_default`.
+- `src/routes/_authenticated/settings.presets.tsx` — hosts `PresetsList`.
+- `src/routes/_authenticated/settings.presets.$id.tsx` — hosts `PresetDetailSheet` as a route-owned sheet.
+- `src/components/presets/PresetsList.tsx` — search, filter chips (All/Favorites/Most Used/Recent), FAB "New Preset", swipe-left archive, swipe-right pin, long-press multi-select.
+- `src/components/presets/CreatePresetSheet.tsx` — seed textarea + attach menu (Paste/URL/Upload/LinkedIn/Voice memo), calls `buildPresetFromSeed`, shows live preview, saves.
+- `src/components/presets/PresetDetailSheet.tsx` — sections Brief · Domains · Audiences · Documents · Research · Weights · Brain Links, edit-in-place.
+- `src/components/presets/PresetInBrainView.tsx` — list of outgoing edges, tap opens `EveSheet` for the linked node (reuses existing peek path).
+- `src/components/presets/ActivePresetPill.tsx` — mounted in `ComposerBar` next to voice/knowledge pills. Tap opens `PresetPickerSheet`.
+- `src/components/presets/PresetPickerSheet.tsx` — pinned + recent, "Clear", "Set default", "N fields changed since last use" banner (diff against `last_used_snapshot` stored in `brief_config`).
+- Add "+ Attach preset" affordance on the **Domains** settings page pointing to `/settings/presets` (this is the "under Domains" surfacing).
 
-**New**
-- `src/components/brain/BrainSearch.tsx` — the discreet pill, expansion, results list, mic integration, keyboard shortcuts.
-- `src/lib/brain/search.functions.ts` — `transcribeQuery` server fn.
-- `src/lib/brain/useVoiceQuery.ts` — client hook: start/stop recording via Web Audio, encodes WAV, calls `transcribeQuery`, returns transcript.
+## 5. Injection contract
 
-**Edited**
-- `src/components/brain/BrainCanvas.tsx` — mount `<BrainSearch nodes={…} onPick={…} />` in top-right; pass `focusNodeId` to `Scene`; wire pick → both `setPeek` and `setFocusNodeId`.
-- `src/components/brain/three/Scene.tsx` — accept `focusNodeId`, add internal `FocusCamera` component that tweens on change; pass `focused` flag to matching `Orb`.
-- `src/components/brain/three/Orb.tsx` — optional `focused` prop → brighter emissive + brief scale bump.
-- `src/components/brain/three/useBrainGraph.ts` — export the node list untouched; `BrainCanvas` will call `useBrainGraph` once and pass nodes to both `Scene` (via new prop or lift hook) and `BrainSearch`. Simplest: lift `useBrainGraph()` into `BrainCanvas`, pass `{ nodes, edges }` into `Scene`.
+Add `src/lib/presets/injection.ts`:
+```
+[DOMAIN] → selected domains joined
+[VOICE]  → active persona sliders + directives
+[KNOWLEDGE] → top-K chunks (preset-scoped first)
+[PRESET] → brief_config + audiences + factor_weights
+[TASK]   → user request
+```
+System sentence appended verbatim per PRD §7. Wired through `applyPreset`; generator entrypoints (`orchestrate.functions.ts`, `content.functions.ts`) call it when an active preset exists.
+
+## 6. Realtime
+
+`usePresets` subscribes to `postgres_changes` on `presets` filtered by `user_id` for instant cross-tab pill updates (mirrors `useBrainGraph` pattern).
+
+## 7. Out of scope for v1
+
+- Streaming progress from `buildPresetFromSeed` (return-once for v1; add SSE later).
+- Vector embeddings on preset nodes (recall uses existing `knowledge_chunks`).
+- Graph-mode brain view for preset edges (list view only in `PresetInBrainView`).
+
+## Build order
+
+1. Migration (tables + audiences + GRANTs + RLS + trigger + brain_edges enum extensions if needed — currently `src_type`/`dst_type` are plain text, so no enum change).
+2. Extend `src/lib/brain/edges.ts` + `useBrainGraph.ts` label resolver.
+3. `presets.functions.ts` (CRUD + `syncPresetToBrain`) + `injection.ts`.
+4. Hooks + routes + `PresetsList` + `CreatePresetSheet` + `PresetDetailSheet` + `PresetInBrainView`.
+5. `ActivePresetPill` + `PresetPickerSheet`, mount in `ComposerBar`.
+6. `buildPresetFromSeed`, `extractResume`, `scrapeLinkedInProfile`.
+7. Wire `applyPreset` into existing generator entrypoints.
+8. Realtime subscription.
 
 ## Acceptance
 
-- Icon in top-right of `/brain` is visually quiet; does not obscure orbs.
-- Tap opens input; typing filters nodes live; tap result focuses camera + opens peek.
-- Hold mic → speak "resume" → releases → input fills with "resume" → results filter.
-- Works one-handed on 375px viewport; expanded pill fits without overlapping the view switcher (search sits top-right, switcher stays top-center).
-- No new DB queries for text search; only the transcription endpoint is new.
-
-## Out of scope
-
-- Semantic search across knowledge chunks (already exists via `searchKnowledge` for AI grounding; not needed to find a graph node).
-- Persistent search history.
-- Multi-select or bulk actions from results.
+Matches PRD §9, adapted: preset shows up as a `preset` orb in the Brain with edges to its documents/domains/audiences/voice; default preset auto-hydrates next compose; deleting a preset removes only its own edges.

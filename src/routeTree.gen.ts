@@ -21,6 +21,7 @@ import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
+import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
 import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_authenticated/settings.domains'
@@ -91,6 +92,12 @@ const AuthenticatedSettingsVoiceRoute =
     path: '/voice',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsPresetsRoute =
+  AuthenticatedSettingsPresetsRouteImport.update({
+    id: '/presets',
+    path: '/presets',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 const AuthenticatedSettingsNotificationsRoute =
   AuthenticatedSettingsNotificationsRouteImport.update({
     id: '/notifications',
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
@@ -176,6 +184,7 @@ export interface FileRoutesByTo {
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
@@ -199,6 +208,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/_authenticated/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
+  '/_authenticated/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/settings/domains'
     | '/settings/knowledge'
     | '/settings/notifications'
+    | '/settings/presets'
     | '/settings/voice'
     | '/settings/'
     | '/settings/voice/$id'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/settings/domains'
     | '/settings/knowledge'
     | '/settings/notifications'
+    | '/settings/presets'
     | '/settings/voice'
     | '/settings'
     | '/settings/voice/$id'
@@ -264,6 +276,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/domains'
     | '/_authenticated/settings/knowledge'
     | '/_authenticated/settings/notifications'
+    | '/_authenticated/settings/presets'
     | '/_authenticated/settings/voice'
     | '/_authenticated/settings/'
     | '/_authenticated/settings/voice/$id'
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/settings/presets': {
+      id: '/_authenticated/settings/presets'
+      path: '/presets'
+      fullPath: '/settings/presets'
+      preLoaderRoute: typeof AuthenticatedSettingsPresetsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
     '/_authenticated/settings/notifications': {
       id: '/_authenticated/settings/notifications'
       path: '/notifications'
@@ -459,6 +479,7 @@ interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsDomainsRoute: typeof AuthenticatedSettingsDomainsRoute
   AuthenticatedSettingsKnowledgeRoute: typeof AuthenticatedSettingsKnowledgeRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
+  AuthenticatedSettingsPresetsRoute: typeof AuthenticatedSettingsPresetsRoute
   AuthenticatedSettingsVoiceRoute: typeof AuthenticatedSettingsVoiceRouteWithChildren
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
@@ -472,6 +493,7 @@ const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsKnowledgeRoute: AuthenticatedSettingsKnowledgeRoute,
   AuthenticatedSettingsNotificationsRoute:
     AuthenticatedSettingsNotificationsRoute,
+  AuthenticatedSettingsPresetsRoute: AuthenticatedSettingsPresetsRoute,
   AuthenticatedSettingsVoiceRoute: AuthenticatedSettingsVoiceRouteWithChildren,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }

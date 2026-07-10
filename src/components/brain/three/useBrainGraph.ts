@@ -31,6 +31,7 @@ const TYPE_PRETTY: Record<NodeType, string> = {
   voice_sample: "Voice",
   directive: "Directive",
   domain: "Domain",
+  audience: "Audience",
   knowledge: "Knowledge",
   entity: "Entity",
   draft: "Draft",
@@ -39,6 +40,8 @@ const TYPE_PRETTY: Record<NodeType, string> = {
   channel: "Channel",
   scheduled: "Scheduled",
   mcp_client: "MCP Client",
+  preset: "Preset",
+  document: "Document",
 };
 
 async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
@@ -58,6 +61,19 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
     case "domain": {
       const { data } = await supabase.from("domains").select("name").eq("id", id).maybeSingle();
       return truncate(data?.name);
+    }
+    case "audience": {
+      const { data } = await supabase.from("audiences").select("name").eq("id", id).maybeSingle();
+      return truncate(data?.name);
+    }
+    case "preset": {
+      const { data } = await supabase.from("presets").select("name").eq("id", id).maybeSingle();
+      return truncate(data?.name);
+    }
+    case "document": {
+      const { data } = await supabase.from("preset_documents").select("file_name, source_url, source_type").eq("id", id).maybeSingle();
+      if (!data) return null;
+      return truncate(data.file_name ?? data.source_url ?? data.source_type);
     }
     case "knowledge": {
       const { data } = await supabase.from("knowledge_entries").select("title").eq("id", id).maybeSingle();

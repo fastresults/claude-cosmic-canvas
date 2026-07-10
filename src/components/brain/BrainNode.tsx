@@ -14,6 +14,7 @@ const TYPE_COLOR: Record<NodeType, string> = {
   voice_sample: "var(--color-brain-amber)",
   directive: "var(--color-brain-amber)",
   domain: "var(--color-brain-violet)",
+  audience: "var(--color-brain-violet)",
   knowledge: "var(--color-brain-teal)",
   entity: "var(--color-brain-teal)",
   draft: "var(--color-foreground)",
@@ -22,6 +23,8 @@ const TYPE_COLOR: Record<NodeType, string> = {
   channel: "var(--color-brain-blue)",
   scheduled: "var(--color-brain-blue)",
   mcp_client: "var(--color-brain-slate)",
+  preset: "var(--color-brain-amber)",
+  document: "var(--color-brain-teal)",
 };
 
 const TYPE_ICON: Record<NodeType, string> = {
@@ -30,6 +33,7 @@ const TYPE_ICON: Record<NodeType, string> = {
   voice_sample: "〰",
   directive: "⚑",
   domain: "✎",
+  audience: "☍",
   knowledge: "📄",
   entity: "◆",
   draft: "▨",
@@ -38,6 +42,8 @@ const TYPE_ICON: Record<NodeType, string> = {
   channel: "↗",
   scheduled: "⏱",
   mcp_client: "⌘",
+  preset: "✧",
+  document: "📎",
 };
 
 function BrainNodeInner({ data }: { data: BrainNodeData }) {

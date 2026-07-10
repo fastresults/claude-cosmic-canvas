@@ -12,6 +12,7 @@ export type NodeType =
   | "voice_sample"
   | "directive"
   | "domain"
+  | "audience"
   | "knowledge"
   | "entity"
   | "draft"
@@ -19,7 +20,9 @@ export type NodeType =
   | "campaign"
   | "channel"
   | "scheduled"
-  | "mcp_client";
+  | "mcp_client"
+  | "preset"
+  | "document";
 
 export type EdgeKind =
   | "AUTHORED_BY"
@@ -30,8 +33,12 @@ export type EdgeKind =
   | "SCHEDULED_TO"
   | "GENERATED_BY_TOOL"
   | "REFERENCES"
+  | "REFERENCES_DOC"
   | "REGENERATED_FROM"
-  | "PUBLISHED_ON";
+  | "PUBLISHED_ON"
+  | "USES_VOICE"
+  | "TARGETS_AUDIENCE"
+  | "SCOPES_DOMAIN";
 
 export type WriteEdgeInput = {
   userId: string;
