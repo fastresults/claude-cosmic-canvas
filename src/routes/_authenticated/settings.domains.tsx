@@ -157,23 +157,36 @@ function DomainsSettings() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {domains.map((d) => (
-              <li
-                key={d.id}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
-              >
-                <Compass className="h-4 w-4 text-accent" />
-                <span className="flex-1 text-sm text-foreground">{d.name}</span>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(d.id)}
-                  aria-label={`Remove ${d.name}`}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
+            {domains.map((d) => {
+              const count = counts[d.id] ?? 0;
+              return (
+                <li
+                  key={d.id}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-card pr-2"
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => setOpenDomain(d)}
+                    className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-elev"
+                  >
+                    <Compass className="h-4 w-4 text-accent" />
+                    <span className="flex-1 text-sm text-foreground">{d.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {count === 0 ? "Add sources" : `${count} source${count === 1 ? "" : "s"}`}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(d.id)}
+                    aria-label={`Remove ${d.name}`}
+                    className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
