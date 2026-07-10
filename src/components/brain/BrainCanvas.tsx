@@ -2,8 +2,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Scene } from "./three/Scene";
 import { BrainSearch } from "./BrainSearch";
+import { BrainLegend } from "./BrainLegend";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
+import type { NodeType } from "@/lib/brain/edges";
 
 const VIEWS = [
   { key: "constellation", label: "Constellation" },
