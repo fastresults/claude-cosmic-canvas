@@ -85,6 +85,21 @@ function DomainsSettings() {
         description="The areas of professional and personal passion and expertise you draw on for content. Domains become nodes in your Brain and steer what Eve pulls from your Curriculum Vitae."
       />
 
+      <Link
+        to="/settings/presets"
+        className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm transition-colors hover:bg-surface-elev"
+      >
+        <Layers className="h-4 w-4 text-accent" />
+        <div className="flex-1">
+          <div className="font-medium text-foreground">Presets</div>
+          <div className="text-xs text-muted-foreground">
+            Bundle domains, audience and voice into a reusable content lens
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      </Link>
+
+
       <section className="mt-4 rounded-lg border border-border bg-card p-4">
         <label className="mb-2 block text-sm font-medium text-foreground">
           Add a domain
