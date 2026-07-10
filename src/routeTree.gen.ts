@@ -30,6 +30,7 @@ import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
+import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
 import { Route as AuthenticatedSettingsVoiceIdRouteImport } from './routes/_authenticated/settings.voice.$id'
 import { Route as AuthenticatedSettingsVoiceIdLearnedRouteImport } from './routes/_authenticated/settings.voice.$id.learned'
 
@@ -147,6 +148,12 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedCreateFormatIdRoute =
+  AuthenticatedCreateFormatIdRouteImport.update({
+    id: '/$formatId',
+    path: '/$formatId',
+    getParentRoute: () => AuthenticatedCreateRoute,
+  } as any)
 const AuthenticatedSettingsVoiceIdRoute =
   AuthenticatedSettingsVoiceIdRouteImport.update({
     id: '/$id',
@@ -171,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -193,6 +201,7 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/': typeof AuthenticatedIndexRoute
+  '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -219,6 +228,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/_authenticated/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/onboarding'
     | '/settings'
+    | '/create/$formatId'
     | '/settings/account'
     | '/settings/content-ops'
     | '/settings/distribution'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/onboarding'
     | '/'
+    | '/create/$formatId'
     | '/settings/account'
     | '/settings/content-ops'
     | '/settings/distribution'
@@ -292,6 +304,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/'
+    | '/_authenticated/create/$formatId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/content-ops'
     | '/_authenticated/settings/distribution'
@@ -462,6 +475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/create/$formatId': {
+      id: '/_authenticated/create/$formatId'
+      path: '/$formatId'
+      fullPath: '/create/$formatId'
+      preLoaderRoute: typeof AuthenticatedCreateFormatIdRouteImport
+      parentRoute: typeof AuthenticatedCreateRoute
+    }
     '/_authenticated/settings/voice/$id': {
       id: '/_authenticated/settings/voice/$id'
       path: '/$id'
@@ -480,10 +500,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedCreateRouteChildren {
+  AuthenticatedCreateFormatIdRoute: typeof AuthenticatedCreateFormatIdRoute
   AuthenticatedCreateIndexRoute: typeof AuthenticatedCreateIndexRoute
 }
 
 const AuthenticatedCreateRouteChildren: AuthenticatedCreateRouteChildren = {
+  AuthenticatedCreateFormatIdRoute: AuthenticatedCreateFormatIdRoute,
   AuthenticatedCreateIndexRoute: AuthenticatedCreateIndexRoute,
 }
 

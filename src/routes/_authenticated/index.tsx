@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import { Orb } from "@/components/primitives/Orb";
 import { Pill } from "@/components/primitives/Pill";
 import { DraftCard } from "@/components/primitives/DraftCard";
