@@ -61,7 +61,15 @@ function CreateHub() {
             <h1 className="font-display text-3xl text-foreground">Create</h1>
             <p className="text-sm text-muted-foreground">Say one sentence. Pick a format. Eve drafts the rest.</p>
           </div>
-          {workspaceId && <ActiveWorkspacePill />}
+          <div className="flex items-center gap-2">
+            {workspaceId && <ActiveWorkspacePill />}
+            <Link
+              to="/content/drafts"
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Drafts →
+            </Link>
+          </div>
         </div>
       </header>
 
