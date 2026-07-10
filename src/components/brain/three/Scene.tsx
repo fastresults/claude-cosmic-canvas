@@ -92,7 +92,7 @@ function FocusCamera({
   return null;
 }
 
-export function Scene({ nodes, edges, onPeek, focusNodeId }: Props) {
+export function Scene({ nodes, edges, onPeek, focusNodeId, zoomRef }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const positions = useMemo(() => {
