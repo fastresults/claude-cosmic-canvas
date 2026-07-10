@@ -17,6 +17,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
+import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
@@ -68,6 +69,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
 const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/arcs': typeof AuthenticatedArcsRoute
   '/brain': typeof AuthenticatedBrainRoute
+  '/create': typeof AuthenticatedCreateRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/arcs': typeof AuthenticatedArcsRoute
   '/brain': typeof AuthenticatedBrainRoute
+  '/create': typeof AuthenticatedCreateRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/': typeof AuthenticatedIndexRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/arcs': typeof AuthenticatedArcsRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
+  '/_authenticated/create': typeof AuthenticatedCreateRoute
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/arcs'
     | '/brain'
+    | '/create'
     | '/library'
     | '/onboarding'
     | '/settings'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/arcs'
     | '/brain'
+    | '/create'
     | '/library'
     | '/onboarding'
     | '/'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/arcs'
     | '/_authenticated/brain'
+    | '/_authenticated/create'
     | '/_authenticated/library'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
@@ -346,6 +358,13 @@ declare module '@tanstack/react-router' {
       path: '/library'
       fullPath: '/library'
       preLoaderRoute: typeof AuthenticatedLibraryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/create': {
+      id: '/_authenticated/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof AuthenticatedCreateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/brain': {
@@ -506,6 +525,7 @@ const AuthenticatedSettingsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedArcsRoute: typeof AuthenticatedArcsRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
+  AuthenticatedCreateRoute: typeof AuthenticatedCreateRoute
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
@@ -515,6 +535,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedArcsRoute: AuthenticatedArcsRoute,
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
+  AuthenticatedCreateRoute: AuthenticatedCreateRoute,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
