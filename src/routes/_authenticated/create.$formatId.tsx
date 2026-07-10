@@ -8,6 +8,9 @@ import { getFormat } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
 import { StreamCanvas } from "@/components/create/shared/StreamCanvas";
 import { DecisionDock } from "@/components/create/shared/DecisionDock";
+import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill";
+import { useWorkspaceUrlContext } from "@/hooks/useWorkspaceUrlContext";
+import { useWorkspaceContext, readWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
 import {
   generateCreateDraft,
   getCreateDraft,
@@ -18,6 +21,8 @@ const search = z.object({
   draftId: z.string().uuid().optional(),
   seed: z.string().optional(),
   autoStart: z.coerce.boolean().optional(),
+  wsId: z.string().uuid().optional(),
+  wsItemId: z.string().uuid().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/create/$formatId")({
@@ -41,10 +46,14 @@ type Section = { heading: string | null; body: string };
 
 function FormatPage() {
   const { formatId } = Route.useParams();
-  const { draftId, seed: seedFromUrl, autoStart } = Route.useSearch();
+  const { draftId, seed: seedFromUrl, autoStart, wsId, wsItemId } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const format = getFormat(formatId)!;
+
+  // Sync workspace context from URL into the global store for this page.
+  useWorkspaceUrlContext(wsId ?? null, wsItemId ?? null);
+  const workspaceId = useWorkspaceContext((s) => s.workspaceId);
 
   const generateFn = useServerFn(generateCreateDraft);
   const getDraftFn = useServerFn(getCreateDraft);
@@ -74,8 +83,16 @@ function FormatPage() {
     setBusy(true);
     setError(null);
     try {
+      // Read workspace context fresh (store + URL). Store is source of truth here.
+      const ctx = readWorkspaceContext();
       const res = await generateFn({
-        data: { formatId, seed: seed.trim(), draftId: currentDraftId ?? undefined },
+        data: {
+          formatId,
+          seed: seed.trim(),
+          draftId: currentDraftId ?? undefined,
+          workspaceId: ctx.workspace_id ?? wsId ?? null,
+          workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+        },
       });
       if ("fallback" in res && res.fallback) {
         setError(res.message);
@@ -84,6 +101,7 @@ function FormatPage() {
         setTitle(res.title);
         if (res.draftId) setCurrentDraftId(res.draftId);
         qc.invalidateQueries({ queryKey: ["create-drafts"] });
+        qc.invalidateQueries({ queryKey: ["workspace", ctx.workspace_id] });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
@@ -116,6 +134,8 @@ function FormatPage() {
         </Link>
         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{format.category}</span>
       </div>
+
+      <ActiveWorkspacePill />
 
       <header>
         <h1 className="font-display text-2xl text-foreground">{format.label}</h1>
@@ -160,7 +180,7 @@ function FormatPage() {
             onClick={() => qc.invalidateQueries({ queryKey: ["create-drafts"] })}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
           >
-            <Save className="h-3.5 w-3.5" /> Saved
+            <Save className="h-3.5 w-3.5" /> {workspaceId ? "Saved to Workspace" : "Saved"}
           </button>
           {currentDraftId && (
             <button

@@ -1,164 +1,65 @@
-# /create Hub — Implementation Plan
+# Workspaces & Milestone Prep — Implementation Plan
 
-40+ formats behind one shared architecture, voice-first, one-thumb usable at 375px. Adapted to this stack's actual conventions (TanStack Start server functions, existing shell, existing tokens, existing Brain provenance).
+Adds milestone-scoped **Workspaces** on top of the existing `/create` hub. Reuses tokens, `EveSheet`, `DraftCard`, `Pill`, `HoldToSpeakButton`, `ComposerBar`, `StreamCanvas`, `writeEdgeServer`, and the existing `[DOMAIN]→[VOICE]→[KNOWLEDGE]→[PRESET]→[FORMAT_RULES]→[TASK]` injection contract (extended with `[WORKSPACE_CONTEXT]`). No new visual styling. Stack-adapted: **TanStack `createServerFn`, not Supabase Edge Functions**; SSE streaming via `src/routes/api/create/*`.
 
-## Stack adaptations (differ from raw spec — required)
+## Phased build
 
-- **No Supabase Edge Functions for app-internal logic.** This stack rule mandates `createServerFn` in `src/lib/create/*.functions.ts`. "Edge function" in the spec maps to a server function; streaming uses a raw server route (`src/routes/api/create/$formatId.ts`) so the client can consume SSE via `useStreamingGeneration`.
-- **Do not add a 6th bottom tab.** Nav is already at 5 (Home / Library / Arcs / Brain / Settings). `/create` becomes the primary action on Home + surfaced from the existing `ComposerBar` "generate" flow + Voice Orb. On desktop, add a Create entry to the top bar. This keeps thumb ergonomics and matches the "Orb is the only global surface" rule.
-- **Reuse existing primitives.** `EveSheet` (bottom sheet), `HoldToSpeakButton`, `ComposerBar`, `AskEveBar`, `WorkingDraftProvider`, `writeEdge` (Brain provenance), `buildPresetPrompt` (already implements DOMAIN → VOICE → KNOWLEDGE → PRESET → TASK — extend with FORMAT_RULES). Do not rebuild.
-- **One shared drafts table**, not 40. Spec's per-format tables balloon the schema with zero payoff — all columns are identical except `format_id`. Use a single `create_drafts` table with `format_id text not null`; keeps RLS/indexes/queries simple and matches the existing `drafts` table pattern. `content_generations` collapses into the same table (distinguished by `format_id = 'freeform'`).
-- **Persist Brain provenance.** Every generation writes a `brain_edges` row via `recordGeneration` (already exists) so `/create` output is first-class in the Brain graph.
+### Phase 1 — Data model + isolation primitives
+Single migration:
+- `opportunity_workspaces`, `workspace_items` (per spec, with GRANTs + RLS `auth.uid() = user_id` scoped, EXISTS check on items).
+- `ALTER TABLE create_drafts ADD COLUMN workspace_id uuid`, `workspace_item_id uuid`; indexed. (One drafts table today, not per-format — no fan-out.)
+- Trigger: on `create_drafts.status = 'published'` where `workspace_item_id` present → bump `opportunity_workspaces.completed_items`. On workspace archive → cascade `archived = true` to linked drafts.
+- `tg_set_updated_at` triggers on both new tables.
 
-## Architecture
+Client isolation layer:
+- `src/lib/workspaces/workspaceContextStore.ts` — Zustand `{ workspaceId, workspaceItemId, setContext, clearContext }`.
+- `src/hooks/useWorkspaceUrlContext.ts` — reads `?wsId`/`?wsItemId` on mount, clears on unmount, aggressively clears when URL has no `wsId`.
+- Extend `create.$formatId.tsx` route search schema with `wsId?`, `wsItemId?`; every save/generate path spreads `{ workspace_id, workspace_item_id }` read fresh from store+URL.
+- `listCreateDrafts` gains `excludeWorkspaceScoped: boolean` (default true for general hub); `restoreWorkspaceFromDraft(draft)` called inside draft loaders to rehydrate banner on deep-link.
+- `Save` button label flips to "Save to Workspace" when `workspaceId` set.
 
-```text
-src/
-  config/createFormats.ts              # registry (single source of truth)
-  routes/_authenticated/
-    create.tsx                         # hub (layout + <Outlet/>)
-    create.index.tsx                   # searchable grid
-    create.$formatId.tsx               # per-format page (one file, registry-driven)
-    create.$formatId.$draftId.tsx      # resume/edit existing draft
-  routes/api/create/
-    $formatId.ts                       # POST -> SSE stream (server route)
-  lib/create/
-    create.functions.ts                # listDrafts, getDraft, saveDraft, archive, deleteDraft, quality, polish, dedupe
-    router.functions.ts                # classifyIntent -> formatId (Orb unified router)
-    prompt.server.ts                   # extends buildPresetPrompt with [FORMAT_RULES]
-    generators.server.ts               # per-category generator implementations (long-form, sequence, media, etc.)
-    format-rules.ts                    # FORMAT_RULES strings keyed by format id
-  components/create/
-    FormatCard.tsx
-    shared/{SeedInput,BriefSheet,ContextRail,StreamCanvas,DecisionDock,QualityBadge}.tsx
-    media/{ImagePicker,VideoPicker}.tsx
-  hooks/{useCreateFormats,useDraft,useDraftAutosave,useStreamingGeneration}.ts
-```
+### Phase 2 — Server functions (replace "edge functions" from spec)
+All under `src/lib/workspaces/*.functions.ts`, `.middleware([requireSupabaseAuth])`, Lovable AI Gateway via existing `callAnthropic`/gateway helper. Model chosen from existing orchestrator config, not hardcoded.
 
-## Data model (one migration, not 40+)
+- `planWorkspaceArc` — input `{ moment_type, target_date, intent, voiceId?, knowledgeProfileId?, presetId? }` → `{ ai_analysis, items[] }`. Phase heuristic: Tease T-14..T-4, Announce T-1..T+1, Amplify T+2..T+10, Sustain T+11..T+30. Picks `content_type` from `CREATE_FORMATS` registry.
+- `runWorkspaceInterview` — voice/chat intake → initial `ai_analysis` (goals, audience, key messages, proof points, risks).
+- `autoAnswerBrief` — pre-fills a format's brief from `ai_analysis` + Voice/Knowledge/Preset.
+- `generateWorkspaceItem` — single-item generate; SSE streamed via `src/routes/api/workspaces/generate/$itemId.ts` (server route, bearer-authed, `text/event-stream`, `fallback: true` on error). Updates item `status` transitions.
+- `autoGenerateWorkspace` — batch orchestrator over pending items; respects priority + simple concurrency cap.
+- `curateWorkspace` — cohesion pass over all items → redundancy/tone/gap notes.
+- `workspaceToBrain` — upserts `workspace` + `workspace_item` nodes into `brain_edges` (extend `NodeType` union with `workspace`, `workspace_item`; edges to `voice`, `knowledge`, `preset`, `campaign`, and `workspace_item → draft`). Ran on insert/update.
+- `splitSequenceToDrafts` — shared util used by email-sequence / newsletter-sequence generators when `workspaceId` set: split into N `create_drafts` rows, one per `scheduled_date` (weekly cadence from parent), each carrying `workspace_id`, `workspace_item_id`, `distribution_channel`.
 
-```sql
-create table public.create_drafts (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  format_id text not null,
-  title text,
-  sections jsonb not null default '[]'::jsonb,
-  brief_snapshot jsonb,
-  preset_id uuid,
-  voice_id uuid,
-  domain text,
-  audience text,
-  factor_weights jsonb,
-  images jsonb not null default '[]'::jsonb,
-  videos jsonb not null default '[]'::jsonb,
-  status text not null default 'draft',   -- draft | ready | archived
-  archived boolean not null default false,
-  quality_score numeric,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-create index on public.create_drafts (user_id, format_id, updated_at desc);
+### Phase 3 — Injection contract extension
+Extend `src/lib/create/create.functions.ts` prompt assembly to inject `[WORKSPACE_CONTEXT]` between `[PRESET]` and `[FORMAT_RULES]` when `workspace_id` present. Block includes milestone title, moment_type, T±n from target_date, arc phase, `ai_analysis.summary`, sibling item titles+phases (fetched in one query), and this piece's role. Logged in order so acceptance #6 is verifiable.
 
-create table public.create_version_history (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  draft_id uuid not null references public.create_drafts(id) on delete cascade,
-  format_id text not null,
-  sections jsonb not null,
-  reason text,
-  created_at timestamptz not null default now()
-);
+### Phase 4 — Mobile-first UI (reuses existing primitives)
+- `src/routes/_authenticated/workspaces.tsx` (layout) + `workspaces.index.tsx` — vertical stream, each card uses existing card token; progress ring, moment_type chip (`Pill`), days-to-target, next scheduled item. FAB **New Milestone** opens `MilestonePrepSheet`.
+- `src/components/workspaces/MilestonePrepSheet.tsx` — `EveSheet`, three steps: Intake (`HoldToSpeakButton` + text) → Preview arc (editable phased list) → Confirm.
+- `src/routes/_authenticated/workspaces.$id.tsx` — phased timeline (Tease/Announce/Amplify/Sustain/Ongoing) using existing section pattern. Rows: status chip + scheduled date, tap → `/create/$formatId?wsId=…&wsItemId=…`. Long-press menu: reschedule / delete / duplicate.
+- `src/components/workspaces/WorkspaceCalendarStrip.tsx` — horizontal date rail; drag to reschedule (touch-first).
+- `src/components/workspaces/ActiveWorkspacePill.tsx` — mirrors `ActivePresetPill`; mounted in `ComposerBar` and `create.$formatId.tsx` header. Auto-hides when `workspaceId` null. Tap → workspace detail.
+- Voice Orb intents wired in existing intent classifier: "prep a launch for March 12" → open sheet prefilled; "add teaser to this workspace" → append item, phase=tease; "reschedule by a week" → bulk shift; "what's next" → read next unscheduled.
+- Home CTA row adds **Workspaces** entry beside Create.
 
-create table public.create_media (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  kind text not null,          -- image | cover | video | slide
-  provider text,               -- gemini | nano-banana | sora2 | kling3 | upload
-  url text not null,
-  meta jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-```
+### Phase 5 — Syndication + archive
+- Syndication calendar gains a **workspace swimlane** grouped by `workspace_id`, color-coded via existing token palette by `moment_type`.
+- Publish flow flips draft `status = 'published'`; trigger updates counter.
+- Archive workspace → cascade archive to linked drafts; drafts remain readable under an "Orphaned" filter in the Drafts hub when workspace is deleted (drafts unlink but stay).
 
-Each table: GRANT to `authenticated` + `service_role`, ENABLE RLS, owner-only policies on `auth.uid() = user_id`, shared `tg_set_updated_at` trigger.
+### Phase 6 — Acceptance verification
+Scripted checks matching the 8 acceptance criteria: seed a voice-driven workspace, assert ≥6 items in <20s, SQL-verify `workspace_id` on saved drafts, verify general hub excludes them, verify sequence splitting, verify cascade + orphan filter, grep server logs for the contract order, snapshot the `ActiveWorkspacePill` presence.
 
-## Injection contract
+## Technical notes (stack adaptations)
 
-Extend existing `buildPresetPrompt` to prepend the ordered blocks and inject a new `[FORMAT_RULES]` block sourced from `format-rules.ts` (length, section headers, tone constraints per format). Final order:
+- **No Supabase Edge Functions** — spec's `workspace-*` edge functions become `createServerFn` in `src/lib/workspaces/*.functions.ts`. Streaming uses a TSS server route under `src/routes/api/workspaces/`.
+- **Single `create_drafts` table** — spec says "add `workspace_id` to every `*_drafts` table"; this project has one table, so it's one ALTER.
+- **Content generations** — this project stores generations inline on `create_drafts` (no separate `content_generations` table). `splitSequenceToDrafts` writes N `create_drafts` rows instead.
+- **Workspace context store** reads from both Zustand and URL on every save to survive long-running async writes, per spec.
+- **RLS on `workspace_items`** uses EXISTS against parent, not a denormalized `user_id`, to keep the ownership check single-source.
 
-```text
-[DOMAIN] → [VOICE] → [KNOWLEDGE] → [PRESET] → [FORMAT_RULES] → [TASK]
-```
+## Open questions
 
-Grounding preamble ("Ground every factual claim in [KNOWLEDGE]…") already lives in `GROUNDING_SYSTEM`; keep as-is. Signal priority Topic > Domain > Voice > Knowledge enforced in `router.functions.ts` when classifying and in the FORMAT_RULES template.
-
-## Streaming
-
-- Server route `POST /api/create/:formatId` returns `text/event-stream`. Handler auths via bearer, loads preset/voice/knowledge, calls Lovable AI Gateway with `streamText`, emits section deltas as SSE, upserts `create_drafts` on section boundaries, writes `brain_edges` `GENERATED_BY_TOOL` edge on completion.
-- Client `useStreamingGeneration` opens `fetch` with `ReadableStream` reader, feeds `StreamCanvas`.
-- On generation failure return `200 { fallback: true, message }` per spec.
-
-## Voice Orb / unified router
-
-`classifyIntent(utterance)` server function calls Claude with the registry's `{id,label,category}` list and returns `{formatId, confidence, seed}`. Client:
-- confidence ≥ 0.6 → navigate to `/create/:formatId?seed=…&autoStart=1` and stream within 2s.
-- confidence < 0.6 → Orb surfaces a two-option picker sheet.
-
-Wire into existing `ComposerBar` generate flow so voice+text share the same entrypoint.
-
-## Quality loop
-
-Server functions: `analyzeDraftQuality`, `analyzeContentImprovements`, `autoPolishContent`, `deduplicateContent`. `QualityBadge` runs on first stream complete. Polish accept/reject sheet writes a `create_version_history` row.
-
-## Media
-
-`ImagePicker` calls `aiImage` (already exists — extend with provider selector: gemini / nano-banana). `VideoPicker` wraps two new server functions `generateSora2Video`, `generateKling3Video`. All results insert into `create_media` and attach to `draft.images` / `draft.videos`.
-
-## Build order (phased — ship value at each step)
-
-**Phase 1 — foundation (registry + one format end-to-end)**
-1. `src/config/createFormats.ts` with all 40+ entries.
-2. Migration: `create_drafts`, `create_version_history`, `create_media` + RLS/GRANTs/triggers.
-3. Shared primitives: `SeedInput`, `BriefSheet`, `ContextRail`, `StreamCanvas`, `DecisionDock`, `QualityBadge`.
-4. Hooks: `useCreateFormats`, `useDraft`, `useDraftAutosave`, `useStreamingGeneration`.
-5. Routes: `create.tsx`, `create.index.tsx` (hub grid), `create.$formatId.tsx`.
-6. Server route `api/create/$formatId.ts` + `prompt.server.ts` + `generators.server.ts` covering the **long-form** category (reference: press-release).
-7. `format-rules.ts` for all long-form formats.
-8. Home CTA + desktop TopBar entry to `/create`.
-
-**Phase 2 — unified router + Orb**
-9. `router.functions.ts` (`classifyIntent`) + Orb wiring through `ComposerBar`.
-10. Two-option picker sheet at confidence < 0.6.
-
-**Phase 3 — remaining categories**
-11. Sequence, speaking/plans, short-form, campaign/research generators — each is a `generators.server.ts` case + `format-rules.ts` entry; UI reuses `create.$formatId.tsx`.
-
-**Phase 4 — media**
-12. `ImagePicker` (gemini + nano-banana + upload + library).
-13. `VideoPicker` (Sora2, Kling3) — feature-flag if provider access pending.
-
-**Phase 5 — quality loop + lifecycle**
-14. `analyzeDraftQuality`, `analyzeContentImprovements`, `autoPolishContent`, `deduplicateContent`.
-15. Version history UI, archive/pin, swipe gestures.
-16. Draft list on Library, resume flow `create.$formatId.$draftId.tsx`.
-
-## Acceptance mapping
-
-- Format registry drives hub, per-format page, Orb router, syndication, quality UI ✔
-- Voice-only path: Orb → `classifyIntent` → route → stream in <2s ✔
-- Every generator: bearer-authed server route + Zod validation + injection order + Brain edge ✔
-- Delete draft cascades version history via FK; preset/voice/knowledge untouched ✔
-- 375px one-thumb: bottom sheets via `EveSheet`, sticky `DecisionDock`, no modals ✔
-
-## What I will NOT change
-
-- Existing shell, tokens, fonts, Brain graph, presets, voice, knowledge ingestion.
-- Bottom nav tab count (adding a 6th tab breaks thumb ergonomics on 375px).
-- Supabase Edge Functions — none created; all logic in TanStack server functions/routes per project stack rules.
-
-## Open questions before Phase 1
-
-1. Sora2 / Kling3 — do you have provider access wired, or feature-flag and stub?
-2. Registry: keep all 40+ or trim to the ~15 you'll actually ship in v1?
-3. Home CTA placement — replace current `ComposerBar` "Generate" affordance, or add a second entry?
+1. **Syndication swimlane** — does the existing syndication/calendar module already exist to hook into, or should Phase 5 stub the swimlane and defer publish-trigger wiring?
+2. **Voice interview transport** — reuse `HoldToSpeakButton` + existing STT path, or dedicated `workspace-interview` streaming route?
+3. **Orphaned drafts filter** — surface as a chip in Drafts hub, or a separate `/drafts/orphaned` route?

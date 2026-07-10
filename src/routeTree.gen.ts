@@ -14,14 +14,17 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authenticated/workspaces'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
+import { Route as AuthenticatedWorkspacesIndexRouteImport } from './routes/_authenticated/workspaces.index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenticated/create.index'
+import { Route as AuthenticatedWorkspacesIdRouteImport } from './routes/_authenticated/workspaces.$id'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
@@ -58,6 +61,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWorkspacesRoute = AuthenticatedWorkspacesRouteImport.update({
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -88,6 +96,12 @@ const AuthenticatedArcsRoute = AuthenticatedArcsRouteImport.update({
   path: '/arcs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWorkspacesIndexRoute =
+  AuthenticatedWorkspacesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWorkspacesRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/',
@@ -99,6 +113,12 @@ const AuthenticatedCreateIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedCreateRoute,
+  } as any)
+const AuthenticatedWorkspacesIdRoute =
+  AuthenticatedWorkspacesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedWorkspacesRoute,
   } as any)
 const AuthenticatedSettingsVoiceRoute =
   AuthenticatedSettingsVoiceRouteImport.update({
@@ -178,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -187,8 +208,10 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/create/': typeof AuthenticatedCreateIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
@@ -210,8 +233,10 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/create': typeof AuthenticatedCreateIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/workspaces': typeof AuthenticatedWorkspacesIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
@@ -227,6 +252,7 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/_authenticated/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -237,8 +263,10 @@ export interface FileRoutesById {
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/_authenticated/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/_authenticated/create/': typeof AuthenticatedCreateIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
   '/_authenticated/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/_authenticated/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
@@ -255,6 +283,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/onboarding'
     | '/settings'
+    | '/workspaces'
     | '/create/$formatId'
     | '/settings/account'
     | '/settings/content-ops'
@@ -264,8 +293,10 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/presets'
     | '/settings/voice'
+    | '/workspaces/$id'
     | '/create/'
     | '/settings/'
+    | '/workspaces/'
     | '/settings/voice/$id'
     | '/settings/voice/$id/learned'
   fileRoutesByTo: FileRoutesByTo
@@ -287,8 +318,10 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/presets'
     | '/settings/voice'
+    | '/workspaces/$id'
     | '/create'
     | '/settings'
+    | '/workspaces'
     | '/settings/voice/$id'
     | '/settings/voice/$id/learned'
   id:
@@ -303,6 +336,7 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
+    | '/_authenticated/workspaces'
     | '/_authenticated/'
     | '/_authenticated/create/$formatId'
     | '/_authenticated/settings/account'
@@ -313,8 +347,10 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/presets'
     | '/_authenticated/settings/voice'
+    | '/_authenticated/workspaces/$id'
     | '/_authenticated/create/'
     | '/_authenticated/settings/'
+    | '/_authenticated/workspaces/'
     | '/_authenticated/settings/voice/$id'
     | '/_authenticated/settings/voice/$id/learned'
   fileRoutesById: FileRoutesById
@@ -363,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/workspaces': {
+      id: '/_authenticated/workspaces'
+      path: '/workspaces'
+      fullPath: '/workspaces'
+      preLoaderRoute: typeof AuthenticatedWorkspacesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -405,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArcsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/workspaces/': {
+      id: '/_authenticated/workspaces/'
+      path: '/'
+      fullPath: '/workspaces/'
+      preLoaderRoute: typeof AuthenticatedWorkspacesIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
@@ -418,6 +468,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/create/'
       preLoaderRoute: typeof AuthenticatedCreateIndexRouteImport
       parentRoute: typeof AuthenticatedCreateRoute
+    }
+    '/_authenticated/workspaces/$id': {
+      id: '/_authenticated/workspaces/$id'
+      path: '/$id'
+      fullPath: '/workspaces/$id'
+      preLoaderRoute: typeof AuthenticatedWorkspacesIdRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesRoute
     }
     '/_authenticated/settings/voice': {
       id: '/_authenticated/settings/voice'
@@ -573,6 +630,22 @@ const AuthenticatedSettingsRouteWithChildren =
     AuthenticatedSettingsRouteChildren,
   )
 
+interface AuthenticatedWorkspacesRouteChildren {
+  AuthenticatedWorkspacesIdRoute: typeof AuthenticatedWorkspacesIdRoute
+  AuthenticatedWorkspacesIndexRoute: typeof AuthenticatedWorkspacesIndexRoute
+}
+
+const AuthenticatedWorkspacesRouteChildren: AuthenticatedWorkspacesRouteChildren =
+  {
+    AuthenticatedWorkspacesIdRoute: AuthenticatedWorkspacesIdRoute,
+    AuthenticatedWorkspacesIndexRoute: AuthenticatedWorkspacesIndexRoute,
+  }
+
+const AuthenticatedWorkspacesRouteWithChildren =
+  AuthenticatedWorkspacesRoute._addFileChildren(
+    AuthenticatedWorkspacesRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedArcsRoute: typeof AuthenticatedArcsRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
@@ -580,6 +653,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
+  AuthenticatedWorkspacesRoute: typeof AuthenticatedWorkspacesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -590,6 +664,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
+  AuthenticatedWorkspacesRoute: AuthenticatedWorkspacesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -605,13 +680,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
