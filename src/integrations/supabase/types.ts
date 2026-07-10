@@ -206,6 +206,137 @@ export type Database = {
         }
         Relationships: []
       }
+      create_drafts: {
+        Row: {
+          archived: boolean
+          audience: string | null
+          brief_snapshot: Json | null
+          created_at: string
+          domain: string | null
+          factor_weights: Json | null
+          format_id: string
+          id: string
+          images: Json
+          preset_id: string | null
+          quality_score: number | null
+          sections: Json
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          videos: Json
+          voice_id: string | null
+        }
+        Insert: {
+          archived?: boolean
+          audience?: string | null
+          brief_snapshot?: Json | null
+          created_at?: string
+          domain?: string | null
+          factor_weights?: Json | null
+          format_id: string
+          id?: string
+          images?: Json
+          preset_id?: string | null
+          quality_score?: number | null
+          sections?: Json
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          videos?: Json
+          voice_id?: string | null
+        }
+        Update: {
+          archived?: boolean
+          audience?: string | null
+          brief_snapshot?: Json | null
+          created_at?: string
+          domain?: string | null
+          factor_weights?: Json | null
+          format_id?: string
+          id?: string
+          images?: Json
+          preset_id?: string | null
+          quality_score?: number | null
+          sections?: Json
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          videos?: Json
+          voice_id?: string | null
+        }
+        Relationships: []
+      }
+      create_media: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          meta: Json
+          provider: string | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          meta?: Json
+          provider?: string | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          meta?: Json
+          provider?: string | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      create_version_history: {
+        Row: {
+          created_at: string
+          draft_id: string
+          format_id: string
+          id: string
+          reason: string | null
+          sections: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          format_id: string
+          id?: string
+          reason?: string | null
+          sections: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          format_id?: string
+          id?: string
+          reason?: string | null
+          sections?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "create_version_history_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "create_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domains: {
         Row: {
           created_at: string
