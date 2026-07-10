@@ -46,6 +46,16 @@ export function Scene({ onPeek }: Props) {
     return map;
   }, [nodes, edges]);
 
+  // Bounding radius of the whole graph, used to auto-fit the camera on load & resize.
+  const graphRadius = useMemo(() => {
+    let max = 6;
+    for (const [, [x, y, z]] of positions) {
+      const r = Math.sqrt(x * x + y * y + z * z);
+      if (r > max) max = r;
+    }
+    return max + 2; // padding for orb radius + halo
+  }, [positions]);
+
   // Which ids are "related" to the hovered node.
   const related = useMemo(() => {
     if (!hovered) return null;
@@ -64,6 +74,7 @@ export function Scene({ onPeek }: Props) {
       style={{ background: "radial-gradient(circle at 50% 55%, #1a1208 0%, #050303 60%, #000 100%)" }}
     >
       <PerspectiveCamera makeDefault position={[0, 2, 22]} fov={55} />
+      <AutoFit radius={graphRadius} />
       <ambientLight intensity={0.4} />
 
       <Suspense fallback={null}>
