@@ -6,8 +6,8 @@
 /* Eve OS design system — dark-first, warm amber, kinetic serif display. */
 
 @theme inline {
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
-  --font-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: 0.5rem;
   --radius-md: 0.875rem;
