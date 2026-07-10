@@ -160,6 +160,7 @@ export function LinkedInSheet({ open, onOpenChange, profileId, domainId }: Props
           title={pending.title}
           sourceUrl={pending.sourceUrl}
           profileId={profileId}
+          domainId={domainId}
           onSaved={() => {
             setPending(null);
             onOpenChange(false);

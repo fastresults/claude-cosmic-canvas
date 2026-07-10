@@ -142,6 +142,7 @@ export function UploadSheet({ open, onOpenChange, profileId, domainId }: Props) 
           title={pendingResume.fileName ?? "Résumé"}
           sourceUrl={null}
           profileId={profileId}
+          domainId={domainId}
           onSaved={() => {
             setPendingResume(null);
             onOpenChange(false);
