@@ -35,6 +35,7 @@ import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
+import { Route as AuthenticatedContentArchiveRouteImport } from './routes/_authenticated/content.archive'
 import { Route as AuthenticatedContentDraftsIndexRouteImport } from './routes/_authenticated/content.drafts.index'
 import { Route as AuthenticatedSettingsVoiceIdRouteImport } from './routes/_authenticated/settings.voice.$id'
 import { Route as AuthenticatedSettingsVoiceIdLearnedRouteImport } from './routes/_authenticated/settings.voice.$id.learned'
@@ -181,6 +182,12 @@ const AuthenticatedCreateFormatIdRoute =
     path: '/$formatId',
     getParentRoute: () => AuthenticatedCreateRoute,
   } as any)
+const AuthenticatedContentArchiveRoute =
+  AuthenticatedContentArchiveRouteImport.update({
+    id: '/content/archive',
+    path: '/content/archive',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedContentDraftsIndexRoute =
   AuthenticatedContentDraftsIndexRouteImport.update({
     id: '/content/drafts/',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
+  '/content/archive': typeof AuthenticatedContentArchiveRoute
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -239,6 +247,7 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/': typeof AuthenticatedIndexRoute
+  '/content/archive': typeof AuthenticatedContentArchiveRoute
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -271,6 +280,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/content/archive': typeof AuthenticatedContentArchiveRoute
   '/_authenticated/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/settings'
     | '/workspaces'
+    | '/content/archive'
     | '/create/$formatId'
     | '/settings/account'
     | '/settings/content-ops'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/library'
     | '/onboarding'
     | '/'
+    | '/content/archive'
     | '/create/$formatId'
     | '/settings/account'
     | '/settings/content-ops'
@@ -361,6 +373,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/workspaces'
     | '/_authenticated/'
+    | '/_authenticated/content/archive'
     | '/_authenticated/create/$formatId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/content-ops'
@@ -572,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreateFormatIdRouteImport
       parentRoute: typeof AuthenticatedCreateRoute
     }
+    '/_authenticated/content/archive': {
+      id: '/_authenticated/content/archive'
+      path: '/content/archive'
+      fullPath: '/content/archive'
+      preLoaderRoute: typeof AuthenticatedContentArchiveRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/content/drafts/': {
       id: '/_authenticated/content/drafts/'
       path: '/content/drafts'
@@ -695,6 +715,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedWorkspacesRoute: typeof AuthenticatedWorkspacesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedContentArchiveRoute: typeof AuthenticatedContentArchiveRoute
   AuthenticatedContentDraftsIndexRoute: typeof AuthenticatedContentDraftsIndexRoute
 }
 
@@ -707,6 +728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedWorkspacesRoute: AuthenticatedWorkspacesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedContentArchiveRoute: AuthenticatedContentArchiveRoute,
   AuthenticatedContentDraftsIndexRoute: AuthenticatedContentDraftsIndexRoute,
 }
 
