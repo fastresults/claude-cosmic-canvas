@@ -11,13 +11,10 @@ import {
   Search,
   Sparkles,
   X,
-  Calendar,
-  Zap,
   Trash2,
   Archive,
   CheckSquare,
   Square,
-  ChevronDown,
   Loader2,
   ArrowDownWideNarrow,
   Clock,
@@ -35,6 +32,7 @@ import {
   type LibrarySort,
 } from "@/lib/library/library.functions";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DraftDetailSheet } from "@/components/drafts/DraftDetailSheet";
 
 export const Route = createFileRoute("/_authenticated/library")({
   component: Library,
@@ -92,7 +90,7 @@ function Library() {
   const [sort, setSort] = useState<LibrarySort>("recent");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [openDraftId, setOpenDraftId] = useState<string | null>(null);
   const [aiParsing, setAiParsing] = useState(false);
 
   const { data: campaigns = [] } = useQuery({
@@ -173,12 +171,7 @@ function Library() {
       toggleSelect(id);
       return;
     }
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setOpenDraftId(id);
   }
 
   function clearSelection() {
@@ -408,7 +401,6 @@ function Library() {
             </div>
             <div className="space-y-1.5">
               {items.map((d) => {
-                const isExpanded = expanded.has(d.id);
                 const isSelected = selected.has(d.id);
                 const score = (d.score as { total?: number; voiceMatch?: number }) ?? {};
                 return (
@@ -450,57 +442,11 @@ function Library() {
                             </>
                           ) : null}
                         </div>
-                        {!isExpanded ? (
-                          <p className="mt-0.5 truncate text-sm text-foreground/90">
-                            {d.body.replace(/\s+/g, " ").slice(0, 140)}
-                          </p>
-                        ) : null}
+                        <p className="mt-0.5 truncate text-sm text-foreground/90">
+                          {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                        </p>
                       </div>
-                      {!selectionMode && (
-                        <ChevronDown
-                          className={cn(
-                            "mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-transform",
-                            isExpanded && "rotate-180",
-                          )}
-                        />
-                      )}
                     </div>
-
-                    <AnimatePresence initial={false}>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">
-                            {d.body}
-                          </p>
-                          {d.image_url && (
-                            <img
-                              src={d.image_url}
-                              alt=""
-                              className="mt-2 h-32 w-full rounded-md object-cover"
-                            />
-                          )}
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-surface-elev py-1.5 text-xs text-foreground hover:bg-secondary"
-                            >
-                              <Calendar className="h-3 w-3" /> Schedule
-                            </button>
-                            <button
-                              className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-                            >
-                              <Zap className="h-3 w-3" /> Post
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </motion.article>
                 );
               })}
@@ -561,6 +507,10 @@ function Library() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {openDraftId && (
+        <DraftDetailSheet draftId={openDraftId} onClose={() => setOpenDraftId(null)} />
+      )}
     </div>
   );
 }
