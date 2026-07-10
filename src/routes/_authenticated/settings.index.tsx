@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, User, Zap, Mic, Link2, Bell, BookOpen, ChevronRight } from "lucide-react";
+import { LogOut, User, Zap, Mic, Link2, Bell, BookOpen, Compass, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
@@ -10,7 +10,8 @@ export const Route = createFileRoute("/_authenticated/settings/")({
 const SECTIONS = [
   { to: "/settings/account", icon: User, label: "Account", hint: "Profile and sign out" },
   { to: "/settings/voice", icon: Mic, label: "Voice & Style", hint: "Personas, samples, directives" },
-  { to: "/settings/knowledge", icon: BookOpen, label: "Knowledge & Domains", hint: "LinkedIn, resume, notes, expertise" },
+  { to: "/settings/knowledge", icon: BookOpen, label: "Curriculum Vitae", hint: "LinkedIn, résumé, bios, notes" },
+  { to: "/settings/domains", icon: Compass, label: "Domains", hint: "Passions and areas of expertise" },
   { to: "/settings/distribution", icon: Link2, label: "Distribution", hint: "Channels, email sender, calendar" },
   { to: "/settings/notifications", icon: Bell, label: "Notifications", hint: "Inbox rules, snoozes" },
   { to: "/settings/content-ops", icon: Zap, label: "Content Ops", hint: "Templates, presets, tuning" },
