@@ -42,11 +42,19 @@ function DomainsSettings() {
   const listFn = useServerFn(listDomains);
   const addFn = useServerFn(addDomain);
   const delFn = useServerFn(deleteDomain);
+  const countsFn = useServerFn(countEntriesByDomain);
 
   const { data: domains = [] } = useQuery({
     queryKey: ["settings", "domains"],
     queryFn: () => listFn() as Promise<Domain[]>,
   });
+
+  const { data: counts = {} } = useQuery({
+    queryKey: ["settings", "domain-counts"],
+    queryFn: () => countsFn() as Promise<Record<string, number>>,
+  });
+
+  const [openDomain, setOpenDomain] = useState<Domain | null>(null);
 
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
