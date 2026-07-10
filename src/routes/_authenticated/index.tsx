@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import { Orb } from "@/components/primitives/Orb";
 import { Pill } from "@/components/primitives/Pill";
 import { DraftCard } from "@/components/primitives/DraftCard";
@@ -64,6 +65,13 @@ function Home() {
               </button>
             ))}
           </div>
+          <Link
+            to="/create"
+            className="flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/20"
+          >
+            <Sparkles className="h-4 w-4 text-accent" />
+            Browse 40+ formats
+          </Link>
         </motion.div>
       ) : (
         <div className="space-y-3">
