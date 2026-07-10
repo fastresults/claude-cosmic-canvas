@@ -310,18 +310,33 @@ export const ingestEntry = createServerFn({ method: "POST" })
       throw e;
     }
 
-    // Wire the new entry into the Brain graph as `you → SOURCED_FROM → knowledge:<id>`.
+    // Wire the new entry into the Brain graph as `you → SOURCED_FROM → knowledge:<id>`,
+    // plus `domain → SOURCED_FROM → knowledge:<id>` when scoped to a domain.
     // Non-fatal: log and continue if this fails.
     try {
-      await context.supabase.from("brain_edges").insert({
-        user_id: context.userId,
-        src_type: "you",
-        src_id: context.userId,
-        edge_kind: "SOURCED_FROM",
-        dst_type: "knowledge",
-        dst_id: entry.id,
-        meta: { source_type: data.source_type, title, kind: data.kind } as Json,
-      });
+      const edges: Array<Record<string, unknown>> = [
+        {
+          user_id: context.userId,
+          src_type: "you",
+          src_id: context.userId,
+          edge_kind: "SOURCED_FROM",
+          dst_type: "knowledge",
+          dst_id: entry.id,
+          meta: { source_type: data.source_type, title, kind: data.kind } as Json,
+        },
+      ];
+      if (data.domain_id) {
+        edges.push({
+          user_id: context.userId,
+          src_type: "domain",
+          src_id: data.domain_id,
+          edge_kind: "SOURCED_FROM",
+          dst_type: "knowledge",
+          dst_id: entry.id,
+          meta: { source_type: data.source_type, title, kind: data.kind } as Json,
+        });
+      }
+      await context.supabase.from("brain_edges").insert(edges);
     } catch (e) {
       console.error("[knowledge] brain edge insert failed", e);
     }
