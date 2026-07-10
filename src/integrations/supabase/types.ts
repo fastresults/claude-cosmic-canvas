@@ -210,7 +210,9 @@ export type Database = {
         Row: {
           archived: boolean
           audience: string | null
+          authenticity_score: number | null
           brief_snapshot: Json | null
+          campaign_id: string | null
           created_at: string
           distribution_channel: string | null
           domain: string | null
@@ -218,7 +220,9 @@ export type Database = {
           format_id: string
           id: string
           images: Json
+          platform: string | null
           preset_id: string | null
+          published_at: string | null
           quality_score: number | null
           scheduled_date: string | null
           sections: Json
@@ -227,6 +231,7 @@ export type Database = {
           updated_at: string
           user_id: string
           videos: Json
+          virality_score: number | null
           voice_id: string | null
           workspace_id: string | null
           workspace_item_id: string | null
@@ -234,7 +239,9 @@ export type Database = {
         Insert: {
           archived?: boolean
           audience?: string | null
+          authenticity_score?: number | null
           brief_snapshot?: Json | null
+          campaign_id?: string | null
           created_at?: string
           distribution_channel?: string | null
           domain?: string | null
@@ -242,7 +249,9 @@ export type Database = {
           format_id: string
           id?: string
           images?: Json
+          platform?: string | null
           preset_id?: string | null
+          published_at?: string | null
           quality_score?: number | null
           scheduled_date?: string | null
           sections?: Json
@@ -251,6 +260,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           videos?: Json
+          virality_score?: number | null
           voice_id?: string | null
           workspace_id?: string | null
           workspace_item_id?: string | null
@@ -258,7 +268,9 @@ export type Database = {
         Update: {
           archived?: boolean
           audience?: string | null
+          authenticity_score?: number | null
           brief_snapshot?: Json | null
+          campaign_id?: string | null
           created_at?: string
           distribution_channel?: string | null
           domain?: string | null
@@ -266,7 +278,9 @@ export type Database = {
           format_id?: string
           id?: string
           images?: Json
+          platform?: string | null
           preset_id?: string | null
+          published_at?: string | null
           quality_score?: number | null
           scheduled_date?: string | null
           sections?: Json
@@ -275,11 +289,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
           videos?: Json
+          virality_score?: number | null
           voice_id?: string | null
           workspace_id?: string | null
           workspace_item_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "create_drafts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "create_drafts_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -298,33 +320,72 @@ export type Database = {
       }
       create_media: {
         Row: {
+          aspect_ratio: string | null
           created_at: string
+          draft_id: string | null
+          generated_by: string | null
           id: string
           kind: string
           meta: Json
+          parent_image_id: string | null
+          prompt: string | null
           provider: string | null
+          role: string | null
+          sort_order: number
+          style_id: string | null
           url: string
           user_id: string
         }
         Insert: {
+          aspect_ratio?: string | null
           created_at?: string
+          draft_id?: string | null
+          generated_by?: string | null
           id?: string
           kind: string
           meta?: Json
+          parent_image_id?: string | null
+          prompt?: string | null
           provider?: string | null
+          role?: string | null
+          sort_order?: number
+          style_id?: string | null
           url: string
           user_id: string
         }
         Update: {
+          aspect_ratio?: string | null
           created_at?: string
+          draft_id?: string | null
+          generated_by?: string | null
           id?: string
           kind?: string
           meta?: Json
+          parent_image_id?: string | null
+          prompt?: string | null
           provider?: string | null
+          role?: string | null
+          sort_order?: number
+          style_id?: string | null
           url?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "create_media_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "create_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "create_media_parent_image_id_fkey"
+            columns: ["parent_image_id"]
+            isOneToOne: false
+            referencedRelation: "create_media"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       create_version_history: {
         Row: {
@@ -987,6 +1048,50 @@ export type Database = {
             columns: ["active_voice_id"]
             isOneToOne: false
             referencedRelation: "voice_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_content: {
+        Row: {
+          created_at: string
+          draft_id: string
+          error: string | null
+          id: string
+          platform: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          error?: string | null
+          id?: string
+          platform?: string | null
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          error?: string | null
+          id?: string
+          platform?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_content_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "create_drafts"
             referencedColumns: ["id"]
           },
         ]

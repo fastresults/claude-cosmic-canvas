@@ -1,0 +1,69 @@
+import { Link } from "@tanstack/react-router";
+import { ImageIcon, Sparkles } from "lucide-react";
+
+export type DraftListItem = {
+  id: string;
+  format_id: string;
+  title: string | null;
+  status: string;
+  archived: boolean;
+  quality_score: number | null;
+  updated_at: string;
+  platform?: string | null;
+  scheduled_date?: string | null;
+  media: Array<{ id: string; url: string; role: string | null }>;
+  sections?: unknown;
+};
+
+export function DraftCard({ draft }: { draft: DraftListItem }) {
+  const cover = draft.media.find((m) => m.role === "cover") ?? draft.media[0];
+  const snippet =
+    Array.isArray(draft.sections) && draft.sections[0]
+      ? String(
+          (draft.sections[0] as { body?: string }).body ?? "",
+        ).slice(0, 140)
+      : "";
+  return (
+    <Link
+      to="/content/drafts/$id"
+      params={{ id: draft.id }}
+      className="flex gap-3 rounded-2xl border border-border bg-surface p-3 hover:border-accent/60"
+    >
+      <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-background text-muted-foreground">
+        {cover ? (
+          <img src={cover.url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <ImageIcon className="h-6 w-6 opacity-40" />
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span>{draft.format_id}</span>
+          {draft.platform && (
+            <>
+              <span>·</span>
+              <span>{draft.platform}</span>
+            </>
+          )}
+          {draft.status && draft.status !== "draft" && (
+            <span className="ml-auto rounded-full bg-accent/15 px-2 py-0.5 text-[9px] text-accent">
+              {draft.status}
+            </span>
+          )}
+        </div>
+        <div className="line-clamp-1 text-sm text-foreground">{draft.title ?? "Untitled draft"}</div>
+        {snippet && <div className="line-clamp-2 text-xs text-muted-foreground">{snippet}</div>}
+        <div className="mt-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          {draft.quality_score != null && (
+            <span className="flex items-center gap-0.5">
+              <Sparkles className="h-3 w-3" />
+              {Math.round(Number(draft.quality_score) * 100)}
+            </span>
+          )}
+          <span>{new Date(draft.updated_at).toLocaleDateString()}</span>
+          {!cover && <span className="ml-auto text-accent">+ Add image</span>}
+        </div>
+      </div>
+    </Link>
+  );
+}
