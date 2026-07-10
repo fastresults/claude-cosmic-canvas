@@ -43,24 +43,22 @@ export const searchDrafts = createServerFn({ method: "POST" })
     const { supabase } = context;
 
     let query = supabase
-      .from("drafts")
+      .from("create_drafts")
       .select(
-        "id, format, body, score, status, image_url, created_at, campaign_id",
-      );
+        "id, format_id, title, sections, quality_score, status, created_at, campaign_id",
+      )
+      .eq("user_id", context.userId);
 
     const q = data.q?.trim();
     if (q && q.length > 0) {
-      // websearch grammar: quoted phrases, OR, - excluded terms
-      query = query.textSearch("search_vector", q, {
-        type: "websearch",
-        config: "english",
-      });
+      // Title match OR body-in-sections match (jsonb ->> 0 -> 'body')
+      const like = `%${q.replace(/[%_]/g, "\\$&")}%`;
+      query = query.or(`title.ilike.${like},sections->0->>body.ilike.${like}`);
     }
 
     const f = data.filters ?? {};
-    if (f.formats && f.formats.length > 0) query = query.in("format", f.formats);
-    if (f.statuses && f.statuses.length > 0)
-      query = query.in("status", f.statuses);
+    if (f.formats && f.formats.length > 0) query = query.in("format_id", f.formats);
+    if (f.statuses && f.statuses.length > 0) query = query.in("status", f.statuses);
     if (f.campaignId !== undefined) {
       if (f.campaignId === null) query = query.is("campaign_id", null);
       else query = query.eq("campaign_id", f.campaignId);
@@ -68,7 +66,6 @@ export const searchDrafts = createServerFn({ method: "POST" })
     if (f.dateFrom) query = query.gte("created_at", f.dateFrom);
     if (f.dateTo) query = query.lte("created_at", f.dateTo);
 
-    // Cursor (recent/oldest use created_at; score sort is post-processed)
     const cursor = data.cursor ? decodeCursor(data.cursor) : null;
     if (data.sort === "oldest") {
       if (cursor) {
@@ -80,7 +77,6 @@ export const searchDrafts = createServerFn({ method: "POST" })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
     } else {
-      // recent + score both start recent-first, then re-sort in memory for score
       if (cursor && data.sort === "recent") {
         query = query.or(
           `created_at.lt.${cursor.c},and(created_at.eq.${cursor.c},id.lt.${cursor.i})`,
@@ -95,14 +91,49 @@ export const searchDrafts = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await query;
     if (error) throw error;
-    const items = rows ?? [];
-    const hasMore = items.length > data.limit;
-    const page = hasMore ? items.slice(0, data.limit) : items;
+    const raw = rows ?? [];
+    const hasMore = raw.length > data.limit;
+    const page = hasMore ? raw.slice(0, data.limit) : raw;
+
+    // Batch-fetch cover thumbnails
+    const ids = page.map((r) => r.id);
+    const covers: Record<string, string | null> = {};
+    if (ids.length) {
+      const { data: media } = await supabase
+        .from("create_media")
+        .select("draft_id, url, role, sort_order")
+        .in("draft_id", ids)
+        .order("sort_order", { ascending: true });
+      for (const m of media ?? []) {
+        if (!m.draft_id) continue;
+        if (!covers[m.draft_id] && (m.role === "cover" || m.role == null)) {
+          covers[m.draft_id] = m.url;
+        }
+      }
+    }
+
+    // Adapt to legacy Library row shape used by the UI
+    const items = page.map((r) => {
+      const sections = Array.isArray(r.sections) ? r.sections : [];
+      const first = (sections[0] ?? {}) as { heading?: string | null; body?: string };
+      const body = r.title ?? first.body ?? "";
+      return {
+        id: r.id,
+        format: r.format_id ?? "post",
+        body,
+        score: r.quality_score != null ? { total: Number(r.quality_score) } : {},
+        status: r.status ?? "draft",
+        image_url: covers[r.id] ?? null,
+        created_at: r.created_at,
+        campaign_id: r.campaign_id,
+      };
+    });
+
     const nextCursor = hasMore
       ? encodeCursor(page[page.length - 1] as { created_at: string; id: string })
       : null;
 
-    return { items: page, nextCursor };
+    return { items, nextCursor };
   });
 
 export const listCampaigns = createServerFn({ method: "GET" })
@@ -185,7 +216,7 @@ export const bulkDeleteDrafts = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkIds.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .delete()
       .in("id", data.ids);
     if (error) throw error;
@@ -202,7 +233,7 @@ export const bulkSetStatus = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkStatus.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .update({ status: data.status })
       .in("id", data.ids);
     if (error) throw error;
@@ -219,7 +250,7 @@ export const bulkAssignCampaign = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => BulkCampaign.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
-      .from("drafts")
+      .from("create_drafts")
       .update({ campaign_id: data.campaignId })
       .in("id", data.ids);
     if (error) throw error;

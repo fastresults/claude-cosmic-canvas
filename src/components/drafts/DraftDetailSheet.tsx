@@ -38,12 +38,7 @@ export function DraftDetailSheet({
     return (
       <SheetShell onClose={onClose}>
         <div className="flex items-start justify-between gap-4 p-6">
-          <div className="text-sm text-foreground">
-            <p className="font-medium">This draft isn't available in the new drafts hub yet.</p>
-            <p className="mt-1 text-muted-foreground">
-              Older Library items live in a separate table and can't be opened here yet. Open a draft created from the Create flow to use cover / social / inline images.
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">Draft not found.</p>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-surface">
             <X className="h-5 w-5" />
           </button>
