@@ -314,7 +314,17 @@ export const ingestEntry = createServerFn({ method: "POST" })
     // plus `domain → SOURCED_FROM → knowledge:<id>` when scoped to a domain.
     // Non-fatal: log and continue if this fails.
     try {
-      const edges: Array<Record<string, unknown>> = [
+      const edges = [
+        {
+          user_id: context.userId,
+          src_type: "you" as const,
+          src_id: context.userId,
+          edge_kind: "SOURCED_FROM" as const,
+          dst_type: "knowledge" as const,
+          dst_id: entry.id,
+          meta: { source_type: data.source_type, title, kind: data.kind } as Json,
+        },
+      ];
         {
           user_id: context.userId,
           src_type: "you",
