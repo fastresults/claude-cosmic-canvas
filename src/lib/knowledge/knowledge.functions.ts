@@ -325,23 +325,13 @@ export const ingestEntry = createServerFn({ method: "POST" })
           meta: { source_type: data.source_type, title, kind: data.kind } as Json,
         },
       ];
-        {
-          user_id: context.userId,
-          src_type: "you",
-          src_id: context.userId,
-          edge_kind: "SOURCED_FROM",
-          dst_type: "knowledge",
-          dst_id: entry.id,
-          meta: { source_type: data.source_type, title, kind: data.kind } as Json,
-        },
-      ];
       if (data.domain_id) {
         edges.push({
           user_id: context.userId,
-          src_type: "domain",
+          src_type: "domain" as const,
           src_id: data.domain_id,
-          edge_kind: "SOURCED_FROM",
-          dst_type: "knowledge",
+          edge_kind: "SOURCED_FROM" as const,
+          dst_type: "knowledge" as const,
           dst_id: entry.id,
           meta: { source_type: data.source_type, title, kind: data.kind } as Json,
         });
