@@ -50,14 +50,49 @@ export function BrainCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initial.nodes);
   const [edges, , onEdgesChange] = useEdgesState<Edge>(initial.edges);
 
-  // Realtime — every brain_edges upsert pushes a node into the map.
+  // Load existing brain_edges + subscribe to realtime inserts.
   useEffect(() => {
     let mounted = true;
+
+    const addNode = (row: { dst_type: NodeType; dst_id: string }) => {
+      const nodeId = `${row.dst_type}:${row.dst_id}`;
+      setNodes((prev) => {
+        if (prev.some((n) => n.id === nodeId)) return prev;
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 180 + Math.random() * 120;
+        return [
+          ...prev,
+          {
+            id: nodeId,
+            type: "brain",
+            position: {
+              x: Math.cos(angle) * radius,
+              y: Math.sin(angle) * radius,
+            },
+            data: {
+              label: row.dst_type,
+              nodeType: row.dst_type,
+            } satisfies BrainNodeData,
+          },
+        ];
+      });
+    };
 
     (async () => {
       const { data: user } = await supabase.auth.getUser();
       const uid = user.user?.id;
       if (!uid) return;
+
+      // Backfill existing edges so nodes appear on load.
+      const { data: existing } = await supabase
+        .from("brain_edges")
+        .select("dst_type, dst_id")
+        .eq("user_id", uid);
+      if (mounted && existing) {
+        for (const row of existing) {
+          addNode(row as { dst_type: NodeType; dst_id: string });
+        }
+      }
 
       const channel = supabase
         .channel(`brain:${uid}`)
@@ -77,27 +112,7 @@ export function BrainCanvas() {
               dst_id: string;
               edge_kind: string;
             };
-            const nodeId = `${row.dst_type}:${row.dst_id}`;
-            setNodes((prev) => {
-              if (prev.some((n) => n.id === nodeId)) return prev;
-              const angle = Math.random() * Math.PI * 2;
-              const radius = 180 + Math.random() * 120;
-              return [
-                ...prev,
-                {
-                  id: nodeId,
-                  type: "brain",
-                  position: {
-                    x: Math.cos(angle) * radius,
-                    y: Math.sin(angle) * radius,
-                  },
-                  data: {
-                    label: row.dst_type,
-                    nodeType: row.dst_type,
-                  } satisfies BrainNodeData,
-                },
-              ];
-            });
+            addNode(row);
           },
         )
         .subscribe();
