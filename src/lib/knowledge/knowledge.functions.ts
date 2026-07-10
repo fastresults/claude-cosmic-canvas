@@ -149,6 +149,41 @@ export const archiveEntry = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("user_id", context.userId);
     if (error) throw error;
+
+    // Keep the Brain graph in sync with archive state.
+    try {
+      if (data.archived) {
+        await context.supabase
+          .from("brain_edges")
+          .delete()
+          .eq("user_id", context.userId)
+          .eq("dst_type", "knowledge")
+          .eq("dst_id", data.id);
+      } else {
+        const { data: entry } = await context.supabase
+          .from("knowledge_entries")
+          .select("title, source_type, kind")
+          .eq("id", data.id)
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        await context.supabase.from("brain_edges").insert({
+          user_id: context.userId,
+          src_type: "you",
+          src_id: context.userId,
+          edge_kind: "SOURCED_FROM",
+          dst_type: "knowledge",
+          dst_id: data.id,
+          meta: {
+            source_type: entry?.source_type,
+            title: entry?.title,
+            kind: entry?.kind,
+          } as Json,
+        });
+      }
+    } catch (e) {
+      console.error("[knowledge] brain edge sync on archive failed", e);
+    }
+
     return { ok: true };
   });
 
@@ -250,6 +285,22 @@ export const ingestEntry = createServerFn({ method: "POST" })
         .update({ status: "error", error: msg })
         .eq("id", job.id);
       throw e;
+    }
+
+    // Wire the new entry into the Brain graph as `you → SOURCED_FROM → knowledge:<id>`.
+    // Non-fatal: log and continue if this fails.
+    try {
+      await context.supabase.from("brain_edges").insert({
+        user_id: context.userId,
+        src_type: "you",
+        src_id: context.userId,
+        edge_kind: "SOURCED_FROM",
+        dst_type: "knowledge",
+        dst_id: entry.id,
+        meta: { source_type: data.source_type, title, kind: data.kind } as Json,
+      });
+    } catch (e) {
+      console.error("[knowledge] brain edge insert failed", e);
     }
 
     return { entryId: entry.id, jobId: job.id };
