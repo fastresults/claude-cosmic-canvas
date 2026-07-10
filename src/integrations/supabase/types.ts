@@ -212,6 +212,7 @@ export type Database = {
           audience: string | null
           brief_snapshot: Json | null
           created_at: string
+          distribution_channel: string | null
           domain: string | null
           factor_weights: Json | null
           format_id: string
@@ -219,6 +220,7 @@ export type Database = {
           images: Json
           preset_id: string | null
           quality_score: number | null
+          scheduled_date: string | null
           sections: Json
           status: string
           title: string | null
@@ -226,12 +228,15 @@ export type Database = {
           user_id: string
           videos: Json
           voice_id: string | null
+          workspace_id: string | null
+          workspace_item_id: string | null
         }
         Insert: {
           archived?: boolean
           audience?: string | null
           brief_snapshot?: Json | null
           created_at?: string
+          distribution_channel?: string | null
           domain?: string | null
           factor_weights?: Json | null
           format_id: string
@@ -239,6 +244,7 @@ export type Database = {
           images?: Json
           preset_id?: string | null
           quality_score?: number | null
+          scheduled_date?: string | null
           sections?: Json
           status?: string
           title?: string | null
@@ -246,12 +252,15 @@ export type Database = {
           user_id: string
           videos?: Json
           voice_id?: string | null
+          workspace_id?: string | null
+          workspace_item_id?: string | null
         }
         Update: {
           archived?: boolean
           audience?: string | null
           brief_snapshot?: Json | null
           created_at?: string
+          distribution_channel?: string | null
           domain?: string | null
           factor_weights?: Json | null
           format_id?: string
@@ -259,6 +268,7 @@ export type Database = {
           images?: Json
           preset_id?: string | null
           quality_score?: number | null
+          scheduled_date?: string | null
           sections?: Json
           status?: string
           title?: string | null
@@ -266,8 +276,25 @@ export type Database = {
           user_id?: string
           videos?: Json
           voice_id?: string | null
+          workspace_id?: string | null
+          workspace_item_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "create_drafts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "create_drafts_workspace_item_id_fkey"
+            columns: ["workspace_item_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       create_media: {
         Row: {
@@ -689,6 +716,51 @@ export type Database = {
           payload?: Json
           read_at?: string | null
           snoozed_until?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      opportunity_workspaces: {
+        Row: {
+          ai_analysis: Json
+          completed_items: number
+          created_at: string
+          description: string | null
+          id: string
+          moment_type: string
+          status: string
+          target_date: string | null
+          title: string
+          total_items: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json
+          completed_items?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          moment_type: string
+          status?: string
+          target_date?: string | null
+          title: string
+          total_items?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json
+          completed_items?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          moment_type?: string
+          status?: string
+          target_date?: string | null
+          title?: string
+          total_items?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1258,6 +1330,68 @@ export type Database = {
             columns: ["voice_profile_id"]
             isOneToOne: false
             referencedRelation: "voice_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_items: {
+        Row: {
+          content_generation_id: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          generated_output: string | null
+          generation_context: Json
+          id: string
+          phase: string
+          priority: string
+          scheduled_date: string | null
+          sort_order: number
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          content_generation_id?: string | null
+          content_type: string
+          created_at?: string
+          description?: string | null
+          generated_output?: string | null
+          generation_context?: Json
+          id?: string
+          phase?: string
+          priority?: string
+          scheduled_date?: string | null
+          sort_order?: number
+          status?: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          content_generation_id?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          generated_output?: string | null
+          generation_context?: Json
+          id?: string
+          phase?: string
+          priority?: string
+          scheduled_date?: string | null
+          sort_order?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_workspaces"
             referencedColumns: ["id"]
           },
         ]
