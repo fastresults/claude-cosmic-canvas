@@ -180,7 +180,7 @@ function FormatPage() {
             onClick={() => qc.invalidateQueries({ queryKey: ["create-drafts"] })}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
           >
-            <Save className="h-3.5 w-3.5" /> Saved
+            <Save className="h-3.5 w-3.5" /> {workspaceId ? "Saved to Workspace" : "Saved"}
           </button>
           {currentDraftId && (
             <button
