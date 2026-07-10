@@ -83,8 +83,8 @@ function KnowledgeSettings() {
       </div>
 
       <SettingsPageHeader
-        title="Knowledge Base"
-        description="Bios, past work, research, résumés. Every AI generation is grounded in what you save here — never invented."
+        title="Curriculum Vitae"
+        description="Bios, past work, résumés, LinkedIn, notes. Every AI generation is grounded in what you save here — never invented."
       />
 
       <div className="mt-4 space-y-2">
