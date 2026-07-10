@@ -35,6 +35,7 @@ import {
   type LibrarySort,
 } from "@/lib/library/library.functions";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DraftDetailSheet } from "@/components/drafts/DraftDetailSheet";
 
 export const Route = createFileRoute("/_authenticated/library")({
   component: Library,
