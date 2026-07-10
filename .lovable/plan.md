@@ -1,29 +1,60 @@
-## Plan — Discrete node-type legend in the Brain viewport
+## Plan — AI-first, mobile-first Brain view workflows
 
-Add a small, dismissible legend pinned to the lower-left of the `/brain` canvas that maps each node color to its type. Purely presentational — no data, edge, or three.js changes.
+The switcher already toggles five views (Constellation, Timeline, Radial, List, Health). Constellation is built; the other four render "Coming next". Ship them as thumb-reachable, single-column mobile surfaces that each turn the same `useBrainGraph` data into a distinct lens, and give every view a shared **Ask Eve** row so an AI action is one tap away from any signal in the graph.
 
-### Component
+### Shared foundation
 
-- New `src/components/brain/BrainLegend.tsx`.
-  - Reads `NODE_COLOR` and `TYPE_LABEL` from `src/components/brain/three/palette.ts` (single source of truth — no hardcoded colors).
-  - Renders only the node types actually present in the current graph, so the legend stays short (accepts an optional `visibleTypes: Set<NodeType>`; falls back to all types).
-  - Each row: 8px color dot (rendered with inline `background` from `NODE_COLOR[type]` — the one place hex-from-palette is allowed, mirroring how `BrainNode` already consumes it) + label in `text-xs text-muted-foreground`.
-  - Container: `absolute bottom-3 left-3 z-10`, `rounded-md border border-border/60 bg-background/60 backdrop-blur px-2.5 py-2`, `pointer-events-auto`, `max-h-[45vh] overflow-y-auto`. Safe-area padding on mobile (`pb-[env(safe-area-inset-bottom)]`).
-  - Collapsed by default on mobile (`< md`): shows a single "Legend" chip with a small color-swatch cluster; tap to expand. Expanded by default on desktop. State is local; no persistence.
+- **`useBrainGraph` stays the single source of truth.** Each new view is a pure client transform over `nodes` + `edges`; no new server functions this turn.
+- **Legend filter (`hiddenTypes`) + view state lift** from `BrainCanvas` into a small `BrainViewContext` so every view honors the same type filter, the same "focus node", and the same peek sheet.
+- **Shared `AskEveBar` component** pinned above the compose bar in every non-Constellation view: single input + mic, seeded with a context-aware placeholder ("Ask about this week", "Ask about Domains", "Ask about your gaps"). Submitting routes into the existing compose/chat surface with the current view's context (selected node id, date range, or type filter) attached as a hidden preamble. No backend changes — reuses the current chat entrypoint.
+- **Peek sheet parity**: tapping any item in Timeline/Radial/List/Health opens the same `EveSheet` peek already used in Constellation, with an "Open in Constellation" action that switches view + focuses the node.
 
-### Wiring
+### 1. Timeline (chronological lens)
 
-- Mount inside the brain viewport container in `src/components/brain/BrainCanvas.tsx` (or `src/routes/_authenticated/brain.tsx` if the canvas fills the route) as a sibling of the three.js `<canvas>`, inside the same `relative` wrapper so `absolute` positioning is scoped to the viewport, not the page.
-- Derive `visibleTypes` from the same graph data the canvas already consumes (`useBrainGraph` result), so the legend updates reactively when nodes appear/disappear.
-- Sits above the canvas but below any existing overlays (search bar, node detail sheet) via `z-10`; existing overlays keep their higher z-index.
+- Vertical, mobile-first list grouped by day → week → month, newest first, sticky date headers.
+- Each row: color dot from `NODE_COLOR`, node label, type chip, relative time ("2h ago"). Long-press = peek sheet; tap = focus.
+- Header controls (thumb zone, top): range chips **Today / 7d / 30d / All**, plus the shared legend-filter chip.
+- Empty range → AI suggestion card: "Nothing captured in this window. Want to add a source or draft?" with 2 quick-actions (→ Domains capture, → Compose).
+- AI-first: an inline "Summarize this week" pill at the top of each week group calls the existing compose chat with the week's node ids as context.
 
-### Out of scope
+### 2. Radial (You-centered lens)
 
-- No edge-color legend (nodes only, per request). Easy follow-up if wanted.
-- No filtering/toggle-by-type interaction — legend is read-only.
-- No changes to palette values, node rendering, or edge rendering.
+- Concentric rings around a central **You** avatar, one ring per relationship layer:
+  1. Identity (persona, voice, directives)
+  2. Knowledge (domains, knowledge, documents)
+  3. Audience (audiences, entities)
+  4. Output (drafts, images, campaigns, scheduled, channels)
+- Ring count adapts to what exists (empty rings collapse). Nodes on each ring are ordered by importance.
+- Mobile interaction: pinch/scroll to expand a ring into a horizontal chip strip; tap a chip = peek sheet.
+- AI-first: each ring has a "Strengthen this ring" prompt (e.g. Identity ring with 0 voice samples → "Add a voice sample" CTA; Audience ring thin → "Draft an audience"). CTAs deep-link to existing Settings pages.
+
+### 3. List (dense, filterable directory)
+
+- Flat, virtualized list of every node, grouped by type with collapsible sections. Default sort: recency; secondary sort: importance.
+- Sticky search bar at top (reuses `BrainSearch` fuzzy match), plus multi-select type filters (also reflected in legend).
+- Row: color dot, label, type chip, edge count, "…" menu (Focus in Constellation, Ask Eve about this, Archive if applicable).
+- Bulk mode: long-press a row enters selection; footer bar shows "Ask Eve about N items" — pipes selected node ids into the compose chat as context.
+- AI-first: a top "Smart list" chip toggles between Recency / Underused / Missing labels — each is a client-side heuristic over the same data (no server work).
+
+### 4. Health (state-of-your-brain lens)
+
+- Single scroll of small "vital" cards, mobile-first one-column:
+  - **Coverage** — % of core node types present (You, voice, ≥1 domain, ≥1 audience, ≥1 knowledge). Progress ring + missing-piece CTAs.
+  - **Freshness** — days since last knowledge entry, last draft, last scheduled post.
+  - **Balance** — bar chart of node counts by type using `NODE_COLOR`; flags over/under-weighted types.
+  - **Orphans** — nodes with 0 edges (excluding You); tap → peek + "Connect" action.
+  - **Momentum** — 14-day sparkline of new nodes/edges.
+- Each card ends with an **Ask Eve** deep-link seeded with that card's finding ("Why is my Audience thin?", "What should I post this week?"). Reuses existing compose chat entrypoint.
 
 ### Files
 
-- Create: `src/components/brain/BrainLegend.tsx`
-- Edit: `src/components/brain/BrainCanvas.tsx` (mount the legend, pass visible types)
+- New: `src/components/brain/views/TimelineView.tsx`, `RadialView.tsx`, `ListView.tsx`, `HealthView.tsx`, `AskEveBar.tsx`, `useBrainViewContext.ts`.
+- Edit: `src/components/brain/BrainCanvas.tsx` (route the switcher to real components, lift filter/focus/peek into context, mount `AskEveBar` in non-Constellation views).
+- No schema, no server functions, no changes to Constellation rendering or the existing zoom/legend/capture flows.
+
+### Out of scope (call out for a later turn)
+
+- Server-side aggregates or materialized views for Health.
+- Cross-view animated transitions.
+- Persisting per-view preferences.
+- New AI endpoints — Ask Eve reuses the current chat surface.

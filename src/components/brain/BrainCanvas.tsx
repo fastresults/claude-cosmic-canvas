@@ -4,6 +4,10 @@ import { Plus, Minus } from "lucide-react";
 import { Scene, type ZoomController } from "./three/Scene";
 import { BrainSearch } from "./BrainSearch";
 import { BrainLegend } from "./BrainLegend";
+import { TimelineView } from "./views/TimelineView";
+import { RadialView } from "./views/RadialView";
+import { ListView } from "./views/ListView";
+import { HealthView } from "./views/HealthView";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
 import type { NodeType } from "@/lib/brain/edges";
@@ -129,17 +133,17 @@ export function BrainCanvas() {
         </>
       )}
 
-      {view !== "constellation" && (
-        <div className="grid h-full place-items-center text-center">
-          <div>
-            <div className="font-display text-2xl text-foreground">
-              {VIEWS.find((v) => v.key === view)?.label}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Coming next. For now, everything routes through Constellation.
-            </p>
-          </div>
-        </div>
+      {view === "timeline" && (
+        <TimelineView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+      )}
+      {view === "radial" && (
+        <RadialView nodes={filteredNodes} onPeek={setPeek} />
+      )}
+      {view === "list" && (
+        <ListView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+      )}
+      {view === "health" && (
+        <HealthView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
       )}
 
       <EveSheet
