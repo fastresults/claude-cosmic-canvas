@@ -510,6 +510,10 @@ function Library() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {openDraftId && (
+        <DraftDetailSheet draftId={openDraftId} onClose={() => setOpenDraftId(null)} />
+      )}
     </div>
   );
 }
