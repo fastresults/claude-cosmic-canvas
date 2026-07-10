@@ -14,11 +14,12 @@ export async function streamDraftImage(
   prompt: string,
   onFrame: (dataUrl: string, isFinal: boolean) => void,
   aspect = "16:9",
+  negativePrompt?: string,
 ): Promise<void> {
   const res = await fetch("/api/drafts/generate-image", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, aspect }),
+    body: JSON.stringify({ prompt, aspect, negativePrompt }),
   });
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => "");
