@@ -135,6 +135,8 @@ function FormatPage() {
         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{format.category}</span>
       </div>
 
+      <ActiveWorkspacePill />
+
       <header>
         <h1 className="font-display text-2xl text-foreground">{format.label}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{format.description}</p>
