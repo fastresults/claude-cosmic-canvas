@@ -333,10 +333,10 @@ export const searchKnowledge = createServerFn({ method: "POST" })
 
     const { data: hits, error } = await context.supabase.rpc("match_knowledge_chunks", {
       p_user_id: context.userId,
-      p_profile_ids: chain.length ? chain : null,
+      p_profile_ids: (chain.length ? chain : null) as unknown as string[],
       p_query: queryVec as unknown as string,
       p_match_count: data.k,
-      p_tag_filter: data.tags && data.tags.length ? data.tags : null,
+      p_tag_filter: (data.tags && data.tags.length ? data.tags : null) as unknown as string[],
     });
     if (error) throw error;
     return (hits ?? []).map((h) => ({
