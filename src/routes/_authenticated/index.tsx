@@ -65,6 +65,13 @@ function Home() {
               </button>
             ))}
           </div>
+          <Link
+            to="/create"
+            className="flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/20"
+          >
+            <Sparkles className="h-4 w-4 text-accent" />
+            Browse 40+ formats
+          </Link>
         </motion.div>
       ) : (
         <div className="space-y-3">
