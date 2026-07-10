@@ -28,7 +28,7 @@ export function CaptureFab({ onPick }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="pointer-events-none fixed bottom-24 right-4 z-40 sm:bottom-8 sm:right-8">
+    <div className="pointer-events-none fixed bottom-36 right-4 z-40 sm:bottom-8 sm:right-8">
       {open && (
         <div className="pointer-events-auto absolute inset-0 -m-96" onClick={() => setOpen(false)} />
       )}
