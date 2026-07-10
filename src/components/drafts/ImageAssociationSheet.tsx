@@ -6,8 +6,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check } from "lucide-react";
 import { streamDraftImage } from "@/lib/drafts/streamImage";
-import { useAttachDraftImage, useImageConcepts } from "@/hooks/useDraftImages";
+import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/useDraftImages";
 import { supabase } from "@/integrations/supabase/client";
+
 
 type Role = "cover" | "social" | "inline";
 type Concept = { prompt: string; style: string; aspect: string; rationale: string };
