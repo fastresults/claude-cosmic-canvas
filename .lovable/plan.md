@@ -1,75 +1,29 @@
-# Domain evidence capture — per-domain sub-library patterned after Curriculum Vitae
+## Plan — Discrete node-type legend in the Brain viewport
 
-Today `/settings/domains` is just a flat list of chips (AI, Founder life, Product…). Each of those needs its own **evidence sub-library** — a scoped space where the user uploads and manages the supporting material that defines their point of view in that domain: white papers, research they've run, board memos, talks, articles, interviews, notes, links, voice memos.
+Add a small, dismissible legend pinned to the lower-left of the `/brain` canvas that maps each node color to its type. Purely presentational — no data, edge, or three.js changes.
 
-Model each domain as a mini Curriculum Vitae. Same capture surfaces (paste / URL / upload / LinkedIn / voice), same entry list, same brain wiring — just scoped to that domain and rendered as a subsection under it.
+### Component
 
-## 1. Data model (one migration)
+- New `src/components/brain/BrainLegend.tsx`.
+  - Reads `NODE_COLOR` and `TYPE_LABEL` from `src/components/brain/three/palette.ts` (single source of truth — no hardcoded colors).
+  - Renders only the node types actually present in the current graph, so the legend stays short (accepts an optional `visibleTypes: Set<NodeType>`; falls back to all types).
+  - Each row: 8px color dot (rendered with inline `background` from `NODE_COLOR[type]` — the one place hex-from-palette is allowed, mirroring how `BrainNode` already consumes it) + label in `text-xs text-muted-foreground`.
+  - Container: `absolute bottom-3 left-3 z-10`, `rounded-md border border-border/60 bg-background/60 backdrop-blur px-2.5 py-2`, `pointer-events-auto`, `max-h-[45vh] overflow-y-auto`. Safe-area padding on mobile (`pb-[env(safe-area-inset-bottom)]`).
+  - Collapsed by default on mobile (`< md`): shows a single "Legend" chip with a small color-swatch cluster; tap to expand. Expanded by default on desktop. State is local; no persistence.
 
-Add to `knowledge_entries`:
+### Wiring
 
-- `domain_id uuid null references public.domains(id) on delete set null`
-- index `(user_id, domain_id)`
+- Mount inside the brain viewport container in `src/components/brain/BrainCanvas.tsx` (or `src/routes/_authenticated/brain.tsx` if the canvas fills the route) as a sibling of the three.js `<canvas>`, inside the same `relative` wrapper so `absolute` positioning is scoped to the viewport, not the page.
+- Derive `visibleTypes` from the same graph data the canvas already consumes (`useBrainGraph` result), so the legend updates reactively when nodes appear/disappear.
+- Sits above the canvas but below any existing overlays (search bar, node detail sheet) via `z-10`; existing overlays keep their higher z-index.
 
-Entries with `domain_id = null` remain top-level Curriculum Vitae (unchanged).
-Entries with `domain_id` set are that domain's sub-library.
+### Out of scope
 
-No new tables — reuse `knowledge_entries`, `knowledge_chunks`, `knowledge_ingestion_jobs`. Uploads keep using the existing ingest pipeline (chunks, embeddings, jobs).
+- No edge-color legend (nodes only, per request). Easy follow-up if wanted.
+- No filtering/toggle-by-type interaction — legend is read-only.
+- No changes to palette values, node rendering, or edge rendering.
 
-## 2. Server functions (`src/lib/knowledge/knowledge.functions.ts`)
+### Files
 
-- `ingestEntry`: accept optional `domain_id`; persist it on the row. After the insert, if `domain_id` is present, call `writeEdges` to upsert a `domain → knowledge` edge of kind `SOURCED_FROM` (edge kind already added with Presets).
-- `listEntries`: accept optional `domain_id` filter. Omitted = all; explicit `null` = CV only; UUID = that domain only.
-- `archiveEntry` / delete: also remove the paired brain edge for that entry.
-- New `countEntriesByDomain()` server fn returning `{ domain_id, count }[]` so each domain row can show "3 sources" without over-fetching.
-
-Grounded prompt reads (`match_knowledge_chunks`) already scope by profile; no signature change needed — a domain-scoped entry still belongs to a profile and remains retrievable.
-
-## 3. UI — Domains settings (`src/routes/_authenticated/settings.domains.tsx`)
-
-Keep the add form, "Your domains" list, suggestions, and Presets promo. Each domain row becomes expandable / tappable, revealing its evidence sub-library.
-
-Row states:
-- **Collapsed** (default): compass icon, name, "3 sources" pill, chevron, remove ×.
-- **Expanded** (or opened as a full sheet on mobile — see §4): the sub-library.
-
-Sub-library block per domain mirrors the CV page:
-
-- Header row: domain name + short line "Evidence that grounds Eve when writing about {name}."
-- `IngestionStatusStrip` scoped to entries for this domain.
-- Entry list using `EntryCard` (reused), filtered by `domain_id = <this domain>`.
-- Empty state: "No sources yet. Add a white paper, research doc, board memo, article, link, or voice memo."
-- `CaptureFab` (reused) opens the five sheets (Paste, URL, Upload, LinkedIn, Speak), each pre-scoped to this domain.
-- `EntryDetailSheet` (reused) for tapping into a source.
-
-## 4. Mobile pattern — `DomainDetailSheet`
-
-On mobile (default viewport), tapping a domain row opens a full-height `EveSheet` (`DomainDetailSheet`) containing the sub-library described above. This keeps the domains list scannable and gives each domain the same focused capture experience the CV page has. Desktop can inline-expand the same content under the row.
-
-## 5. Capture sheet changes
-
-The five capture sheets (`PasteSheet`, `UrlSheet`, `UploadSheet`, `LinkedInSheet`, `SpeakSheet`) take one new optional prop: `domainId?: string | null`. They forward it into `ingestEntry({ data: { ..., domain_id } })`. No visual change; the sheets already have the tag input, title, and body needed for white papers / research / memos.
-
-CV page keeps calling them with `domainId={undefined}` — CV behavior unchanged.
-
-## 6. Brain wiring
-
-- `SOURCED_FROM` edge kind already exists (Presets migration).
-- On ingest with `domain_id`: upsert `domain → knowledge` edge via `writeEdges`.
-- On delete/archive: remove that edge.
-- Domain and knowledge nodes are already rendered by `useBrainGraph`; the new edges appear in the Second Brain canvas automatically. Each domain node visibly branches into its evidence.
-
-## 7. Out of scope for this pass
-
-- Moving existing CV entries into a domain (add later as a menu on `EntryCard`).
-- Multi-domain assignment per entry (single `domain_id` for now; migrate to a join table if the need appears).
-- Per-domain search (BrainSearch already covers this globally).
-- Preset ↔ domain pre-population.
-
-## Build order
-
-1. Migration: add `domain_id` + index on `knowledge_entries`.
-2. Extend `ingestEntry` / `listEntries`; add `countEntriesByDomain`; wire `SOURCED_FROM` edge on save and removal.
-3. Add optional `domainId` prop (pass-through) to the five capture sheets.
-4. New `DomainDetailSheet` component that composes `IngestionStatusStrip` + entry list + `CaptureFab` + capture sheets + `EntryDetailSheet`, all scoped by `domainId`.
-5. Update `settings.domains.tsx`: show source counts per row, make rows open the sheet, keep add/remove/suggestions/Presets promo intact.
+- Create: `src/components/brain/BrainLegend.tsx`
+- Edit: `src/components/brain/BrainCanvas.tsx` (mount the legend, pass visible types)
