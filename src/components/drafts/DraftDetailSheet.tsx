@@ -20,6 +20,7 @@ export function DraftDetailSheet({
   const { archive, restore, duplicate, polish } = useDraftMutations();
   const [imgSheet, setImgSheet] = useState<{ open: boolean; role: Role }>({ open: false, role: "cover" });
   const [schedOpen, setSchedOpen] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -101,6 +102,7 @@ export function DraftDetailSheet({
             items={cover}
             onAdd={() => setImgSheet({ open: true, role: "cover" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
           <ImageRow
             label="Social"
@@ -108,6 +110,7 @@ export function DraftDetailSheet({
             items={social}
             onAdd={() => setImgSheet({ open: true, role: "social" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
           <ImageRow
             label="Inline"
@@ -115,7 +118,9 @@ export function DraftDetailSheet({
             items={inline}
             onAdd={() => setImgSheet({ open: true, role: "inline" })}
             onRemove={(id) => removeImg.mutate(id)}
+            onOpen={(url) => setLightbox(url)}
           />
+
 
           {/* Body preview */}
           <section className="rounded-2xl border border-border bg-surface p-4">
@@ -190,6 +195,27 @@ export function DraftDetailSheet({
           defaultPlatform={draft.platform ?? "linkedin"}
         />
       )}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            aria-label="Close preview"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={lightbox}
+            alt="Preview"
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }
@@ -200,12 +226,14 @@ function ImageRow({
   items,
   onAdd,
   onRemove,
+  onOpen,
 }: {
   label: string;
   role: Role;
   items: Array<{ id: string; url: string; role: Role }>;
   onAdd: () => void;
   onRemove: (id: string) => void;
+  onOpen: (url: string) => void;
 }) {
   return (
     <section>
@@ -228,10 +256,17 @@ function ImageRow({
         <div className="flex gap-2 overflow-x-auto pb-1">
           {items.map((m) => (
             <div key={m.id} className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-surface">
-              <img src={m.url} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onOpen(m.url)}
+                className="block h-full w-full"
+                aria-label={`Enlarge ${role} image`}
+              >
+                <img src={m.url} alt="" className="h-full w-full object-cover" />
+              </button>
               <button
                 onClick={() => onRemove(m.id)}
-                className="absolute right-1 top-1 hidden rounded-full bg-black/70 p-1 text-white group-hover:block"
+                className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -242,6 +277,7 @@ function ImageRow({
     </section>
   );
 }
+
 
 function SheetShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
