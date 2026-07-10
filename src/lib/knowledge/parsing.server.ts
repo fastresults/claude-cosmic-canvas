@@ -4,8 +4,9 @@
 export async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const { extractText, getDocumentProxy } = await import("unpdf");
   const pdf = await getDocumentProxy(bytes);
-  const { text } = await extractText(pdf, { mergePages: true });
-  return typeof text === "string" ? text : Array.isArray(text) ? text.join("\n\n") : "";
+  const result = (await extractText(pdf, { mergePages: true })) as { text: string | string[] };
+  const t = result.text;
+  return typeof t === "string" ? t : Array.isArray(t) ? t.join("\n\n") : "";
 }
 
 export function stripHtml(html: string): { title: string | null; text: string; og: Record<string, string> } {
