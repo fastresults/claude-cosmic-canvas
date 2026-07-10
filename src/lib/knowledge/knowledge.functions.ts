@@ -269,6 +269,7 @@ export const ingestEntry = createServerFn({ method: "POST" })
       .insert({
         user_id: context.userId,
         profile_id: data.profile_id ?? null,
+        domain_id: data.domain_id ?? null,
         title,
         content: data.content,
         source_type: data.source_type,
