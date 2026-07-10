@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_authenticated/brain")({
 
 function Brain() {
   return (
-    <div className="fixed inset-0 top-14 bottom-32">
+    <div className="fixed inset-0 top-14 bottom-16 sm:bottom-32">
       <BrainCanvas />
     </div>
   );
