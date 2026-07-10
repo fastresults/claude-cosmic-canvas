@@ -97,12 +97,13 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
-  const loadedRef = useRef(false);
+  const loadedKeyRef = useRef<string | null>(null);
   const defaultAspect = role === "social" ? "1:1" : "16:9";
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
+    const key = `${draftId}:${role}`;
+    if (loadedKeyRef.current === key) return;
+    loadedKeyRef.current = key;
     concepts.mutate({ draftId, role });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId, role]);

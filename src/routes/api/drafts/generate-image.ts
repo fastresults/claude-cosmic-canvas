@@ -79,6 +79,7 @@ export const Route = createFileRoute("/api/drafts/generate-image")({
           console.error("[draft-image] stream:empty_body", { status: upstream.status });
           return new Response("Image stream did not start", { status: 502 });
         }
+        clearTimeout(timeoutId);
         console.info("[draft-image] stream:upstream_ready", { status: upstream.status });
         return new Response(upstream.body, {
           headers: {
