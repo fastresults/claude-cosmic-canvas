@@ -1,99 +1,50 @@
-## Knowledge Base — Plan
+# Answer first
 
-Grounds every AI generation in the user's real material. Extends the existing `knowledge_entries` table rather than replacing it; adds profiles, chunks, and an ingestion job log.
+No. Adam's résumé (`adam_anderson_resume.pdf`, uploaded 06:51 UTC today) is saved in the Knowledge Base but is **not** visible in the Brain.
 
-### 1. Database (single migration)
+**Why:** the Brain graph is built entirely from rows in `brain_edges`. I checked — there is no `brain_edges` row referencing that entry (or any knowledge entry). The `ingestEntry` server function writes to `knowledge_entries` / `knowledge_chunks` but never calls `writeEdge`, so nothing links the new entry to `you`.
 
-New tables in `public`, RLS on, GRANT to authenticated + service_role.
+# Plan — make Knowledge appear in the Brain
 
-- **`knowledge_profiles`** — `id`, `user_id`, `name`, `kind` (`personal|client|campaign`), `parent_profile_id` (nullable, self-FK), `created_at`. Seed one `personal` row per user via trigger on first entry.
-- **`knowledge_chunks`** — `id`, `entry_id` (FK cascade), `user_id`, `chunk_index`, `content`, `embedding vector(1536)`. HNSW cosine index.
-- **`knowledge_ingestion_jobs`** — `id`, `user_id`, `entry_id`, `status` (`queued|running|done|error`), `error`, timestamps. Realtime publication enabled.
+## 1. Emit a brain edge on every successful ingest
 
-Extend existing **`knowledge_entries`**: add `profile_id uuid`, `source_type text` (paste|url|upload|audio|voice_memo|linkedin|resume), `tags text[]`, `pinned bool`, `archived_at timestamptz`, `use_in_next_gen bool`. Keep existing `embedding vector(1536)` as the entry-level summary vector; chunk vectors live in `knowledge_chunks`.
+In `src/lib/knowledge/knowledge.functions.ts`, at the end of `ingestEntry` (after the entry row + chunks are written), insert one edge:
 
-Postgres function **`match_knowledge_chunks(user_id, profile_chain uuid[], query vec, k int, tag_filter text[])`** — cosine search filtered by chain + optional tags, returns chunk + entry title + source_type.
-
-RLS: every table scoped to `auth.uid() = user_id`. All embeddings via `google/gemini-embedding-2` (default) at **1536 dims** using OpenAI 3-small equivalent, or resize to 3072 — using 1536 since the existing column is already `vector(1536)`; therefore use `openai/text-embedding-3-small` for embeddings to match column dimensions. (Documented in code so future switches resize the column.)
-
-### 2. Server functions (TanStack `createServerFn`, not edge functions)
-
-App-internal — placed in `src/lib/knowledge/*.functions.ts`, all guarded by `requireSupabaseAuth`:
-
-- `parseDocument` — accepts base64 file + mime; PDF/DOCX/MD/TXT → cleaned markdown + `detectedKind` heuristic. PDF via `pdfjs-dist`, DOCX via `mammoth`.
-- `scrapeUrl` — fetch → strip chrome (readability-style) → title + markdown + OG.
-- `scrapeLinkedIn` — LinkedIn URL → structured JSON (`full_name`, `headline`, `about`, `roles[]`, `education[]`, `skills[]`, `achievements[]`) via third-party scraper. **Requires `LINKEDIN_SCRAPER_KEY`** — will prompt user via `add_secret` when they first use it, with a fallback provider recommendation (Proxycurl / RapidAPI). On failure → `scrapeUrl`.
-- `extractResume` — parsed résumé markdown → same structured JSON schema as LinkedIn (via `aiThink` with a strict JSON schema prompt). Zod-validated.
-- `transcribeAudio` — reuses existing `aiTranscribe` (Lovable AI STT).
-- `embedEntry` — chunks (~800 tokens, 100 overlap, sentence-aware), embeds each chunk via `aiEmbed`, upserts `knowledge_chunks`, writes summary embedding to `knowledge_entries.embedding`. Updates `knowledge_ingestion_jobs`.
-- `searchKnowledge` — resolves active profile chain, embeds query, calls `match_knowledge_chunks`, returns top-K with attribution.
-- `ingestEntry` — orchestrator: creates entry + job row, dispatches per `source_type`, chains résumé auto-extract when `detectedKind='resume'`, calls `embedEntry`.
-
-Retrieval + injection hook `buildGroundedPrompt({ task })` used by every generation path:
 ```
-[DOMAIN] ... [VOICE] ... [KNOWLEDGE]
-- <title> (source_type)
-  <chunk>
-...
-[TASK] <user prompt>
-
-System: Ground every factual claim in [KNOWLEDGE]. Omit unsupported claims. Never fabricate roles, companies, dates, or numbers.
+you → SOURCED_FROM → knowledge:<entry.id>
+meta: { source_type, title, kind }
 ```
-Wire into existing `aiThink` callers under `src/lib/orchestrator` and `content.functions.ts`. Log token counts + retrieved chunk IDs to `brain_edges` (`REFERENCES` edges) for provenance and tuning.
 
-### 3. Mobile-first UI (Settings → Knowledge)
+Use a server-side Supabase client scoped to the authenticated user (same one the function already uses to insert the entry) so RLS on `brain_edges` passes. Wrap in try/catch and log — ingest must not fail if the edge insert fails.
 
-Rewrite `src/routes/_authenticated/settings.knowledge.tsx` around a mobile-first feed. New components under `src/components/knowledge/`:
+## 2. Backfill existing entries
 
-- **`ProfileSwitcherPill`** — persistent top pill, tap → `EveSheet` picker listing profiles by kind with "Create profile" CTA. Persists active profile in `localStorage` + URL search param.
-- **`CaptureFab`** — bottom-right FAB expanding radially to five labeled actions: **Speak · Paste · URL · Upload · LinkedIn**. Each opens a dedicated `EveSheet`:
-  - Speak → `HoldToSpeakButton` (existing primitive) → `transcribeAudio` → confirm sheet.
-  - Paste → auto-titled textarea, tag chips input.
-  - URL → single input + preview after scrape.
-  - Upload → native file picker (mobile) or dropzone (desktop overlay, see below); shows per-file progress bars.
-  - LinkedIn → toggle: Paste URL | Upload résumé. Both converge on the résumé-confirmation sheet.
-- **`ResumeConfirmSheet`** — lists detected roles/skills/education from structured JSON; inline edit; Save writes `metadata.structured` and triggers embed.
-- **`EntryFeed`** — vertical cards: source-type icon, title, tag chips, 2-line preview, pinned/archived state. Swipe gestures via `framer-motion` drag: left → archive, right → pin. Long-press or tap → **`EntryDetailSheet`** with full content, structured fields section, tags editor, and "Use in next generation" toggle (writes `use_in_next_gen`).
-- **`IngestionStatusStrip`** — top thin strip subscribed to `knowledge_ingestion_jobs` realtime, shows "Parsing… Embedding… Ready" per active job.
-- **`DesktopDropzone`** — full-viewport overlay on `window` dragenter (hidden on `useIsMobile`), accepted types + progress list.
+One-time migration to create `you → SOURCED_FROM → knowledge:*` edges for every current `knowledge_entries` row that has no matching `brain_edges` row. This covers Adam's résumé and anything else uploaded before the fix.
 
-All layout uses existing tokens (surface / border / accent amber). Tap targets ≥44px, no hamburger menus, verified against 375px viewport.
+```sql
+INSERT INTO public.brain_edges (user_id, src_type, src_id, edge_kind, dst_type, dst_id, meta)
+SELECT e.user_id, 'you', e.user_id, 'SOURCED_FROM', 'knowledge', e.id,
+       jsonb_build_object('source_type', e.source_type, 'title', e.title)
+FROM public.knowledge_entries e
+WHERE e.archived_at IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM public.brain_edges b
+    WHERE b.dst_type = 'knowledge' AND b.dst_id = e.id
+  );
+```
 
-### 4. Ingestion job UX
+(Note: `src_type='you'` uses `user_id` as `src_id` — matches the shape `useBrainGraph` expects, which collapses `src_type='you'` into the single `YOU` node regardless of `src_id`.)
 
-Every capture creates a `knowledge_ingestion_jobs` row. Client subscribes via Supabase realtime channel scoped to `user_id`. Status strip updates live; on `error`, entry card shows retry button that re-invokes `ingestEntry`.
+## 3. Archive removes the edge (optional, same edit)
 
-### 5. Acceptance validation
+When `archiveEntry` sets `archived_at`, also delete the `you → knowledge:<id>` edge so the Brain stays in sync with what the user sees in Knowledge. Un-archive re-inserts it.
 
-After build:
-1. Upload résumé PDF via Playwright at 375×812 → confirm structured roles appear on entry within 15s.
-2. Paste LinkedIn URL → confirm same structured shape.
-3. Generate content with résumé entry pinned → assert output contains a role/company string present in the entry (spot-check via console log of retrieval hits).
+## 4. Verify
 
-### Technical notes
+- Reload `/brain` → Adam's résumé orb appears connected to You, labelled from `knowledge_entries.title` (label resolver already handles `knowledge` type).
+- Upload a new note → new orb appears live via the existing realtime subscription on `brain_edges`.
 
-- **Embedding dims**: existing `knowledge_entries.embedding` is `vector(1536)`. Use `openai/text-embedding-3-small` (1536-dim) for both entries and chunks so a single index type works. Document this in `src/lib/knowledge/embedding.ts`.
-- **File parsing** runs in server functions on Cloudflare Worker runtime — `pdfjs-dist` legacy build + `mammoth` browser build are Worker-safe; audio transcription reuses the existing Lovable AI gateway path.
-- **Secrets to request when first used**: `LINKEDIN_SCRAPER_KEY` via `add_secret` (with README pointing at Proxycurl). No new keys needed for parse/transcribe/embed (Lovable AI Gateway).
-- **No breaking changes** to `voice`, `brain`, or `orchestrator` — only additive: `buildGroundedPrompt` wraps existing `aiThink` calls, callers stay the same signature.
-- **File layout**:
-  ```text
-  src/lib/knowledge/
-    knowledge.functions.ts       # ingestEntry, searchKnowledge, list/pin/archive
-    parsing.functions.ts         # parseDocument, scrapeUrl, scrapeLinkedIn
-    extract.functions.ts         # extractResume
-    embedding.ts                 # chunker + dim constant
-    grounded-prompt.ts           # buildGroundedPrompt (client-safe)
-    parsing.server.ts            # pdfjs/mammoth/readability helpers
-  src/components/knowledge/
-    ProfileSwitcherPill.tsx
-    CaptureFab.tsx
-    capture/{PasteSheet,UrlSheet,UploadSheet,LinkedInSheet,SpeakSheet}.tsx
-    ResumeConfirmSheet.tsx
-    EntryFeed.tsx
-    EntryCard.tsx
-    EntryDetailSheet.tsx
-    IngestionStatusStrip.tsx
-    DesktopDropzone.tsx
-  src/routes/_authenticated/settings.knowledge.tsx  # rewritten
-  ```
+# Out of scope (call out, don't build now)
+
+- Linking knowledge to `entity` / `domain` nodes based on extracted résumé structure (roles, companies, skills). That's a richer graph enrichment step — worth doing next, but separate from "show it at all".
+- Chunk-level nodes. Keep one orb per entry.
