@@ -21,6 +21,7 @@ import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
+import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenticated/create.index'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
 import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
@@ -92,6 +93,12 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedCreateIndexRoute =
+  AuthenticatedCreateIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCreateRoute,
+  } as any)
 const AuthenticatedSettingsVoiceRoute =
   AuthenticatedSettingsVoiceRouteImport.update({
     id: '/voice',
@@ -160,7 +167,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/arcs': typeof AuthenticatedArcsRoute
   '/brain': typeof AuthenticatedBrainRoute
-  '/create': typeof AuthenticatedCreateRoute
+  '/create': typeof AuthenticatedCreateRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/create/': typeof AuthenticatedCreateIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
@@ -182,7 +190,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/arcs': typeof AuthenticatedArcsRoute
   '/brain': typeof AuthenticatedBrainRoute
-  '/create': typeof AuthenticatedCreateRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/': typeof AuthenticatedIndexRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/create': typeof AuthenticatedCreateIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
@@ -206,7 +214,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/arcs': typeof AuthenticatedArcsRoute
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
-  '/_authenticated/create': typeof AuthenticatedCreateRoute
+  '/_authenticated/create': typeof AuthenticatedCreateRouteWithChildren
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/presets': typeof AuthenticatedSettingsPresetsRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
+  '/_authenticated/create/': typeof AuthenticatedCreateIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/settings/voice/$id': typeof AuthenticatedSettingsVoiceIdRouteWithChildren
   '/_authenticated/settings/voice/$id/learned': typeof AuthenticatedSettingsVoiceIdLearnedRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/presets'
     | '/settings/voice'
+    | '/create/'
     | '/settings/'
     | '/settings/voice/$id'
     | '/settings/voice/$id/learned'
@@ -254,7 +264,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/arcs'
     | '/brain'
-    | '/create'
     | '/library'
     | '/onboarding'
     | '/'
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/settings/notifications'
     | '/settings/presets'
     | '/settings/voice'
+    | '/create'
     | '/settings'
     | '/settings/voice/$id'
     | '/settings/voice/$id/learned'
@@ -290,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/presets'
     | '/_authenticated/settings/voice'
+    | '/_authenticated/create/'
     | '/_authenticated/settings/'
     | '/_authenticated/settings/voice/$id'
     | '/_authenticated/settings/voice/$id/learned'
@@ -388,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/create/': {
+      id: '/_authenticated/create/'
+      path: '/'
+      fullPath: '/create/'
+      preLoaderRoute: typeof AuthenticatedCreateIndexRouteImport
+      parentRoute: typeof AuthenticatedCreateRoute
+    }
     '/_authenticated/settings/voice': {
       id: '/_authenticated/settings/voice'
       path: '/voice'
@@ -461,6 +479,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedCreateRouteChildren {
+  AuthenticatedCreateIndexRoute: typeof AuthenticatedCreateIndexRoute
+}
+
+const AuthenticatedCreateRouteChildren: AuthenticatedCreateRouteChildren = {
+  AuthenticatedCreateIndexRoute: AuthenticatedCreateIndexRoute,
+}
+
+const AuthenticatedCreateRouteWithChildren =
+  AuthenticatedCreateRoute._addFileChildren(AuthenticatedCreateRouteChildren)
+
 interface AuthenticatedSettingsVoiceIdRouteChildren {
   AuthenticatedSettingsVoiceIdLearnedRoute: typeof AuthenticatedSettingsVoiceIdLearnedRoute
 }
@@ -525,7 +554,7 @@ const AuthenticatedSettingsRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedArcsRoute: typeof AuthenticatedArcsRoute
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
-  AuthenticatedCreateRoute: typeof AuthenticatedCreateRoute
+  AuthenticatedCreateRoute: typeof AuthenticatedCreateRouteWithChildren
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
@@ -535,7 +564,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedArcsRoute: AuthenticatedArcsRoute,
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
-  AuthenticatedCreateRoute: AuthenticatedCreateRoute,
+  AuthenticatedCreateRoute: AuthenticatedCreateRouteWithChildren,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
