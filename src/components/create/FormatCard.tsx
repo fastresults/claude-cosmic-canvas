@@ -2,11 +2,23 @@ import type { CreateFormat } from "@/config/createFormats";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
-export function FormatCard({ format }: { format: CreateFormat }) {
+export function FormatCard({
+  format,
+  wsId,
+  wsItemId,
+}: {
+  format: CreateFormat;
+  wsId?: string | null;
+  wsItemId?: string | null;
+}) {
+  const search: Record<string, string> = {};
+  if (wsId) search.wsId = wsId;
+  if (wsItemId) search.wsItemId = wsItemId;
   return (
     <Link
       to="/create/$formatId"
       params={{ formatId: format.id }}
+      search={search}
       className="group relative flex flex-col justify-between rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-accent/60 active:scale-[0.99]"
     >
       <div>
