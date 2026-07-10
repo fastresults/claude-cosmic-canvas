@@ -30,7 +30,7 @@ export function useDraftImages(draftId: string | null | undefined) {
 export function useImageConcepts() {
   const fn = useServerFn(generateImageConcepts);
   return useMutation({
-    mutationFn: (draftId: string) => fn({ data: { draftId } }),
+    mutationFn: (input: { draftId: string; role: "cover" | "social" | "inline" }) => fn({ data: input }),
   });
 }
 

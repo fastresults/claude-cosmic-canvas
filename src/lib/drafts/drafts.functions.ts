@@ -10,6 +10,10 @@ import type { Json } from "@/integrations/supabase/types";
 
 const IdInput = z.object({ id: z.string().uuid() });
 const DraftIdInput = z.object({ draftId: z.string().uuid() });
+const ImageConceptInput = z.object({
+  draftId: z.string().uuid(),
+  role: z.enum(["cover", "social", "inline"]).default("cover"),
+});
 
 // -------- List / read ----------------------------------------------------
 
@@ -337,7 +341,16 @@ export const attachDraftImage = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw error;
+    if (error) {
+      console.error("[draft-image] attach:insert_failed", {
+        draftId: data.draftId,
+        role: data.role,
+        generatedBy: data.generatedBy,
+        styleId: data.styleId ?? null,
+        message: error.message.slice(0, 240),
+      });
+      throw error;
+    }
 
     const { writeEdgesServer } = await import("@/lib/ai/provenance.server");
     type Edge = import("@/lib/ai/provenance.server").ServerEdgeInput;
@@ -370,6 +383,13 @@ export const attachDraftImage = createServerFn({ method: "POST" })
       });
     }
     await writeEdgesServer(context.supabase, context.userId, edges);
+    console.info("[draft-image] attach:success", {
+      draftId: data.draftId,
+      mediaId: row.id,
+      role: data.role,
+      generatedBy: data.generatedBy,
+      styleId: data.styleId ?? null,
+    });
     return { id: row.id };
   });
 
@@ -424,8 +444,33 @@ export const listImageStyles = createServerFn({ method: "POST" })
 
 export const generateImageConcepts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => DraftIdInput.parse(input))
+  .inputValidator((input: unknown) => ImageConceptInput.parse(input))
   .handler(async ({ data, context }) => {
+    const fallbackConcepts = (title: string, role: "cover" | "social" | "inline") => {
+      const subject = title && title !== "Untitled" ? `"${title}"` : "this draft";
+      const aspect = role === "social" ? "1:1" : "16:9";
+      return [
+        { prompt: `Editorial ${role} image for ${subject}, clean composition, clear focal point, brand-safe`, style: "editorial", aspect, rationale: "Fast, polished default." },
+        { prompt: `Documentary-style image capturing the central idea of ${subject}, natural light, human context`, style: "photo", aspect, rationale: "Grounded and relatable." },
+        { prompt: `Bold vector illustration representing ${subject}, simple shapes, high contrast, modern editorial feel`, style: "illustration", aspect, rationale: "Readable at small sizes." },
+        { prompt: `Abstract visual metaphor for ${subject}, layered depth, cinematic light, no readable text`, style: "abstract", aspect, rationale: "Flexible and shareable." },
+      ];
+    };
+    const safeParseJson = (s: string): { [k: string]: unknown } | null => {
+      try {
+        const cleaned = s.replace(/^```json\s*|\s*```$/g, "").trim();
+        return JSON.parse(cleaned);
+      } catch {
+        const m = s.match(/\{[\s\S]*\}/);
+        if (!m) return null;
+        try {
+          return JSON.parse(m[0]);
+        } catch {
+          return null;
+        }
+      }
+    };
+
     const { data: draft, error } = await context.supabase
       .from("create_drafts")
       .select("id, title, sections, format_id, domain, audience, workspace_id")
@@ -447,26 +492,33 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
-      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled") };
+      console.warn("[draft-image] concepts:fallback_missing_key", { draftId: data.draftId, role: data.role });
+      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
     }
 
     const system =
-      "You are Eve's visual art director. Propose 4 distinct cover-image concepts for a piece of written content. " +
+      `You are Eve's visual art director. Propose 4 distinct ${data.role} image concepts for a piece of written content. ` +
       'Return ONLY JSON: {"concepts":[{"prompt":string,"style":string,"aspect":"1:1"|"16:9"|"9:16","rationale":string}]}';
 
     const prompt = [
       `[DOMAIN] ${draft.domain ?? "general"}`,
       `[AUDIENCE] ${draft.audience ?? "general"}`,
       `[FORMAT] ${draft.format_id}`,
+      `[IMAGE_ROLE] ${data.role}`,
       `[DRAFT_SUMMARY]\n${summary}`,
       "",
       "Return the JSON only — no prose, no code fences.",
     ].join("\n");
 
+    console.info("[draft-image] concepts:start", { draftId: data.draftId, role: data.role });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const { gatewayFetch } = await import("@/lib/ai/gateway.server");
+      const res = await gatewayFetch("/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
@@ -475,7 +527,6 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
           ],
         }),
       });
-      if (!res.ok) return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled") };
       const body = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
       const text = body.choices?.[0]?.message?.content ?? "";
       const parsed = safeParseJson(text);
@@ -493,10 +544,22 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         })
         .filter((v: unknown): v is { prompt: string; style: string; aspect: string; rationale: string } => v !== null)
         .slice(0, 6);
-      if (clean.length === 0) return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled") };
+      clearTimeout(timeoutId);
+      if (clean.length === 0) {
+        console.warn("[draft-image] concepts:fallback_empty", { draftId: data.draftId, role: data.role });
+        return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
+      }
+      console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, count: clean.length });
       return { fallback: false as const, concepts: clean };
-    } catch {
-      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled") };
+    } catch (e) {
+      clearTimeout(timeoutId);
+      console.warn("[draft-image] concepts:fallback_error", {
+        draftId: data.draftId,
+        role: data.role,
+        timedOut: controller.signal.aborted,
+        message: e instanceof Error ? e.message.slice(0, 240) : "Unknown error",
+      });
+      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
     }
   });
 
@@ -575,30 +638,6 @@ export const polishDraft = createServerFn({ method: "POST" })
   });
 
 // -------- Helpers --------------------------------------------------------
-
-function safeParseJson(s: string): { [k: string]: unknown } | null {
-  try {
-    const cleaned = s.replace(/^```json\s*|\s*```$/g, "").trim();
-    return JSON.parse(cleaned);
-  } catch {
-    const m = s.match(/\{[\s\S]*\}/);
-    if (!m) return null;
-    try {
-      return JSON.parse(m[0]);
-    } catch {
-      return null;
-    }
-  }
-}
-
-function fallbackConcepts(title: string) {
-  return [
-    { prompt: `Editorial cover for "${title}", minimal typography, soft gradient background`, style: "editorial", aspect: "16:9", rationale: "Clean and shareable." },
-    { prompt: `Abstract concept art evoking "${title}", muted palette, cinematic light`, style: "abstract", aspect: "16:9", rationale: "Evocative, brand-safe." },
-    { prompt: `Documentary photograph capturing the essence of "${title}", natural light`, style: "photo", aspect: "1:1", rationale: "Grounded and human." },
-    { prompt: `Bold vector illustration of "${title}", flat shapes, high contrast`, style: "illustration", aspect: "1:1", rationale: "Iconic thumbnail." },
-  ];
-}
 
 function splitPolished(body: string): Array<{ heading: string | null; body: string }> {
   const parts = body.split(/^\s*#{1,2}\s+/m).map((p) => p.trim()).filter(Boolean);

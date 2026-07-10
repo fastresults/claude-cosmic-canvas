@@ -97,14 +97,24 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
-  const loadedRef = useRef(false);
+  const [groundingTimedOut, setGroundingTimedOut] = useState(false);
+  const loadedKeyRef = useRef<string | null>(null);
+  const defaultAspect = role === "social" ? "1:1" : "16:9";
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    concepts.mutate(draftId);
+    const key = `${draftId}:${role}`;
+    if (loadedKeyRef.current === key) return;
+    loadedKeyRef.current = key;
+    setGroundingTimedOut(false);
+    concepts.mutate({ draftId, role });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId]);
+  }, [draftId, role]);
+
+  useEffect(() => {
+    if (!concepts.isPending) return;
+    const id = window.setTimeout(() => setGroundingTimedOut(true), 8_000);
+    return () => window.clearTimeout(id);
+  }, [concepts.isPending, draftId, role]);
 
   // Default-select first style once loaded.
   useEffect(() => {
@@ -113,7 +123,30 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     }
   }, [styles.data, styleId]);
 
-  const list = concepts.data?.concepts ?? [];
+  const fallbackList = useMemo<Concept[]>(
+    () => [
+      {
+        prompt: `Editorial ${role} image for this draft, clean composition, clear focal point, brand-safe`,
+        style: "editorial",
+        aspect: defaultAspect,
+        rationale: "Fast, polished default.",
+      },
+      {
+        prompt: "Documentary-style image capturing the central idea, natural light, human context",
+        style: "photo",
+        aspect: defaultAspect,
+        rationale: "Grounded and relatable.",
+      },
+      {
+        prompt: "Bold vector illustration representing the draft's main idea, simple shapes, high contrast",
+        style: "illustration",
+        aspect: defaultAspect,
+        rationale: "Readable at small sizes.",
+      },
+    ],
+    [defaultAspect, role],
+  );
+  const list = concepts.data?.concepts ?? (groundingTimedOut ? fallbackList : []);
   const activeStyle = useMemo(
     () => styles.data?.find((s) => s.styleId === styleId) ?? null,
     [styles.data, styleId],
@@ -226,9 +259,25 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             )}
           </div>
 
-          {concepts.isPending && (
+          {concepts.isPending && !groundingTimedOut && (
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Grounding concepts from your draft…
+            </div>
+          )}
+          {concepts.isPending && groundingTimedOut && (
+            <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
+              Using quick-start concepts while draft grounding finishes.
+            </div>
+          )}
+          {concepts.isError && (
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              <span>Couldn't ground concepts. You can still generate from your own prompt.</span>
+              <button
+                onClick={() => concepts.mutate({ draftId, role })}
+                className="shrink-0 rounded-full border border-destructive/40 px-3 py-1 text-[11px]"
+              >
+                Retry
+              </button>
             </div>
           )}
           {list.length > 0 && (
@@ -263,7 +312,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             <button
               onClick={() => {
                 if (!customPrompt.trim()) return;
-                const c = { prompt: customPrompt.trim(), style: "custom", aspect: "16:9", rationale: "" };
+                const c = { prompt: customPrompt.trim(), style: "custom", aspect: defaultAspect, rationale: "" };
                 setSelected(c);
                 void run(c.prompt, c.aspect);
               }}
@@ -306,19 +355,20 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           )}
           <div className="flex items-center gap-2">
             <button
-              disabled={streaming || !selected}
+              disabled={streaming || !selected || attach.isPending}
               onClick={() => selected && run(selected.prompt, selected.aspect)}
               className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs text-foreground disabled:opacity-50"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Reroll
             </button>
             <button
+              disabled={streaming || attach.isPending}
               onClick={() => {
                 setPreview(null);
                 setSelected(null);
                 setIsFinal(false);
               }}
-              className="rounded-full border border-border bg-surface px-4 py-2 text-xs text-muted-foreground"
+              className="rounded-full border border-border bg-surface px-4 py-2 text-xs text-muted-foreground disabled:opacity-50"
             >
               Back
             </button>
