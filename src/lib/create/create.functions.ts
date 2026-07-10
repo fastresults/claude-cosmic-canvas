@@ -202,7 +202,6 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
 
     // Upsert draft.
     const payload = {
-    const payload = {
       user_id: context.userId,
       format_id: format.id,
       title,
