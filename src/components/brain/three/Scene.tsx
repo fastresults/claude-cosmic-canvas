@@ -115,8 +115,8 @@ export function Scene({ onPeek }: Props) {
         enablePan={false}
         enableDamping
         dampingFactor={0.08}
-        minDistance={8}
-        maxDistance={45}
+        minDistance={5}
+        maxDistance={200}
         autoRotate
         autoRotateSpeed={0.35}
       />
