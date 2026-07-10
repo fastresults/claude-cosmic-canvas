@@ -1,53 +1,46 @@
-# Seed style-template preview thumbnails
+## Plan: hard-audit and fix Draft → Generate Image → Save to Card
 
-## Goal
+### What I found
+- The style templates are present and seeded correctly, including preview images.
+- No recent image-generation requests reached the AI Gateway, which means the stuck UI is most likely happening before the actual image render call.
+- The visible stuck label, “Grounding concepts from your draft…”, belongs to the concept-generation server function, not the image renderer.
+- The current UI waits for AI-generated concepts before showing the user any actionable prompt cards, so if concept grounding hangs or never resolves, the user cannot reach completed image generation.
+- The image route currently forwards the stream but has minimal instrumentation, no timeout, and no robust fallback path if the upstream stream never produces `image_generation.completed`.
+- Generated images are only uploaded and attached after the user manually taps “Attach to draft”; there is no durable in-progress record, so failures can leave no media row and no obvious recovery state.
 
-Give each of the 15 rows in `image_generation_styles` a `preview_url` pointing to a representative thumbnail that visibly conveys the style. Users pick a template and see exactly what aesthetic they're opting into.
+### Fix approach
+1. **Instrument the workflow with safe logs**
+   - Add server-side logs for: concept grounding start/success/fallback/failure, image stream start/upstream status/completed/error, upload/attach success/failure.
+   - Never log full prompts, image payloads, auth tokens, or signed URLs.
 
-## Approach
+2. **Unblock the UI from concept grounding**
+   - Add a timeout around `generateImageConcepts` so “Grounding concepts…” cannot spin forever.
+   - If grounding times out or fails, show deterministic fallback concepts immediately.
+   - Keep the custom prompt box usable while concepts are loading.
+   - Add retry and error copy for concept grounding instead of an endless loader.
 
-Generate one on-brand thumbnail per style with the agent-side `imagegen` tool, host each via Lovable CDN assets (stable URLs, global cache, out of the git repo), then `UPDATE` the `preview_url` column per row.
+3. **Make style-template selection generate directly**
+   - Ensure style templates are not just decorative: selecting a style plus a concept/custom prompt composes a final prompt and calls `/api/drafts/generate-image`.
+   - Persist the selected `styleId`, aspect ratio, original prompt, and provider metadata on attach.
 
-Neutral subject across all 15 so the *style* is the variable — proposed subject: **an abstract mountain-and-sun composition** (works for photo, editorial, illustration, 3D, infographic without leaning any direction).
+4. **Harden streaming image generation**
+   - Update the server route to use the project’s existing Lovable AI Gateway helper/header pattern for raw image generation.
+   - Add request validation, safe error responses, and timeout/abort handling so the UI exits with a clear error instead of hanging.
+   - Keep SSE pass-through for progressive rendering and ensure the client treats an ended stream without `image_generation.completed` as a failure.
 
-Square 1024×1024 thumbs (the strip renders 112×80, so 1024 is more than enough and covers retina). `fast` tier for cost — quality plenty at thumbnail size.
+5. **Improve client state machine**
+   - Explicit states: `grounding`, `ready`, `rendering`, `rendered`, `attaching`, `attached`, `failed`.
+   - Disable only actions that truly cannot run; do not block custom generation on concept loading.
+   - Surface errors inline with retry/back controls.
+   - Prevent double submits during render/attach.
 
-## Steps
+6. **Guarantee save/attach behavior**
+   - After a final image frame arrives, upload it to the `draft-media` storage bucket.
+   - Then create the `create_media` row through the existing authenticated server function.
+   - If upload succeeds but attach fails, show a recoverable attach error and keep the preview visible so the user can retry.
+   - Invalidate draft image queries after successful attach so the card updates immediately.
 
-### 1. Generate 15 thumbnails
-
-For each style row, call `imagegen--generate_image` with `{promptPrefix} an abstract mountain-and-sun composition, thumbnail composition, no text, no watermark`, `1024x1024`, tier `fast`, target `src/assets/style-thumbs/{style_id}.jpg`.
-
-Batch in parallel across all 15.
-
-### 2. Upload each to Lovable CDN
-
-```bash
-lovable-assets create --file src/assets/style-thumbs/{style_id}.jpg > src/assets/style-thumbs/{style_id}.jpg.asset.json
-rm src/assets/style-thumbs/{style_id}.jpg
-```
-
-Result: 15 `.asset.json` pointer files. Extract each `url` field (form `/__l5e/assets-v1/{asset_id}/{style_id}.jpg`).
-
-### 3. Update rows via `supabase--insert`
-
-Single `UPDATE ... FROM (VALUES ...)` statement mapping `style_id → url` for all 15 rows.
-
-### 4. Verify
-
-- Reload `/library`, open a draft → Social slot → Generate tab.
-- Confirm the style strip shows real thumbnails (no more label-on-plain-tile).
-- Selected style highlights with an accent border and thumb is legible.
-- Repeat for a Cover slot — verify the different subset of styles renders their own thumbs.
-
-## Notes
-
-- CDN URLs are immutable, so a later re-shoot means new asset IDs + a second UPDATE (fine — no cache-busting needed).
-- Storing on Lovable CDN (not the `draft-media` Supabase bucket) keeps these public, cache-friendly, and unrelated to per-user RLS.
-- `preview_url` column already exists; no migration required.
-- The `usePresets`-style component tile in `ImageAssociationSheet` already renders `background-image: url(previewUrl)` when set — no UI change needed.
-
-## Out of scope
-
-- Regenerating thumbnails per-user, per-brand, or with brand color overrides.
-- Auto-refresh cron. Static seed is enough for now.
+7. **Verify end-to-end**
+   - Use the live preview workflow on mobile viewport: open draft image sheet, select a style, generate image, wait for final frame, attach to draft.
+   - Confirm a new `create_media` row exists with the expected `draft_id`, `role`, `style_id`, provider, aspect ratio, and URL.
+   - Check logs to confirm the request reached the AI Gateway and ended in a completed or surfaced error state.
