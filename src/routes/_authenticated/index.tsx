@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Orb } from "@/components/primitives/Orb";
 import { Pill } from "@/components/primitives/Pill";
@@ -19,6 +20,20 @@ const SUGGESTIONS = [
 function Home() {
   const { draft, busy, saving, error, generate, refine, save, discard } =
     useWorkingDraft();
+
+  // Pick up seeded prompt from Brain "Ask Eve".
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || typeof window === "undefined") return;
+    const seed = window.sessionStorage.getItem("eve:seed-prompt");
+    if (seed) {
+      seeded.current = true;
+      window.sessionStorage.removeItem("eve:seed-prompt");
+      void generate(seed);
+    }
+  }, [generate]);
+
+
 
   const showEmpty = !draft && !busy;
 
