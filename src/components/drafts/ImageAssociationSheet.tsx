@@ -89,6 +89,8 @@ function TabBtn({
 function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; onDone: () => void }) {
   const concepts = useImageConcepts();
   const attach = useAttachDraftImage(draftId);
+  const styles = useImageStyles(role);
+  const [styleId, setStyleId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Concept | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isFinal, setIsFinal] = useState(false);
@@ -104,7 +106,18 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId]);
 
+  // Default-select first style once loaded.
+  useEffect(() => {
+    if (!styleId && styles.data && styles.data.length > 0) {
+      setStyleId(styles.data[0].styleId);
+    }
+  }, [styles.data, styleId]);
+
   const list = concepts.data?.concepts ?? [];
+  const activeStyle = useMemo(
+    () => styles.data?.find((s) => s.styleId === styleId) ?? null,
+    [styles.data, styleId],
+  );
 
   async function run(prompt: string, aspect: string) {
     setStreaming(true);
@@ -112,13 +125,17 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     setPreview(null);
     setIsFinal(false);
     try {
+      const composed = activeStyle?.promptPrefix
+        ? `${activeStyle.promptPrefix} ${prompt}`
+        : prompt;
       await streamDraftImage(
-        prompt,
+        composed,
         (dataUrl, final) => {
           setPreview(dataUrl);
           if (final) setIsFinal(true);
         },
         aspect,
+        activeStyle?.negativePrompt || undefined,
       );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Generation failed");
@@ -129,14 +146,13 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
 
   async function confirm() {
     if (!preview || !selected) return;
-    // Upload dataURL to storage bucket then attach URL.
     try {
       const url = await uploadDataUrl(preview);
       await attach.mutateAsync({
         role,
         url,
         prompt: selected.prompt,
-        styleId: selected.style,
+        styleId: activeStyle?.styleId ?? selected.style,
         aspectRatio: selected.aspect,
         generatedBy: "gemini",
       });
@@ -150,6 +166,66 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     <div className="flex flex-col gap-3">
       {!preview && !streaming && (
         <>
+          {/* Style templates strip */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Style template</div>
+              {activeStyle && (
+                <div className="text-[10px] text-muted-foreground">{activeStyle.name}</div>
+              )}
+            </div>
+            {styles.isPending && (
+              <div className="flex gap-2 overflow-x-auto">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 w-28 shrink-0 animate-pulse rounded-xl bg-surface" />
+                ))}
+              </div>
+            )}
+            {styles.isError && (
+              <div className="flex items-center justify-between rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+                <span>Couldn't load style templates.</span>
+                <button
+                  onClick={() => styles.refetch()}
+                  className="rounded-full border border-destructive/40 px-3 py-1 text-[11px]"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {styles.data && styles.data.length === 0 && (
+              <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
+                No styles available for {role} yet.
+              </div>
+            )}
+            {styles.data && styles.data.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {styles.data.map((s) => {
+                  const active = s.styleId === styleId;
+                  return (
+                    <button
+                      key={s.styleId}
+                      onClick={() => setStyleId(s.styleId)}
+                      className={`flex h-20 w-28 shrink-0 flex-col items-start justify-end overflow-hidden rounded-xl border p-2 text-left transition-colors ${
+                        active
+                          ? "border-accent bg-accent/10 text-foreground"
+                          : "border-border bg-surface text-muted-foreground hover:border-accent/60"
+                      }`}
+                      style={
+                        s.previewUrl
+                          ? { backgroundImage: `url(${s.previewUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                          : undefined
+                      }
+                    >
+                      <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        {s.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {concepts.isPending && (
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Grounding concepts from your draft…
@@ -198,6 +274,8 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           </div>
         </>
       )}
+
+
 
       {(preview || streaming) && (
         <div className="flex flex-col gap-3">
