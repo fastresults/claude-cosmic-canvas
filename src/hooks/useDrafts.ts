@@ -93,5 +93,10 @@ export function useDraftMutations() {
         ctx({ data: v }),
       onSuccess: inval,
     }),
+    rename: useMutation({
+      mutationFn: (v: { id: string; title: string | null }) => rename({ data: v }),
+      onSuccess: inval,
+    }),
   };
 }
+
