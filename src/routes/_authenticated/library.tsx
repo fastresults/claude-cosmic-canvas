@@ -444,9 +444,19 @@ function Library() {
                             </>
                           ) : null}
                         </div>
-                        <p className="mt-0.5 truncate text-sm text-foreground/90">
-                          {d.body.replace(/\s+/g, " ").slice(0, 140)}
-                        </p>
+                        {d.title ? (
+                          <>
+                            <p className="mt-0.5 truncate text-sm font-medium text-foreground">{d.title}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-0.5 truncate text-sm text-foreground/90">
+                            {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                          </p>
+                        )}
+
                       </div>
                     </div>
                   </motion.article>
