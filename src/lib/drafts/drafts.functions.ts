@@ -13,6 +13,7 @@ const DraftIdInput = z.object({ draftId: z.string().uuid() });
 const ImageConceptInput = z.object({
   draftId: z.string().uuid(),
   role: z.enum(["cover", "social", "inline"]).default("cover"),
+  styleId: z.string().nullable().optional(),
 });
 
 // -------- List / read ----------------------------------------------------
@@ -86,7 +87,7 @@ export const getDraft = createServerFn({ method: "POST" })
     const [{ data: media }, { data: history }] = await Promise.all([
       context.supabase
         .from("create_media")
-        .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, created_at")
+        .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, meta, created_at")
         .eq("draft_id", data.id)
         .order("sort_order", { ascending: true }),
       context.supabase
@@ -309,6 +310,7 @@ const AttachInput = z.object({
   styleId: z.string().nullable().optional(),
   aspectRatio: z.string().nullable().optional(),
   parentImageId: z.string().uuid().nullable().optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   generatedBy: z.enum(["gpt-image-2", "gemini", "upload", "library"]).default("gemini"),
 });
 
@@ -337,7 +339,7 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         aspect_ratio: data.aspectRatio ?? null,
         parent_image_id: data.parentImageId ?? null,
         sort_order: count ?? 0,
-        meta: {} as Json,
+        meta: (data.meta ?? {}) as Json,
       })
       .select("id")
       .single();
@@ -369,7 +371,15 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         edgeKind: "GENERATED_BY_TOOL",
         dstType: "image",
         dstId: row.id,
-        meta: { tool: data.generatedBy, style: data.styleId, prompt: data.prompt?.slice(0, 500) },
+        meta: {
+          tool: data.generatedBy,
+          style: data.styleId,
+          prompt: data.prompt?.slice(0, 500),
+          final_prompt:
+            typeof data.meta?.finalPrompt === "string"
+              ? data.meta.finalPrompt.slice(0, 500)
+              : undefined,
+        },
       },
     ];
     if (data.parentImageId) {
