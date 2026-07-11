@@ -1,5 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ImageIcon, Sparkles } from "lucide-react";
+import { ThumbPeek } from "@/components/primitives/ThumbPeek";
 
 export type DraftListItem = {
   id: string;
@@ -16,6 +17,7 @@ export type DraftListItem = {
 };
 
 export function DraftCard({ draft }: { draft: DraftListItem }) {
+  const navigate = useNavigate();
   const cover = draft.media.find((m) => m.role === "cover") ?? draft.media[0];
   const snippet =
     Array.isArray(draft.sections) && draft.sections[0]
@@ -23,20 +25,35 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
           (draft.sections[0] as { body?: string }).body ?? "",
         ).slice(0, 140)
       : "";
+  const openDraft = () => navigate({ to: "/content/drafts/$id", params: { id: draft.id } });
   return (
-    <Link
-      to="/content/drafts/$id"
-      params={{ id: draft.id }}
-      className="flex gap-3 rounded-2xl border border-border bg-surface p-3 hover:border-accent/60"
-    >
-      <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-background text-muted-foreground">
-        {cover ? (
+    <div className="flex gap-3 rounded-2xl border border-border bg-surface p-3 hover:border-accent/60">
+      {cover ? (
+        <ThumbPeek
+          src={cover.url}
+          alt={draft.title ?? "Draft cover"}
+          label={draft.title ?? "Draft cover"}
+          confirmLabel="Open draft"
+          onConfirm={openDraft}
+          className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-background"
+        >
           <img src={cover.url} alt="" className="h-full w-full object-cover" />
-        ) : (
+        </ThumbPeek>
+      ) : (
+        <button
+          type="button"
+          onClick={openDraft}
+          className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-background text-muted-foreground"
+          aria-label="Open draft"
+        >
           <ImageIcon className="h-6 w-6 opacity-40" />
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        </button>
+      )}
+      <Link
+        to="/content/drafts/$id"
+        params={{ id: draft.id }}
+        className="flex min-w-0 flex-1 flex-col gap-1"
+      >
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
           <span>{draft.format_id}</span>
           {draft.platform && (
@@ -63,7 +80,7 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
           <span>{new Date(draft.updated_at).toLocaleDateString()}</span>
           {!cover && <span className="ml-auto text-accent">+ Add image</span>}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }

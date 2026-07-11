@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Pill } from "./Pill";
+import { ThumbPeek } from "./ThumbPeek";
 import { cn } from "@/lib/utils";
 
 type DraftState = "idle" | "streaming" | "done" | "error" | "empty";
@@ -84,7 +85,9 @@ export function DraftCard({
       </div>
 
       {imageUrl && (
-        <img src={imageUrl} alt="" className="mb-3 h-32 w-full rounded-md object-cover" />
+        <ThumbPeek src={imageUrl} alt="" className="mb-3 block h-32 w-full overflow-hidden rounded-md">
+          <img src={imageUrl} alt="" className="h-32 w-full object-cover" />
+        </ThumbPeek>
       )}
 
       {!isEmpty && (

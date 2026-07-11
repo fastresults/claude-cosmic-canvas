@@ -1,46 +1,51 @@
-## Plan: hard-audit and fix Draft → Generate Image → Save to Card
+# Tap-to-peek, tap-again-to-select for thumbnails (mobile-first)
 
-### What I found
-- The style templates are present and seeded correctly, including preview images.
-- No recent image-generation requests reached the AI Gateway, which means the stuck UI is most likely happening before the actual image render call.
-- The visible stuck label, “Grounding concepts from your draft…”, belongs to the concept-generation server function, not the image renderer.
-- The current UI waits for AI-generated concepts before showing the user any actionable prompt cards, so if concept grounding hangs or never resolves, the user cannot reach completed image generation.
-- The image route currently forwards the stream but has minimal instrumentation, no timeout, and no robust fallback path if the upstream stream never produces `image_generation.completed`.
-- Generated images are only uploaded and attached after the user manually taps “Attach to draft”; there is no durable in-progress record, so failures can leave no media row and no obvious recovery state.
+## Interaction model (revised)
 
-### Fix approach
-1. **Instrument the workflow with safe logs**
-   - Add server-side logs for: concept grounding start/success/fallback/failure, image stream start/upstream status/completed/error, upload/attach success/failure.
-   - Never log full prompts, image payloads, auth tokens, or signed URLs.
+**Mobile / touch (primary)** — two-tap commit:
+1. **First tap** on a thumbnail → opens a magnified **Peek overlay**. Nothing is selected yet. The underlying tile shows a subtle "previewing" ring so the user knows what they just tapped.
+2. **Second tap** while the overlay is open → commits selection and closes the overlay. The second tap can land either on the enlarged image itself or on an explicit **"Use this"** button pinned inside the overlay (both do the same thing, so users who want the button always have it, and users who just tap the image again get the fast path).
+3. Tapping the **backdrop**, the **✕**, pressing **Esc**, or **swiping down** closes the overlay without selecting.
 
-2. **Unblock the UI from concept grounding**
-   - Add a timeout around `generateImageConcepts` so “Grounding concepts…” cannot spin forever.
-   - If grounding times out or fails, show deterministic fallback concepts immediately.
-   - Keep the custom prompt box usable while concepts are loading.
-   - Add retry and error copy for concept grounding instead of an endless loader.
+**Desktop / pointer:fine** — hover to peek, click to select:
+- Hover a thumbnail (150 ms intent delay) → opens the same Peek overlay, non-modal, no selection.
+- Click the thumbnail (or the "Use this" button in the overlay) → selects immediately and closes the overlay.
+- Mouse-leave closes the overlay.
 
-3. **Make style-template selection generate directly**
-   - Ensure style templates are not just decorative: selecting a style plus a concept/custom prompt composes a final prompt and calls `/api/drafts/generate-image`.
-   - Persist the selected `styleId`, aspect ratio, original prompt, and provider metadata on attach.
+**Rationale**: on mobile, tap-to-select would fire the moment the user tries to look closer — exactly the problem the user flagged. Splitting *look* from *choose* gives a safe preview step, and putting the confirm action on both the image and a button keeps the second tap fast without hiding the choice.
 
-4. **Harden streaming image generation**
-   - Update the server route to use the project’s existing Lovable AI Gateway helper/header pattern for raw image generation.
-   - Add request validation, safe error responses, and timeout/abort handling so the UI exits with a clear error instead of hanging.
-   - Keep SSE pass-through for progressive rendering and ensure the client treats an ended stream without `image_generation.completed` as a failure.
+## Surfaces in scope
+1. `ImageAssociationSheet` → **Style Template strip** (Editorial/Magazine/Documentary tiles from the screenshot).
+2. `ImageAssociationSheet` → **Library tab** grid — selection now means "pick this image to attach", so the confirm button in the overlay reads **"Attach to draft"** and calls the existing attach mutation.
+3. `DraftDetailSheet` → cover / social / inline image grids — no selection semantics; overlay is view-only and replaces the ad-hoc lightbox added last turn.
+4. `DraftCard` covers (`components/drafts/DraftCard.tsx`, `components/primitives/DraftCard.tsx`) — first tap peeks the cover, second tap (or "Open draft" button) opens the draft sheet.
+5. `ImageAssociationSheet` generated preview stays as-is (it is already the large view).
 
-5. **Improve client state machine**
-   - Explicit states: `grounding`, `ready`, `rendering`, `rendered`, `attaching`, `attached`, `failed`.
-   - Disable only actions that truly cannot run; do not block custom generation on concept loading.
-   - Surface errors inline with retry/back controls.
-   - Prevent double submits during render/attach.
+## New shared component
+`src/components/primitives/ThumbPeek.tsx`
+- Props: `src`, `alt`, `label?`, `selected?`, `confirmLabel?` (default `"Use this"`), `onConfirm()`, `aspect?`, `children` (tile chrome).
+- Detects pointer type via `matchMedia('(hover: hover) and (pointer: fine)')`.
+  - Touch: click on tile → open overlay only. Click on overlay image or confirm button → `onConfirm()` + close.
+  - Pointer: hover-intent opens overlay; click anywhere on tile or confirm button → `onConfirm()` immediately.
+- Overlay: portal, centered card up to `min(92vw, 720px)`, image at natural aspect, caption row with `label`, primary "Use this / Attach to draft" button, secondary "Cancel" button. Backdrop click, Esc, and swipe-down dismiss.
+- Applies `previewing` ring to the tile while its overlay is open, `selected` ring when `selected` is true.
+- Focus trap when opened by tap; respects `prefers-reduced-motion` (fade, no scale).
+- Announces state via `aria-live` ("Previewing X. Tap image again to select.").
 
-6. **Guarantee save/attach behavior**
-   - After a final image frame arrives, upload it to the `draft-media` storage bucket.
-   - Then create the `create_media` row through the existing authenticated server function.
-   - If upload succeeds but attach fails, show a recoverable attach error and keep the preview visible so the user can retry.
-   - Invalidate draft image queries after successful attach so the card updates immediately.
+## Wiring
+- **Style strip**: replace the current `<button>` tile with `<ThumbPeek onConfirm={() => setStyleId(s.styleId)} selected={styleId===s.styleId} label={s.name} confirmLabel="Use this style" …>`. Uses a real `<img>` so the overlay reuses the same URL.
+- **Library grid**: `<ThumbPeek onConfirm={() => attach.mutate({ role, url: it.url, prompt: it.prompt ?? undefined, generatedBy: "library" })} confirmLabel="Attach to draft" …>`. Removes the current "tap = immediate attach" behavior, which is unsafe now that tap also opens the peek.
+- **DraftDetailSheet image rows**: `<ThumbPeek onConfirm={() => {}} confirmLabel={undefined} …>`; when `confirmLabel` is undefined the overlay hides the confirm button and behaves as view-only (matches the existing lightbox behavior).
+- **DraftCard covers**: `<ThumbPeek onConfirm={openDraft} confirmLabel="Open draft" …>`.
 
-7. **Verify end-to-end**
-   - Use the live preview workflow on mobile viewport: open draft image sheet, select a style, generate image, wait for final frame, attach to draft.
-   - Confirm a new `create_media` row exists with the expected `draft_id`, `role`, `style_id`, provider, aspect ratio, and URL.
-   - Check logs to confirm the request reached the AI Gateway and ended in a completed or surfaced error state.
+## Out of scope
+- Style-tile selection still does NOT auto-run generation; the user still picks a concept card or presses Generate.
+- No backend, data-model, or generation-pipeline changes.
+- No visual redesign beyond the overlay shell and selection ring.
+
+## Verification (Playwright, 390×844 and 1280×1800)
+- Mobile: tap a style tile → overlay opens, no `styleId` change yet. Tap the enlarged image → `styleId` updates, overlay closes. Repeat with the "Use this style" button. Repeat on a library thumbnail → confirms attach only on second tap.
+- Mobile: tap a style tile, tap backdrop → overlay closes, `styleId` unchanged.
+- Desktop: hover a style tile → overlay opens without selection change. Click the tile → selects immediately.
+- Reduced motion: overlay fades in, no scale.
+- DraftDetailSheet: tapping a cover/social/inline thumb still just opens the large view, no confirm button visible.
