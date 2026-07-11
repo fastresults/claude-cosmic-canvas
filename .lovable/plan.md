@@ -1,64 +1,55 @@
-## Audit findings
+## Problem
 
-1. **The selected style is not part of concept generation.** Concepts are generated from draft context only, then the UI prepends the selected style later. That means concept ideas can conflict with the style template the user picked.
+When a user opens a library item, the detail sheet header shows "Untitled draft" and a set of image slots. Two things confuse them:
 
-2. **The final image prompt is composed on the client.** The image API receives a flat prompt string, so the backend cannot guarantee it contains the current draft, role, selected style, audience, domain, and generation constraints.
+1. **"Untitled draft" reads like a system state, not a label.** They think they must name it and hit Save before anything else works — but there is no name field and no Save button. In reality, the draft is already persisted; the title is just empty because the generator never set one.
+2. **No clear "what do I do next" story.** The sheet offers Cover / Social / Inline / Polish / Schedule / Archive, but nothing tells the user this is their draft, that changes auto-save, or which single action to take next.
 
-3. **Custom prompts bypass article grounding.** When the user types a custom prompt, it replaces the article context instead of being treated as additional direction for the article-based image.
+## Recommendation
 
-4. **Fallback concepts are too generic.** If grounding times out or fails, the app falls back to title-only prompts, which can easily produce images disconnected from the article.
+Treat the sheet as an **already-saved draft workspace**, not a form. Fix the copy and add a lightweight title affordance so the header stops looking like an unfinished form field.
 
-5. **Saved prompt metadata is incomplete.** Attached images save the user-facing concept prompt, not the fully composed prompt/style/context that actually generated the image, making debugging and rerolling unreliable.
+### Changes to `src/components/drafts/DraftDetailSheet.tsx`
 
-6. **Runtime logs did not show a recent failed image request.** Console/network snapshots and AI Gateway logs showed no recent matching requests, so this looks like a prompt/control-flow quality issue rather than a transport failure.
+1. **Replace the "Untitled draft" heading with an inline-editable title.**
+   - When `draft.title` is null/empty, show placeholder text `Name this draft (optional)` in muted color instead of the alarming "Untitled draft".
+   - Tap-to-edit → text input → blur/Enter saves via a new `renameDraft` server fn (or extend `updateDraftContext`). Auto-saves; no Save button.
+   - Small pencil icon beside the title on desktop; tap-anywhere on mobile.
 
-## Plan
+2. **Add a status/auto-save line under the title.**
+   - Format: `Draft · Saved · 3m ago` (uses existing `status` and `updated_at`).
+   - Makes clear this is persisted content, not an unsaved form.
 
-### 1. Make image generation server-owned and article-grounded
-- Update `/api/drafts/generate-image` to accept structured input:
-  - `draftId`
-  - `role` (`cover`, `social`, `inline`)
-  - `styleId`
-  - `conceptPrompt` or `customDirection`
-  - `aspect`
-- In the route, verify the user, load the draft and selected style from the backend, then build the final image prompt server-side.
-- The final prompt will always include:
-  - title
-  - article summary/key claims
-  - format/platform
-  - domain/audience
-  - role-specific image purpose
-  - selected style name, description, prompt prefix, negative prompt
-  - user concept/custom direction as a constraint, not a replacement
+3. **Rewrite the top "next step" banner into a clearer 1-2-3 progression.**
+   - Step 1 done: content generated ✓
+   - Step 2 (current): "Add a cover image so this is ready to share"
+   - Step 3 (after cover): "Polish the copy, then schedule"
+   - Only the current step is highlighted; completed steps show a check.
 
-### 2. Make concept generation style-aware
-- Extend `generateImageConcepts` to accept `styleId`.
-- Load the selected style in the server function before asking the model for concepts.
-- Ask for concepts that fit both:
-  - the article’s actual message
-  - the selected visual template
-- When the user changes the style template, regenerate/reload the concept list for that style instead of reusing stale concepts from another style.
+4. **Rename the action dock's "Archive" default position and add a primary "Ready to schedule" CTA** once a cover exists, so the user always sees the recommended next action.
 
-### 3. Add explicit mobile-first controls in the generate sheet
-- Keep style templates as the first control.
-- Add a clear selected-style state and a “Regenerate ideas” action when style changes.
-- Rename the custom prompt field to behave like direction, e.g. “Add extra direction…” so it does not imply replacing the article context.
-- Show a compact “Grounded from this draft” summary/check so users can trust the image is tied to the article.
+### Changes to `src/lib/drafts/drafts.functions.ts`
 
-### 4. Improve fallback behavior
-- Replace title-only fallback prompts with deterministic prompts built from the draft title plus first meaningful article paragraphs.
-- Use role-specific fallbacks:
-  - cover: broad editorial visual metaphor
-  - social: thumb-stopping square/mobile composition
-  - inline: specific supporting visual for a key point
-- Still apply the selected style prefix and negative prompt.
+- Add `renameDraft({ id, title })` server fn (auth-guarded, trims, max 120 chars, writes `create_drafts.title`). Invalidates `["draft", id]` and `["drafts"]`.
 
-### 5. Save generation provenance accurately
-- When attaching an image, save the full composed generation prompt and style id/snapshot into `create_media.meta` or existing prompt fields.
-- Keep the shorter concept prompt visible in the UI, but store enough metadata for rerolls/debugging.
+### Changes to `src/routes/_authenticated/library.tsx`
 
-### 6. Verify the full flow
-- Test cover, social, and inline generation from the draft detail sheet.
-- Confirm that changing the style changes both the generated concepts and the final prompt sent to image generation.
-- Confirm custom direction still includes article context.
-- Confirm attached media stores the selected style and final prompt metadata.
+- In the list row, when `title` is set, show it as the primary line and the body preview as the secondary line (currently only body is shown). Encourages naming without requiring it.
+
+### Copy changes only (no logic)
+
+- "Add a cover image to make this shareable" → "Next: add a cover image so this post is ready to share."
+- Section labels stay (COVER / SOCIAL / INLINE).
+- Empty dropzone: "Generate or upload" → "Generate with AI or upload your own".
+
+## Out of scope
+
+- No new save/submit flow — the draft is already saved.
+- No changes to image generation pipeline (recently landed).
+- No changes to Schedule or Polish behavior.
+
+## Verification
+
+- Open a library item at 390×844: header shows editable title placeholder, status line, and a single highlighted next-step.
+- Tap the title, type a name, blur → row in library reflects the new name after refetch.
+- With a cover attached, the banner advances to the "Polish then schedule" step.
