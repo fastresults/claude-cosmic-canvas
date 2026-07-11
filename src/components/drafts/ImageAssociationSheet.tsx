@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check } from "lucide-react";
 import { streamDraftImage } from "@/lib/drafts/streamImage";
+import type { StreamDraftImageMetadata } from "@/lib/drafts/streamImage";
 import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/useDraftImages";
 import { supabase } from "@/integrations/supabase/client";
 import { ThumbPeek } from "@/components/primitives/ThumbPeek";
@@ -98,18 +99,10 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [generationMeta, setGenerationMeta] = useState<StreamDraftImageMetadata | null>(null);
   const [groundingTimedOut, setGroundingTimedOut] = useState(false);
   const loadedKeyRef = useRef<string | null>(null);
   const defaultAspect = role === "social" ? "1:1" : "16:9";
-
-  useEffect(() => {
-    const key = `${draftId}:${role}`;
-    if (loadedKeyRef.current === key) return;
-    loadedKeyRef.current = key;
-    setGroundingTimedOut(false);
-    concepts.mutate({ draftId, role });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId, role]);
 
   useEffect(() => {
     if (!concepts.isPending) return;
@@ -124,53 +117,51 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     }
   }, [styles.data, styleId]);
 
-  const fallbackList = useMemo<Concept[]>(
-    () => [
-      {
-        prompt: `Editorial ${role} image for this draft, clean composition, clear focal point, brand-safe`,
-        style: "editorial",
-        aspect: defaultAspect,
-        rationale: "Fast, polished default.",
-      },
-      {
-        prompt: "Documentary-style image capturing the central idea, natural light, human context",
-        style: "photo",
-        aspect: defaultAspect,
-        rationale: "Grounded and relatable.",
-      },
-      {
-        prompt: "Bold vector illustration representing the draft's main idea, simple shapes, high contrast",
-        style: "illustration",
-        aspect: defaultAspect,
-        rationale: "Readable at small sizes.",
-      },
-    ],
-    [defaultAspect, role],
-  );
-  const list = concepts.data?.concepts ?? (groundingTimedOut ? fallbackList : []);
   const activeStyle = useMemo(
     () => styles.data?.find((s) => s.styleId === styleId) ?? null,
     [styles.data, styleId],
   );
 
-  async function run(prompt: string, aspect: string) {
+  useEffect(() => {
+    if (styles.isPending) return;
+    if (styles.data && styles.data.length > 0 && !styleId) return;
+    const key = `${draftId}:${role}:${styleId ?? "no-style"}`;
+    if (loadedKeyRef.current === key) return;
+    loadedKeyRef.current = key;
+    setGroundingTimedOut(false);
+    setSelected(null);
+    setPreview(null);
+    setGenerationMeta(null);
+    concepts.mutate({ draftId, role, styleId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftId, role, styleId, styles.isPending, styles.data]);
+
+  const list = concepts.data?.concepts ?? [];
+  const groundedSummary = generationMeta?.groundingSummary || concepts.data?.summary || null;
+  const previewAspectClass = selected?.aspect === "1:1" ? "aspect-square" : selected?.aspect === "9:16" ? "aspect-[9/16]" : "aspect-video";
+
+  async function run(concept: Concept, customDirection?: string) {
     setStreaming(true);
     setErr(null);
     setPreview(null);
     setIsFinal(false);
+    setGenerationMeta(null);
     try {
-      const composed = activeStyle?.promptPrefix
-        ? `${activeStyle.promptPrefix} ${prompt}`
-        : prompt;
-      await streamDraftImage(
-        composed,
+      const meta = await streamDraftImage(
+        {
+          draftId,
+          role,
+          styleId: activeStyle?.styleId ?? styleId,
+          conceptPrompt: customDirection ? undefined : concept.prompt,
+          customDirection,
+          aspect: concept.aspect,
+        },
         (dataUrl, final) => {
           setPreview(dataUrl);
           if (final) setIsFinal(true);
         },
-        aspect,
-        activeStyle?.negativePrompt || undefined,
       );
+      setGenerationMeta(meta);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -185,9 +176,15 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
       await attach.mutateAsync({
         role,
         url,
-        prompt: selected.prompt,
+        prompt: generationMeta?.finalPrompt ?? selected.prompt,
         styleId: activeStyle?.styleId ?? selected.style,
         aspectRatio: selected.aspect,
+        meta: {
+          conceptPrompt: selected.prompt,
+          finalPrompt: generationMeta?.finalPrompt ?? null,
+          groundingSummary: generationMeta?.groundingSummary ?? null,
+          style: generationMeta?.style ?? activeStyle ?? null,
+        },
         generatedBy: "gemini",
       });
       onDone();
@@ -276,7 +273,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           )}
           {concepts.isPending && groundingTimedOut && (
             <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-muted-foreground">
-              Using quick-start concepts while draft grounding finishes.
+              Still grounding ideas from the draft and selected style…
             </div>
           )}
           {concepts.isError && (
@@ -297,7 +294,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
                   key={i}
                   onClick={() => {
                     setSelected(c);
-                    void run(c.prompt, c.aspect);
+                    void run(c);
                   }}
                   className="flex flex-col gap-1 rounded-2xl border border-border bg-surface p-3 text-left hover:border-accent/60"
                 >
@@ -316,7 +313,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             <input
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Or describe your own concept…"
+              placeholder="Add extra direction grounded in this draft…"
               className="flex-1 rounded-full border border-border bg-surface px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-accent/60"
             />
             <button
@@ -324,7 +321,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
                 if (!customPrompt.trim()) return;
                 const c = { prompt: customPrompt.trim(), style: "custom", aspect: defaultAspect, rationale: "" };
                 setSelected(c);
-                void run(c.prompt, c.aspect);
+                void run(c, c.prompt);
               }}
               className="rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-foreground"
             >
@@ -338,7 +335,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
 
       {(preview || streaming) && (
         <div className="flex flex-col gap-3">
-          <div className="relative aspect-video overflow-hidden rounded-2xl bg-surface">
+          <div className={`relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl bg-surface ${previewAspectClass}`}>
             {preview ? (
               <img
                 src={preview}
@@ -360,13 +357,18 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           </div>
           {selected && (
             <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
-              <span className="text-foreground">Prompt:</span> {selected.prompt}
+              <span className="text-foreground">Direction:</span> {selected.prompt}
+              {groundedSummary && (
+                <div className="mt-2 border-t border-border pt-2">
+                  <span className="text-foreground">Grounded from draft:</span> {groundedSummary}
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2">
             <button
               disabled={streaming || !selected || attach.isPending}
-              onClick={() => selected && run(selected.prompt, selected.aspect)}
+              onClick={() => selected && run(selected, selected.style === "custom" ? selected.prompt : undefined)}
               className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs text-foreground disabled:opacity-50"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Reroll
