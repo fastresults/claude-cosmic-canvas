@@ -197,42 +197,40 @@ export function DraftDetailSheet({
           )}
         </div>
 
-        {/* Action dock */}
+        {/* Action dock — mobile-first: 5-col grid, icon + label stacked */}
         <div
-          className="sticky bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+          className="sticky bottom-0 border-t border-border bg-background/95 px-2 py-2 backdrop-blur"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
         >
-          <button
-            onClick={() => polish.mutate({ id: draft.id })}
-            disabled={polish.isPending}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs text-foreground disabled:opacity-50"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> {polish.isPending ? "Polishing…" : "Polish"}
-          </button>
-          <button
-            onClick={() => setImgSheet({ open: true, role: "cover" })}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs text-foreground"
-          >
-            <ImagePlus className="h-3.5 w-3.5" /> Image
-          </button>
-          <button
-            onClick={() => setSchedOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs text-foreground"
-          >
-            <Calendar className="h-3.5 w-3.5" /> Schedule
-          </button>
-          <button
-            onClick={() => duplicate.mutate(draft.id)}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs text-foreground"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => (draft.archived ? restore.mutate(draft.id) : archive.mutate(draft.id))}
-            className="ml-auto flex items-center gap-1.5 rounded-full bg-destructive/10 px-3 py-2 text-xs text-destructive"
-          >
-            <ArchiveIcon className="h-3.5 w-3.5" /> {draft.archived ? "Restore" : "Archive"}
-          </button>
+          <div className="grid grid-cols-5 gap-1 sm:flex sm:items-center sm:gap-2 sm:px-2">
+            <DockButton
+              onClick={() => polish.mutate({ id: draft.id })}
+              disabled={polish.isPending}
+              icon={<RefreshCw className={`h-4 w-4 ${polish.isPending ? "animate-spin" : ""}`} />}
+              label={polish.isPending ? "…" : "Polish"}
+            />
+            <DockButton
+              onClick={() => setImgSheet({ open: true, role: "cover" })}
+              icon={<ImagePlus className="h-4 w-4" />}
+              label="Image"
+            />
+            <DockButton
+              onClick={() => setSchedOpen(true)}
+              icon={<Calendar className="h-4 w-4" />}
+              label="Schedule"
+            />
+            <DockButton
+              onClick={() => duplicate.mutate(draft.id)}
+              icon={<Copy className="h-4 w-4" />}
+              label="Copy"
+            />
+            <DockButton
+              onClick={() => (draft.archived ? restore.mutate(draft.id) : archive.mutate(draft.id))}
+              icon={<ArchiveIcon className="h-4 w-4" />}
+              label={draft.archived ? "Restore" : "Archive"}
+              tone="destructive"
+            />
+          </div>
         </div>
       </SheetShell>
 
