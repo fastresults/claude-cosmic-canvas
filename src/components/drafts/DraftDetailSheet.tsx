@@ -21,7 +21,6 @@ export function DraftDetailSheet({
   const { archive, restore, duplicate, polish } = useDraftMutations();
   const [imgSheet, setImgSheet] = useState<{ open: boolean; role: Role }>({ open: false, role: "cover" });
   const [schedOpen, setSchedOpen] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
 
   if (isLoading) {
     return (
