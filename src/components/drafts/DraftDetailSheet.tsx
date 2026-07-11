@@ -1,5 +1,6 @@
-import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { useDraft, useDraftMutations } from "@/hooks/useDrafts";
 import { useDraftImages, useRemoveDraftImage } from "@/hooks/useDraftImages";
 import { ImageAssociationSheet } from "./ImageAssociationSheet";
