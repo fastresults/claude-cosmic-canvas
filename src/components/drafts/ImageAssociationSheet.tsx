@@ -463,16 +463,20 @@ function LibraryTab({ draftId, role, onDone }: { draftId: string; role: Role; on
   return (
     <div className="grid grid-cols-3 gap-2">
       {items.map((it) => (
-        <button
+        <ThumbPeek
           key={it.id}
-          onClick={async () => {
+          src={it.url}
+          alt={it.prompt ?? ""}
+          label={it.prompt ?? undefined}
+          confirmLabel="Attach to draft"
+          onConfirm={async () => {
             await attach.mutateAsync({ role, url: it.url, prompt: it.prompt ?? undefined, generatedBy: "library" });
             onDone();
           }}
-          className="group relative aspect-square overflow-hidden rounded-xl bg-surface"
+          className="group aspect-square overflow-hidden rounded-xl bg-surface"
         >
           <img src={it.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-        </button>
+        </ThumbPeek>
       ))}
     </div>
   );
