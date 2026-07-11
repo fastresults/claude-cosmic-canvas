@@ -141,7 +141,7 @@ export function DraftDetailSheet({
           </button>
         </header>
 
-        <div className="flex flex-col gap-5 px-4 pb-24 pt-4">
+        <div className="flex flex-col gap-5 px-4 pb-32 pt-4">
           {/* Progress: what's next */}
           <NextStepBanner
             hasCover={hasCover}
@@ -198,7 +198,10 @@ export function DraftDetailSheet({
         </div>
 
         {/* Action dock */}
-        <div className="sticky bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
+        <div
+          className="sticky bottom-0 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        >
           <button
             onClick={() => polish.mutate({ id: draft.id })}
             disabled={polish.isPending}
@@ -312,7 +315,7 @@ function ImageRow({
 
 function SheetShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
       <div
         className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-background shadow-2xl"
         onClick={(e) => e.stopPropagation()}
