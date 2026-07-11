@@ -8,6 +8,7 @@ import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check }
 import { streamDraftImage } from "@/lib/drafts/streamImage";
 import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/useDraftImages";
 import { supabase } from "@/integrations/supabase/client";
+import { ThumbPeek } from "@/components/primitives/ThumbPeek";
 
 
 type Role = "cover" | "social" | "inline";
