@@ -315,7 +315,7 @@ function ImageRow({
 
 function SheetShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
       <div
         className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-background shadow-2xl"
         onClick={(e) => e.stopPropagation()}
