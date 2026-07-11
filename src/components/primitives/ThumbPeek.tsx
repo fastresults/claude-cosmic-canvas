@@ -48,12 +48,23 @@ export function ThumbPeek({
   children,
 }: ThumbPeekProps) {
   const [open, setOpen] = useState(false);
+  const openedAtRef = useRef(0);
   const hoverCapable = useHoverCapable();
   const hoverTimer = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const canConfirm = confirmLabel !== undefined;
 
-  const close = useCallback(() => setOpen(false), []);
+  // Ignore close events within 350ms of opening to avoid the mobile
+  // "ghost click" that fires the same tap on the freshly-mounted backdrop.
+  const close = useCallback(() => {
+    if (Date.now() - openedAtRef.current < 350) return;
+    setOpen(false);
+  }, []);
+
+  const openOverlay = useCallback(() => {
+    openedAtRef.current = Date.now();
+    setOpen(true);
+  }, []);
 
   const commit = useCallback(() => {
     onConfirm?.();
@@ -74,7 +85,7 @@ export function ThumbPeek({
   const handlePointerEnter = () => {
     if (!hoverCapable) return;
     if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setOpen(true), 150);
+    hoverTimer.current = window.setTimeout(() => openOverlay(), 150);
   };
   const handlePointerLeave = () => {
     if (!hoverCapable) return;
@@ -86,11 +97,11 @@ export function ThumbPeek({
     if (hoverCapable) {
       // Desktop: click = select (or just peek if no confirm handler)
       if (canConfirm && onConfirm) commit();
-      else setOpen(true);
+      else openOverlay();
       return;
     }
     // Touch: first tap opens; if already open, treat as second-tap commit
-    if (!open) setOpen(true);
+    if (!open) openOverlay();
     else if (canConfirm) commit();
   };
 
