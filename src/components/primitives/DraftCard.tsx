@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Pill } from "./Pill";
+import { ThumbPeek } from "./ThumbPeek";
 import { cn } from "@/lib/utils";
 
 type DraftState = "idle" | "streaming" | "done" | "error" | "empty";
