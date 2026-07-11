@@ -19,9 +19,16 @@ export function DraftDetailSheet({
   const { data, isLoading } = useDraft(draftId);
   const images = useDraftImages(draftId);
   const removeImg = useRemoveDraftImage(draftId);
-  const { archive, restore, duplicate, polish } = useDraftMutations();
+  const { archive, restore, duplicate, polish, rename } = useDraftMutations();
   const [imgSheet, setImgSheet] = useState<{ open: boolean; role: Role }>({ open: false, role: "cover" });
   const [schedOpen, setSchedOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (editingTitle) titleInputRef.current?.focus();
+  }, [editingTitle]);
+
 
   if (isLoading) {
     return (
