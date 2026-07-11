@@ -65,6 +65,8 @@ export function useDraftMutations() {
   const sched = useServerFn(scheduleDraft);
   const polish = useServerFn(polishDraft);
   const ctx = useServerFn(updateDraftContext);
+  const rename = useServerFn(renameDraft);
+
   return {
     archive: useMutation({ mutationFn: (id: string) => archive({ data: { id } }), onSuccess: inval }),
     restore: useMutation({ mutationFn: (id: string) => restore({ data: { id } }), onSuccess: inval }),
