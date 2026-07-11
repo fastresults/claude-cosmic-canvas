@@ -116,13 +116,16 @@ export const searchDrafts = createServerFn({ method: "POST" })
     const items = page.map((r) => {
       const sections = Array.isArray(r.sections) ? r.sections : [];
       const first = (sections[0] ?? {}) as { heading?: string | null; body?: string };
-      const body = r.title ?? first.body ?? "";
+      const bodyText = first.body ?? "";
+      const displayTitle = r.title?.trim() ? r.title.trim() : null;
       return {
         id: r.id,
         format: r.format_id ?? "post",
-        body,
+        title: displayTitle,
+        body: displayTitle ? bodyText : bodyText || r.title || "",
         score: r.quality_score != null ? { total: Number(r.quality_score) } : {},
         status: r.status ?? "draft",
+
         image_url: covers[r.id] ?? null,
         created_at: r.created_at,
         campaign_id: r.campaign_id,

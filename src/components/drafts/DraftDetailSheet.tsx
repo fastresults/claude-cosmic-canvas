@@ -1,5 +1,6 @@
-import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
 import { useDraft, useDraftMutations } from "@/hooks/useDrafts";
 import { useDraftImages, useRemoveDraftImage } from "@/hooks/useDraftImages";
 import { ImageAssociationSheet } from "./ImageAssociationSheet";
@@ -18,9 +19,16 @@ export function DraftDetailSheet({
   const { data, isLoading } = useDraft(draftId);
   const images = useDraftImages(draftId);
   const removeImg = useRemoveDraftImage(draftId);
-  const { archive, restore, duplicate, polish } = useDraftMutations();
+  const { archive, restore, duplicate, polish, rename } = useDraftMutations();
   const [imgSheet, setImgSheet] = useState<{ open: boolean; role: Role }>({ open: false, role: "cover" });
   const [schedOpen, setSchedOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (editingTitle) titleInputRef.current?.focus();
+  }, [editingTitle]);
+
 
   if (isLoading) {
     return (
@@ -56,22 +64,77 @@ export function DraftDetailSheet({
     archived: boolean;
     status: string;
     platform: string | null;
+    updated_at?: string | null;
   };
   const media = (images.data ?? []).map((m) => ({ ...m, role: (m.role ?? "cover") as Role }));
   const cover = media.filter((m) => m.role === "cover");
   const social = media.filter((m) => m.role === "social");
   const inline = media.filter((m) => m.role === "inline");
   const hasCover = cover.length > 0;
+  const savedLabel = formatSavedAgo(draft.updated_at);
+
+  function commitTitle() {
+    const next = titleDraft.trim();
+    const current = draft.title ?? "";
+    if (next !== current) {
+      rename.mutate({ id: draft.id, title: next.length ? next : null });
+    }
+    setEditingTitle(false);
+  }
+  function beginEditTitle() {
+    setTitleDraft(draft.title ?? "");
+    setEditingTitle(true);
+  }
 
   return (
     <>
       <SheetShell onClose={onClose}>
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <div className="min-w-0">
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {draft.format_id} {draft.platform ? `· ${draft.platform}` : ""}
             </div>
-            <h1 className="truncate font-display text-lg text-foreground">{draft.title ?? "Untitled draft"}</h1>
+            {editingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
+                  else if (e.key === "Escape") { setEditingTitle(false); }
+                }}
+                maxLength={120}
+                placeholder="Name this draft (optional)"
+                className="w-full bg-transparent font-display text-lg text-foreground outline-none placeholder:text-muted-foreground/60"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={beginEditTitle}
+                className="group flex w-full items-center gap-1.5 text-left"
+                aria-label="Rename draft"
+              >
+                <span
+                  className={
+                    draft.title
+                      ? "truncate font-display text-lg text-foreground"
+                      : "truncate font-display text-lg text-muted-foreground/70"
+                  }
+                >
+                  {draft.title ?? "Name this draft (optional)"}
+                </span>
+                <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            )}
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="capitalize text-foreground/70">{draft.status}</span>
+              <span className="text-border">·</span>
+              <span className="flex items-center gap-1">
+                <Check className="h-3 w-3 text-success" />
+                Saved{savedLabel ? ` ${savedLabel}` : ""}
+              </span>
+            </div>
           </div>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-surface">
             <X className="h-5 w-5" />
@@ -79,21 +142,15 @@ export function DraftDetailSheet({
         </header>
 
         <div className="flex flex-col gap-5 px-4 pb-24 pt-4">
-          {/* Suggested next step */}
-          <div className="flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
-            <Sparkles className="h-4 w-4 text-accent" />
-            <span className="text-foreground">
-              {hasCover ? "Polish for clarity, or schedule when ready." : "Add a cover image to make this shareable."}
-            </span>
-            {!hasCover && (
-              <button
-                onClick={() => setImgSheet({ open: true, role: "cover" })}
-                className="ml-auto rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
-              >
-                Add cover
-              </button>
-            )}
-          </div>
+          {/* Progress: what's next */}
+          <NextStepBanner
+            hasCover={hasCover}
+            status={draft.status}
+            onAddCover={() => setImgSheet({ open: true, role: "cover" })}
+            onSchedule={() => setSchedOpen(true)}
+          />
+
+
 
           {/* Image tray by role */}
           <ImageRow
@@ -223,7 +280,7 @@ function ImageRow({
           className="grid h-24 w-full place-items-center rounded-2xl border-2 border-dashed border-border bg-surface text-xs text-muted-foreground hover:border-accent/60"
         >
           <div className="flex items-center gap-1.5">
-            <ImagePlus className="h-4 w-4" /> Generate or upload
+            <ImagePlus className="h-4 w-4" /> Generate with AI or upload your own
           </div>
         </button>
       ) : (
@@ -265,3 +322,85 @@ function SheetShell({ children, onClose }: { children: React.ReactNode; onClose:
     </div>
   );
 }
+
+function formatSavedAgo(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "";
+  const min = 60_000, hr = 3_600_000, day = 86_400_000;
+  if (diff < min) return "just now";
+  if (diff < hr) return `${Math.round(diff / min)}m ago`;
+  if (diff < day) return `${Math.round(diff / hr)}h ago`;
+  if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function NextStepBanner({
+  hasCover,
+  status,
+  onAddCover,
+  onSchedule,
+}: {
+  hasCover: boolean;
+  status: string;
+  onAddCover: () => void;
+  onSchedule: () => void;
+}) {
+  const scheduled = status === "scheduled" || status === "posted";
+  const steps: Array<{ label: string; done: boolean; current: boolean }> = [
+    { label: "Content drafted", done: true, current: false },
+    { label: "Add a cover image", done: hasCover, current: !hasCover },
+    { label: "Polish & schedule", done: scheduled, current: hasCover && !scheduled },
+  ];
+  const currentIdx = steps.findIndex((s) => s.current);
+  const primaryLabel = !hasCover
+    ? "Next: add a cover image so this post is ready to share."
+    : !scheduled
+      ? "Looks ready. Polish the copy or schedule when you're happy."
+      : "Scheduled. You can still edit until it goes live.";
+
+  return (
+    <div className="rounded-2xl border border-accent/30 bg-accent/5 p-3">
+      <div className="flex items-start gap-2">
+        <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+        <div className="flex-1 text-xs text-foreground">{primaryLabel}</div>
+        {!hasCover && (
+          <button
+            onClick={onAddCover}
+            className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
+          >
+            Add cover
+          </button>
+        )}
+        {hasCover && !scheduled && (
+          <button
+            onClick={onSchedule}
+            className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
+          >
+            Schedule
+          </button>
+        )}
+      </div>
+      <ol className="mt-2.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {steps.map((s, i) => (
+          <li key={s.label} className="flex items-center gap-1.5">
+            <span
+              className={
+                s.done
+                  ? "flex h-4 w-4 items-center justify-center rounded-full bg-success/20 text-success"
+                  : i === currentIdx
+                    ? "flex h-4 w-4 items-center justify-center rounded-full bg-accent text-accent-foreground"
+                    : "flex h-4 w-4 items-center justify-center rounded-full border border-border text-muted-foreground"
+              }
+            >
+              {s.done ? <Check className="h-2.5 w-2.5" /> : i + 1}
+            </span>
+            <span className={i === currentIdx ? "text-foreground" : ""}>{s.label}</span>
+            {i < steps.length - 1 && <span className="text-border">—</span>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+

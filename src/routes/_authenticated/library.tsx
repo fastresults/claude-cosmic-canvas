@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/library")({
 type Draft = {
   id: string;
   format: string;
+  title: string | null;
   body: string;
   score: unknown;
   status: string;
@@ -48,6 +49,7 @@ type Draft = {
   created_at: string;
   campaign_id: string | null;
 };
+
 
 function relTime(iso: string) {
   const d = new Date(iso).getTime();
@@ -442,9 +444,19 @@ function Library() {
                             </>
                           ) : null}
                         </div>
-                        <p className="mt-0.5 truncate text-sm text-foreground/90">
-                          {d.body.replace(/\s+/g, " ").slice(0, 140)}
-                        </p>
+                        {d.title ? (
+                          <>
+                            <p className="mt-0.5 truncate text-sm font-medium text-foreground">{d.title}</p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-0.5 truncate text-sm text-foreground/90">
+                            {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                          </p>
+                        )}
+
                       </div>
                     </div>
                   </motion.article>
