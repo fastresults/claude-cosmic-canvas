@@ -30,7 +30,8 @@ export function useDraftImages(draftId: string | null | undefined) {
 export function useImageConcepts() {
   const fn = useServerFn(generateImageConcepts);
   return useMutation({
-    mutationFn: (input: { draftId: string; role: "cover" | "social" | "inline" }) => fn({ data: input }),
+    mutationFn: (input: { draftId: string; role: "cover" | "social" | "inline"; styleId?: string | null }) =>
+      fn({ data: input }),
   });
 }
 
@@ -45,6 +46,7 @@ export function useAttachDraftImage(draftId: string) {
       styleId?: string | null;
       aspectRatio?: string | null;
       parentImageId?: string | null;
+      meta?: Record<string, unknown>;
       generatedBy: "gpt-image-2" | "gemini" | "upload" | "library";
     }) => fn({ data: { draftId, ...v } }),
     onSuccess: () => {
