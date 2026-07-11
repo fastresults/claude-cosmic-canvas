@@ -257,6 +257,29 @@ export const updateDraftContext = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// -------- Rename draft ---------------------------------------------------
+
+export const renameDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().max(120).nullable(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const trimmed = data.title?.trim() ?? "";
+    const nextTitle = trimmed.length ? trimmed : null;
+    const { error } = await context.supabase
+      .from("create_drafts")
+      .update({ title: nextTitle })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true, title: nextTitle };
+  });
+
+
 // -------- Schedule -------------------------------------------------------
 
 export const scheduleDraft = createServerFn({ method: "POST" })
