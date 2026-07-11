@@ -8,11 +8,20 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
 
+type ImageStyleRow = {
+  style_id: string;
+  name: string;
+  description: string | null;
+  prompt_prefix: string;
+  negative_prompt: string;
+};
+
 const IdInput = z.object({ id: z.string().uuid() });
 const DraftIdInput = z.object({ draftId: z.string().uuid() });
 const ImageConceptInput = z.object({
   draftId: z.string().uuid(),
   role: z.enum(["cover", "social", "inline"]).default("cover"),
+  styleId: z.string().nullable().optional(),
 });
 
 // -------- List / read ----------------------------------------------------
@@ -86,7 +95,7 @@ export const getDraft = createServerFn({ method: "POST" })
     const [{ data: media }, { data: history }] = await Promise.all([
       context.supabase
         .from("create_media")
-        .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, created_at")
+        .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, meta, created_at")
         .eq("draft_id", data.id)
         .order("sort_order", { ascending: true }),
       context.supabase
@@ -293,7 +302,7 @@ export const listDraftImages = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("create_media")
-      .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, created_at")
+      .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, meta, created_at")
       .eq("draft_id", data.draftId)
       .eq("user_id", context.userId)
       .order("sort_order", { ascending: true });
@@ -309,6 +318,7 @@ const AttachInput = z.object({
   styleId: z.string().nullable().optional(),
   aspectRatio: z.string().nullable().optional(),
   parentImageId: z.string().uuid().nullable().optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   generatedBy: z.enum(["gpt-image-2", "gemini", "upload", "library"]).default("gemini"),
 });
 
@@ -337,7 +347,7 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         aspect_ratio: data.aspectRatio ?? null,
         parent_image_id: data.parentImageId ?? null,
         sort_order: count ?? 0,
-        meta: {} as Json,
+        meta: (data.meta ?? {}) as Json,
       })
       .select("id")
       .single();
@@ -369,7 +379,15 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         edgeKind: "GENERATED_BY_TOOL",
         dstType: "image",
         dstId: row.id,
-        meta: { tool: data.generatedBy, style: data.styleId, prompt: data.prompt?.slice(0, 500) },
+        meta: {
+          tool: data.generatedBy,
+          style: data.styleId,
+          prompt: data.prompt?.slice(0, 500),
+          final_prompt:
+            typeof data.meta?.finalPrompt === "string"
+              ? data.meta.finalPrompt.slice(0, 500)
+              : undefined,
+        },
       },
     ];
     if (data.parentImageId) {
@@ -446,14 +464,30 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ImageConceptInput.parse(input))
   .handler(async ({ data, context }) => {
-    const fallbackConcepts = (title: string, role: "cover" | "social" | "inline") => {
+    const fallbackConcepts = (
+      title: string,
+      role: "cover" | "social" | "inline",
+      summaryText: string,
+      style?: { name: string; description: string | null } | null,
+    ) => {
       const subject = title && title !== "Untitled" ? `"${title}"` : "this draft";
       const aspect = role === "social" ? "1:1" : "16:9";
+      const contextLine = summaryText
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 220) || subject;
+      const styleName = style?.name ?? "selected editorial style";
+      const roleLead =
+        role === "social"
+          ? "Mobile-first social visual"
+          : role === "inline"
+            ? "Inline supporting visual"
+            : "Primary cover visual";
       return [
-        { prompt: `Editorial ${role} image for ${subject}, clean composition, clear focal point, brand-safe`, style: "editorial", aspect, rationale: "Fast, polished default." },
-        { prompt: `Documentary-style image capturing the central idea of ${subject}, natural light, human context`, style: "photo", aspect, rationale: "Grounded and relatable." },
-        { prompt: `Bold vector illustration representing ${subject}, simple shapes, high contrast, modern editorial feel`, style: "illustration", aspect, rationale: "Readable at small sizes." },
-        { prompt: `Abstract visual metaphor for ${subject}, layered depth, cinematic light, no readable text`, style: "abstract", aspect, rationale: "Flexible and shareable." },
+        { prompt: `${roleLead} for ${subject}: visualize the article's central tension from this context — ${contextLine}. Match ${styleName}; no readable text.`, style: styleName, aspect, rationale: "Grounded in the article's main point." },
+        { prompt: `Visual metaphor for ${subject}: show the shift, contrast, or consequence described in the article context — ${contextLine}. Match ${styleName}; no logos or text.`, style: styleName, aspect, rationale: "Uses article context rather than a generic topic image." },
+        { prompt: `Human or object-led scene for ${subject}: represent the audience-facing problem and outcome from the article — ${contextLine}. Match ${styleName}; brand-safe.`, style: styleName, aspect, rationale: "Connects the style template to a concrete story moment." },
+        { prompt: `Abstract editorial composition for ${subject}: translate the article's thesis into a clear focal shape and supporting details from — ${contextLine}. Match ${styleName}; no readable text.`, style: styleName, aspect, rationale: "Flexible fallback while staying grounded." },
       ];
     };
     const safeParseJson = (s: string): { [k: string]: unknown } | null => {
@@ -490,14 +524,28 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
             .slice(0, 1500)
         : "");
 
+    let style: ImageStyleRow | null = null;
+    if (data.styleId) {
+      const { data: styleRow, error: styleError } = await context.supabase
+        .from("image_generation_styles")
+        .select("style_id, name, description, prompt_prefix, negative_prompt")
+        .eq("style_id", data.styleId)
+        .eq("is_enabled", true)
+        .contains("supported_types", [data.role])
+        .maybeSingle();
+      if (styleError) throw styleError;
+      style = styleRow as ImageStyleRow | null;
+    }
+
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
       console.warn("[draft-image] concepts:fallback_missing_key", { draftId: data.draftId, role: data.role });
-      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
     }
 
     const system =
       `You are Eve's visual art director. Propose 4 distinct ${data.role} image concepts for a piece of written content. ` +
+      "Every concept must fit the selected visual style and be grounded in the article's actual thesis. Do not propose generic stock imagery. " +
       'Return ONLY JSON: {"concepts":[{"prompt":string,"style":string,"aspect":"1:1"|"16:9"|"9:16","rationale":string}]}';
 
     const prompt = [
@@ -505,12 +553,17 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       `[AUDIENCE] ${draft.audience ?? "general"}`,
       `[FORMAT] ${draft.format_id}`,
       `[IMAGE_ROLE] ${data.role}`,
+      style
+        ? `[SELECTED_STYLE]\nName: ${style.name}\nDescription: ${style.description ?? ""}\nStyle instructions: ${style.prompt_prefix}\nAvoid: ${style.negative_prompt}`
+        : "[SELECTED_STYLE]\nNo explicit style selected; use refined editorial defaults.",
       `[DRAFT_SUMMARY]\n${summary}`,
       "",
+      "Each prompt must name or imply the article's main idea, not just the content category.",
+      "Keep prompts image-generator-ready. Do not include readable text in the image.",
       "Return the JSON only — no prose, no code fences.",
     ].join("\n");
 
-    console.info("[draft-image] concepts:start", { draftId: data.draftId, role: data.role });
+    console.info("[draft-image] concepts:start", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null });
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
     try {
@@ -547,10 +600,10 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       clearTimeout(timeoutId);
       if (clean.length === 0) {
         console.warn("[draft-image] concepts:fallback_empty", { draftId: data.draftId, role: data.role });
-        return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
+        return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
       }
-      console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, count: clean.length });
-      return { fallback: false as const, concepts: clean };
+      console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null, count: clean.length });
+      return { fallback: false as const, summary: summary.slice(0, 500), concepts: clean };
     } catch (e) {
       clearTimeout(timeoutId);
       console.warn("[draft-image] concepts:fallback_error", {
@@ -559,7 +612,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         timedOut: controller.signal.aborted,
         message: e instanceof Error ? e.message.slice(0, 240) : "Unknown error",
       });
-      return { fallback: true as const, concepts: fallbackConcepts(draft.title ?? "Untitled", data.role) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
     }
   });
 

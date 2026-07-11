@@ -11,14 +11,34 @@ const IMAGE_STREAM_TIMEOUT_MS = 120_000;
 type ImageEventPayload =
   | { type: "image_generation.partial_image"; b64_json: string; partial_image_index: number }
   | { type: "image_generation.completed"; b64_json: string }
+  | { type: "draft_image.metadata"; finalPrompt: string; style: StreamDraftImageMetadata["style"]; groundingSummary: string }
   | { type: "error"; error: { message: string; code?: string } };
 
+export type StreamDraftImageInput = {
+  draftId: string;
+  role: "cover" | "social" | "inline";
+  styleId?: string | null;
+  conceptPrompt?: string;
+  customDirection?: string;
+  aspect?: string;
+};
+
+export type StreamDraftImageMetadata = {
+  finalPrompt: string;
+  groundingSummary: string;
+  style: {
+    styleId: string | null;
+    name: string | null;
+    description: string | null;
+    promptPrefix: string | null;
+    negativePrompt: string | null;
+  } | null;
+};
+
 export async function streamDraftImage(
-  prompt: string,
+  input: StreamDraftImageInput,
   onFrame: (dataUrl: string, isFinal: boolean) => void,
-  aspect = "16:9",
-  negativePrompt?: string,
-): Promise<void> {
+): Promise<StreamDraftImageMetadata | null> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -34,7 +54,7 @@ export async function streamDraftImage(
         "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ prompt, aspect, negativePrompt }),
+      body: JSON.stringify(input),
       signal: controller.signal,
     });
   } catch (error) {
@@ -51,6 +71,7 @@ export async function streamDraftImage(
   }
   let sawCompleted = false;
   let streamError: string | undefined;
+  let metadata: StreamDraftImageMetadata | null = null;
   const parser = createParser({
     onEvent(event) {
       let payload: ImageEventPayload | undefined;
@@ -66,6 +87,14 @@ export async function streamDraftImage(
         return;
       }
       const eventType = event.event || payload?.type;
+      if (eventType === "draft_image.metadata" && payload?.type === "draft_image.metadata") {
+        metadata = {
+          finalPrompt: payload.finalPrompt,
+          groundingSummary: payload.groundingSummary,
+          style: payload.style,
+        };
+        return;
+      }
       if (
         eventType !== "image_generation.partial_image" &&
         eventType !== "image_generation.completed"
@@ -97,4 +126,5 @@ export async function streamDraftImage(
   }
   if (streamError) throw new Error(streamError);
   if (!sawCompleted) throw new Error("Image stream ended without a completed event");
+  return metadata;
 }
