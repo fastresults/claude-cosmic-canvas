@@ -4,6 +4,7 @@ import { useDraft, useDraftMutations } from "@/hooks/useDrafts";
 import { useDraftImages, useRemoveDraftImage } from "@/hooks/useDraftImages";
 import { ImageAssociationSheet } from "./ImageAssociationSheet";
 import { SchedulePicker } from "./SchedulePicker";
+import { ThumbPeek } from "@/components/primitives/ThumbPeek";
 
 type Role = "cover" | "social" | "inline";
 
