@@ -11,6 +11,8 @@ import {
   scheduleDraft,
   polishDraft,
   updateDraftContext,
+  renameDraft,
+
 } from "@/lib/drafts/drafts.functions";
 
 export type DraftFilter = {
