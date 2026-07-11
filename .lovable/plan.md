@@ -1,51 +1,64 @@
-# Tap-to-peek, tap-again-to-select for thumbnails (mobile-first)
+## Audit findings
 
-## Interaction model (revised)
+1. **The selected style is not part of concept generation.** Concepts are generated from draft context only, then the UI prepends the selected style later. That means concept ideas can conflict with the style template the user picked.
 
-**Mobile / touch (primary)** — two-tap commit:
-1. **First tap** on a thumbnail → opens a magnified **Peek overlay**. Nothing is selected yet. The underlying tile shows a subtle "previewing" ring so the user knows what they just tapped.
-2. **Second tap** while the overlay is open → commits selection and closes the overlay. The second tap can land either on the enlarged image itself or on an explicit **"Use this"** button pinned inside the overlay (both do the same thing, so users who want the button always have it, and users who just tap the image again get the fast path).
-3. Tapping the **backdrop**, the **✕**, pressing **Esc**, or **swiping down** closes the overlay without selecting.
+2. **The final image prompt is composed on the client.** The image API receives a flat prompt string, so the backend cannot guarantee it contains the current draft, role, selected style, audience, domain, and generation constraints.
 
-**Desktop / pointer:fine** — hover to peek, click to select:
-- Hover a thumbnail (150 ms intent delay) → opens the same Peek overlay, non-modal, no selection.
-- Click the thumbnail (or the "Use this" button in the overlay) → selects immediately and closes the overlay.
-- Mouse-leave closes the overlay.
+3. **Custom prompts bypass article grounding.** When the user types a custom prompt, it replaces the article context instead of being treated as additional direction for the article-based image.
 
-**Rationale**: on mobile, tap-to-select would fire the moment the user tries to look closer — exactly the problem the user flagged. Splitting *look* from *choose* gives a safe preview step, and putting the confirm action on both the image and a button keeps the second tap fast without hiding the choice.
+4. **Fallback concepts are too generic.** If grounding times out or fails, the app falls back to title-only prompts, which can easily produce images disconnected from the article.
 
-## Surfaces in scope
-1. `ImageAssociationSheet` → **Style Template strip** (Editorial/Magazine/Documentary tiles from the screenshot).
-2. `ImageAssociationSheet` → **Library tab** grid — selection now means "pick this image to attach", so the confirm button in the overlay reads **"Attach to draft"** and calls the existing attach mutation.
-3. `DraftDetailSheet` → cover / social / inline image grids — no selection semantics; overlay is view-only and replaces the ad-hoc lightbox added last turn.
-4. `DraftCard` covers (`components/drafts/DraftCard.tsx`, `components/primitives/DraftCard.tsx`) — first tap peeks the cover, second tap (or "Open draft" button) opens the draft sheet.
-5. `ImageAssociationSheet` generated preview stays as-is (it is already the large view).
+5. **Saved prompt metadata is incomplete.** Attached images save the user-facing concept prompt, not the fully composed prompt/style/context that actually generated the image, making debugging and rerolling unreliable.
 
-## New shared component
-`src/components/primitives/ThumbPeek.tsx`
-- Props: `src`, `alt`, `label?`, `selected?`, `confirmLabel?` (default `"Use this"`), `onConfirm()`, `aspect?`, `children` (tile chrome).
-- Detects pointer type via `matchMedia('(hover: hover) and (pointer: fine)')`.
-  - Touch: click on tile → open overlay only. Click on overlay image or confirm button → `onConfirm()` + close.
-  - Pointer: hover-intent opens overlay; click anywhere on tile or confirm button → `onConfirm()` immediately.
-- Overlay: portal, centered card up to `min(92vw, 720px)`, image at natural aspect, caption row with `label`, primary "Use this / Attach to draft" button, secondary "Cancel" button. Backdrop click, Esc, and swipe-down dismiss.
-- Applies `previewing` ring to the tile while its overlay is open, `selected` ring when `selected` is true.
-- Focus trap when opened by tap; respects `prefers-reduced-motion` (fade, no scale).
-- Announces state via `aria-live` ("Previewing X. Tap image again to select.").
+6. **Runtime logs did not show a recent failed image request.** Console/network snapshots and AI Gateway logs showed no recent matching requests, so this looks like a prompt/control-flow quality issue rather than a transport failure.
 
-## Wiring
-- **Style strip**: replace the current `<button>` tile with `<ThumbPeek onConfirm={() => setStyleId(s.styleId)} selected={styleId===s.styleId} label={s.name} confirmLabel="Use this style" …>`. Uses a real `<img>` so the overlay reuses the same URL.
-- **Library grid**: `<ThumbPeek onConfirm={() => attach.mutate({ role, url: it.url, prompt: it.prompt ?? undefined, generatedBy: "library" })} confirmLabel="Attach to draft" …>`. Removes the current "tap = immediate attach" behavior, which is unsafe now that tap also opens the peek.
-- **DraftDetailSheet image rows**: `<ThumbPeek onConfirm={() => {}} confirmLabel={undefined} …>`; when `confirmLabel` is undefined the overlay hides the confirm button and behaves as view-only (matches the existing lightbox behavior).
-- **DraftCard covers**: `<ThumbPeek onConfirm={openDraft} confirmLabel="Open draft" …>`.
+## Plan
 
-## Out of scope
-- Style-tile selection still does NOT auto-run generation; the user still picks a concept card or presses Generate.
-- No backend, data-model, or generation-pipeline changes.
-- No visual redesign beyond the overlay shell and selection ring.
+### 1. Make image generation server-owned and article-grounded
+- Update `/api/drafts/generate-image` to accept structured input:
+  - `draftId`
+  - `role` (`cover`, `social`, `inline`)
+  - `styleId`
+  - `conceptPrompt` or `customDirection`
+  - `aspect`
+- In the route, verify the user, load the draft and selected style from the backend, then build the final image prompt server-side.
+- The final prompt will always include:
+  - title
+  - article summary/key claims
+  - format/platform
+  - domain/audience
+  - role-specific image purpose
+  - selected style name, description, prompt prefix, negative prompt
+  - user concept/custom direction as a constraint, not a replacement
 
-## Verification (Playwright, 390×844 and 1280×1800)
-- Mobile: tap a style tile → overlay opens, no `styleId` change yet. Tap the enlarged image → `styleId` updates, overlay closes. Repeat with the "Use this style" button. Repeat on a library thumbnail → confirms attach only on second tap.
-- Mobile: tap a style tile, tap backdrop → overlay closes, `styleId` unchanged.
-- Desktop: hover a style tile → overlay opens without selection change. Click the tile → selects immediately.
-- Reduced motion: overlay fades in, no scale.
-- DraftDetailSheet: tapping a cover/social/inline thumb still just opens the large view, no confirm button visible.
+### 2. Make concept generation style-aware
+- Extend `generateImageConcepts` to accept `styleId`.
+- Load the selected style in the server function before asking the model for concepts.
+- Ask for concepts that fit both:
+  - the article’s actual message
+  - the selected visual template
+- When the user changes the style template, regenerate/reload the concept list for that style instead of reusing stale concepts from another style.
+
+### 3. Add explicit mobile-first controls in the generate sheet
+- Keep style templates as the first control.
+- Add a clear selected-style state and a “Regenerate ideas” action when style changes.
+- Rename the custom prompt field to behave like direction, e.g. “Add extra direction…” so it does not imply replacing the article context.
+- Show a compact “Grounded from this draft” summary/check so users can trust the image is tied to the article.
+
+### 4. Improve fallback behavior
+- Replace title-only fallback prompts with deterministic prompts built from the draft title plus first meaningful article paragraphs.
+- Use role-specific fallbacks:
+  - cover: broad editorial visual metaphor
+  - social: thumb-stopping square/mobile composition
+  - inline: specific supporting visual for a key point
+- Still apply the selected style prefix and negative prompt.
+
+### 5. Save generation provenance accurately
+- When attaching an image, save the full composed generation prompt and style id/snapshot into `create_media.meta` or existing prompt fields.
+- Keep the shorter concept prompt visible in the UI, but store enough metadata for rerolls/debugging.
+
+### 6. Verify the full flow
+- Test cover, social, and inline generation from the draft detail sheet.
+- Confirm that changing the style changes both the generated concepts and the final prompt sent to image generation.
+- Confirm custom direction still includes article context.
+- Confirm attached media stores the selected style and final prompt metadata.
