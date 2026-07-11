@@ -132,6 +132,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
     setSelected(null);
     setPreview(null);
     setGenerationMeta(null);
+    concepts.reset();
     concepts.mutate({ draftId, role, styleId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId, role, styleId, styles.isPending, styles.data]);
@@ -202,7 +203,21 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Style template</div>
               {activeStyle && (
-                <div className="text-[10px] text-muted-foreground">{activeStyle.name}</div>
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <span>{activeStyle.name}</span>
+                  <button
+                    type="button"
+                    disabled={concepts.isPending}
+                    onClick={() => {
+                      setGroundingTimedOut(false);
+                      concepts.reset();
+                      concepts.mutate({ draftId, role, styleId });
+                    }}
+                    className="text-accent disabled:opacity-50"
+                  >
+                    Regenerate ideas
+                  </button>
+                </div>
               )}
             </div>
             {styles.isPending && (
@@ -280,11 +295,20 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
               <span>Couldn't ground concepts. You can still generate from your own prompt.</span>
               <button
-                onClick={() => concepts.mutate({ draftId, role })}
+                onClick={() => {
+                  setGroundingTimedOut(false);
+                  concepts.reset();
+                  concepts.mutate({ draftId, role, styleId });
+                }}
                 className="shrink-0 rounded-full border border-destructive/40 px-3 py-1 text-[11px]"
               >
                 Retry
               </button>
+            </div>
+          )}
+          {groundedSummary && !concepts.isPending && (
+            <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
+              <span className="text-foreground">Grounded from draft:</span> {groundedSummary}
             </div>
           )}
           {list.length > 0 && (
