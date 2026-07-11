@@ -8,6 +8,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
 
+type ImageStyleRow = {
+  style_id: string;
+  name: string;
+  description: string | null;
+  prompt_prefix: string;
+  negative_prompt: string;
+};
+
 const IdInput = z.object({ id: z.string().uuid() });
 const DraftIdInput = z.object({ draftId: z.string().uuid() });
 const ImageConceptInput = z.object({
@@ -516,7 +524,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
             .slice(0, 1500)
         : "");
 
-    let style: { style_id: string; name: string; description: string | null; prompt_prefix: string; negative_prompt: string } | null = null;
+    let style: ImageStyleRow | null = null;
     if (data.styleId) {
       const { data: styleRow, error: styleError } = await context.supabase
         .from("image_generation_styles")
@@ -526,7 +534,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         .contains("supported_types", [data.role])
         .maybeSingle();
       if (styleError) throw styleError;
-      style = styleRow as typeof style;
+      style = styleRow as ImageStyleRow | null;
     }
 
     const key = process.env.LOVABLE_API_KEY;
