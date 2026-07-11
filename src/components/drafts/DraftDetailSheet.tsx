@@ -202,14 +202,12 @@ function ImageRow({
   items,
   onAdd,
   onRemove,
-  onOpen,
 }: {
   label: string;
   role: Role;
   items: Array<{ id: string; url: string; role: Role }>;
   onAdd: () => void;
   onRemove: (id: string) => void;
-  onOpen: (url: string) => void;
 }) {
   return (
     <section>
@@ -231,18 +229,18 @@ function ImageRow({
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {items.map((m) => (
-            <div key={m.id} className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-surface">
-              <button
-                type="button"
-                onClick={() => onOpen(m.url)}
-                className="block h-full w-full"
-                aria-label={`Enlarge ${role} image`}
+            <div key={m.id} className="group relative h-24 w-32 shrink-0">
+              <ThumbPeek
+                src={m.url}
+                alt={`${role} image`}
+                className="h-full w-full overflow-hidden rounded-xl bg-surface"
               >
                 <img src={m.url} alt="" className="h-full w-full object-cover" />
-              </button>
+              </ThumbPeek>
               <button
                 onClick={() => onRemove(m.id)}
                 className="absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                aria-label="Remove image"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
