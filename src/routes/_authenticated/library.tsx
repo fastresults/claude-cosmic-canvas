@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/library")({
 type Draft = {
   id: string;
   format: string;
+  title: string | null;
   body: string;
   score: unknown;
   status: string;
@@ -48,6 +49,7 @@ type Draft = {
   created_at: string;
   campaign_id: string | null;
 };
+
 
 function relTime(iso: string) {
   const d = new Date(iso).getTime();
