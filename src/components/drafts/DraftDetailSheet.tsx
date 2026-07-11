@@ -322,3 +322,85 @@ function SheetShell({ children, onClose }: { children: React.ReactNode; onClose:
     </div>
   );
 }
+
+function formatSavedAgo(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diff) || diff < 0) return "";
+  const min = 60_000, hr = 3_600_000, day = 86_400_000;
+  if (diff < min) return "just now";
+  if (diff < hr) return `${Math.round(diff / min)}m ago`;
+  if (diff < day) return `${Math.round(diff / hr)}h ago`;
+  if (diff < 7 * day) return `${Math.round(diff / day)}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function NextStepBanner({
+  hasCover,
+  status,
+  onAddCover,
+  onSchedule,
+}: {
+  hasCover: boolean;
+  status: string;
+  onAddCover: () => void;
+  onSchedule: () => void;
+}) {
+  const scheduled = status === "scheduled" || status === "posted";
+  const steps: Array<{ label: string; done: boolean; current: boolean }> = [
+    { label: "Content drafted", done: true, current: false },
+    { label: "Add a cover image", done: hasCover, current: !hasCover },
+    { label: "Polish & schedule", done: scheduled, current: hasCover && !scheduled },
+  ];
+  const currentIdx = steps.findIndex((s) => s.current);
+  const primaryLabel = !hasCover
+    ? "Next: add a cover image so this post is ready to share."
+    : !scheduled
+      ? "Looks ready. Polish the copy or schedule when you're happy."
+      : "Scheduled. You can still edit until it goes live.";
+
+  return (
+    <div className="rounded-2xl border border-accent/30 bg-accent/5 p-3">
+      <div className="flex items-start gap-2">
+        <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+        <div className="flex-1 text-xs text-foreground">{primaryLabel}</div>
+        {!hasCover && (
+          <button
+            onClick={onAddCover}
+            className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
+          >
+            Add cover
+          </button>
+        )}
+        {hasCover && !scheduled && (
+          <button
+            onClick={onSchedule}
+            className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
+          >
+            Schedule
+          </button>
+        )}
+      </div>
+      <ol className="mt-2.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+        {steps.map((s, i) => (
+          <li key={s.label} className="flex items-center gap-1.5">
+            <span
+              className={
+                s.done
+                  ? "flex h-4 w-4 items-center justify-center rounded-full bg-success/20 text-success"
+                  : i === currentIdx
+                    ? "flex h-4 w-4 items-center justify-center rounded-full bg-accent text-accent-foreground"
+                    : "flex h-4 w-4 items-center justify-center rounded-full border border-border text-muted-foreground"
+              }
+            >
+              {s.done ? <Check className="h-2.5 w-2.5" /> : i + 1}
+            </span>
+            <span className={i === currentIdx ? "text-foreground" : ""}>{s.label}</span>
+            {i < steps.length - 1 && <span className="text-border">—</span>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
