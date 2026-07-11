@@ -8,7 +8,7 @@
  *
  * Pass `confirmLabel={undefined}` to render a view-only overlay (no confirm button).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,21 +48,16 @@ export function ThumbPeek({
   children,
 }: ThumbPeekProps) {
   const [open, setOpen] = useState(false);
-  const openedAtRef = useRef(0);
   const hoverCapable = useHoverCapable();
   const hoverTimer = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const canConfirm = confirmLabel !== undefined;
 
-  // Ignore close events within 350ms of opening to avoid the mobile
-  // "ghost click" that fires the same tap on the freshly-mounted backdrop.
   const close = useCallback(() => {
-    if (Date.now() - openedAtRef.current < 350) return;
     setOpen(false);
   }, []);
 
   const openOverlay = useCallback(() => {
-    openedAtRef.current = Date.now();
     setOpen(true);
   }, []);
 
@@ -90,19 +85,12 @@ export function ThumbPeek({
   const handlePointerLeave = () => {
     if (!hoverCapable) return;
     if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    setOpen(false);
   };
 
-  const handleTileClick = () => {
-    if (hoverCapable) {
-      // Desktop: click = select (or just peek if no confirm handler)
-      if (canConfirm && onConfirm) commit();
-      else openOverlay();
-      return;
-    }
-    // Touch: first tap opens; if already open, treat as second-tap commit
-    if (!open) openOverlay();
-    else if (canConfirm) commit();
+  const handleTileClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openOverlay();
   };
 
   const overlay = useMemo(() => {
