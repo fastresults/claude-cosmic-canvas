@@ -90,7 +90,7 @@ function buildFinalPrompt(input: z.infer<typeof GenerateImageInput>, draft: Draf
 }
 
 function metadataEvent(meta: unknown) {
-  return `event: draft_image.metadata\ndata: ${JSON.stringify(meta)}\n\n`;
+  return `event: draft_image.metadata\ndata: ${JSON.stringify({ type: "draft_image.metadata", ...(meta as Record<string, unknown>) })}\n\n`;
 }
 
 export const Route = createFileRoute("/api/drafts/generate-image")({
