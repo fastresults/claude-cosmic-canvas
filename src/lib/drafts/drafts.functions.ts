@@ -302,7 +302,7 @@ export const listDraftImages = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("create_media")
-      .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, created_at")
+      .select("id, url, role, generated_by, aspect_ratio, prompt, style_id, parent_image_id, sort_order, meta, created_at")
       .eq("draft_id", data.draftId)
       .eq("user_id", context.userId)
       .order("sort_order", { ascending: true });
