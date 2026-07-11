@@ -236,24 +236,33 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
                 {styles.data.map((s) => {
                   const active = s.styleId === styleId;
                   return (
-                    <button
+                    <ThumbPeek
                       key={s.styleId}
-                      onClick={() => setStyleId(s.styleId)}
-                      className={`flex h-20 w-28 shrink-0 flex-col items-start justify-end overflow-hidden rounded-xl border p-2 text-left transition-colors ${
-                        active
-                          ? "border-accent bg-accent/10 text-foreground"
-                          : "border-border bg-surface text-muted-foreground hover:border-accent/60"
-                      }`}
-                      style={
-                        s.previewUrl
-                          ? { backgroundImage: `url(${s.previewUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                          : undefined
-                      }
+                      src={s.previewUrl || ""}
+                      alt={s.name}
+                      label={s.name}
+                      selected={active}
+                      confirmLabel="Use this style"
+                      onConfirm={() => setStyleId(s.styleId)}
+                      className="h-20 w-28 shrink-0 overflow-hidden rounded-xl"
                     >
-                      <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        {s.name}
-                      </span>
-                    </button>
+                      <div
+                        className="relative flex h-full w-full flex-col items-start justify-end p-2"
+                        style={
+                          s.previewUrl
+                            ? {
+                                backgroundImage: `url(${s.previewUrl})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                              }
+                            : { background: "hsl(var(--surface))" }
+                        }
+                      >
+                        <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          {s.name}
+                        </span>
+                      </div>
+                    </ThumbPeek>
                   );
                 })}
               </div>
