@@ -85,7 +85,7 @@ export function ThumbPeek({
   const handlePointerEnter = () => {
     if (!hoverCapable) return;
     if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setOpen(true), 150);
+    hoverTimer.current = window.setTimeout(() => openOverlay(), 150);
   };
   const handlePointerLeave = () => {
     if (!hoverCapable) return;
@@ -97,11 +97,11 @@ export function ThumbPeek({
     if (hoverCapable) {
       // Desktop: click = select (or just peek if no confirm handler)
       if (canConfirm && onConfirm) commit();
-      else setOpen(true);
+      else openOverlay();
       return;
     }
     // Touch: first tap opens; if already open, treat as second-tap commit
-    if (!open) setOpen(true);
+    if (!open) openOverlay();
     else if (canConfirm) commit();
   };
 
