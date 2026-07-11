@@ -280,7 +280,7 @@ function ImageRow({
           className="grid h-24 w-full place-items-center rounded-2xl border-2 border-dashed border-border bg-surface text-xs text-muted-foreground hover:border-accent/60"
         >
           <div className="flex items-center gap-1.5">
-            <ImagePlus className="h-4 w-4" /> Generate or upload
+            <ImagePlus className="h-4 w-4" /> Generate with AI or upload your own
           </div>
         </button>
       ) : (
