@@ -64,22 +64,77 @@ export function DraftDetailSheet({
     archived: boolean;
     status: string;
     platform: string | null;
+    updated_at?: string | null;
   };
   const media = (images.data ?? []).map((m) => ({ ...m, role: (m.role ?? "cover") as Role }));
   const cover = media.filter((m) => m.role === "cover");
   const social = media.filter((m) => m.role === "social");
   const inline = media.filter((m) => m.role === "inline");
   const hasCover = cover.length > 0;
+  const savedLabel = formatSavedAgo(draft.updated_at);
+
+  function commitTitle() {
+    const next = titleDraft.trim();
+    const current = draft.title ?? "";
+    if (next !== current) {
+      rename.mutate({ id: draft.id, title: next.length ? next : null });
+    }
+    setEditingTitle(false);
+  }
+  function beginEditTitle() {
+    setTitleDraft(draft.title ?? "");
+    setEditingTitle(true);
+  }
 
   return (
     <>
       <SheetShell onClose={onClose}>
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <div className="min-w-0">
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {draft.format_id} {draft.platform ? `· ${draft.platform}` : ""}
             </div>
-            <h1 className="truncate font-display text-lg text-foreground">{draft.title ?? "Untitled draft"}</h1>
+            {editingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
+                  else if (e.key === "Escape") { setEditingTitle(false); }
+                }}
+                maxLength={120}
+                placeholder="Name this draft (optional)"
+                className="w-full bg-transparent font-display text-lg text-foreground outline-none placeholder:text-muted-foreground/60"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={beginEditTitle}
+                className="group flex w-full items-center gap-1.5 text-left"
+                aria-label="Rename draft"
+              >
+                <span
+                  className={
+                    draft.title
+                      ? "truncate font-display text-lg text-foreground"
+                      : "truncate font-display text-lg text-muted-foreground/70"
+                  }
+                >
+                  {draft.title ?? "Name this draft (optional)"}
+                </span>
+                <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            )}
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="capitalize text-foreground/70">{draft.status}</span>
+              <span className="text-border">·</span>
+              <span className="flex items-center gap-1">
+                <Check className="h-3 w-3 text-success" />
+                Saved{savedLabel ? ` ${savedLabel}` : ""}
+              </span>
+            </div>
           </div>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-surface">
             <X className="h-5 w-5" />
@@ -87,21 +142,15 @@ export function DraftDetailSheet({
         </header>
 
         <div className="flex flex-col gap-5 px-4 pb-24 pt-4">
-          {/* Suggested next step */}
-          <div className="flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs">
-            <Sparkles className="h-4 w-4 text-accent" />
-            <span className="text-foreground">
-              {hasCover ? "Polish for clarity, or schedule when ready." : "Add a cover image to make this shareable."}
-            </span>
-            {!hasCover && (
-              <button
-                onClick={() => setImgSheet({ open: true, role: "cover" })}
-                className="ml-auto rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground"
-              >
-                Add cover
-              </button>
-            )}
-          </div>
+          {/* Progress: what's next */}
+          <NextStepBanner
+            hasCover={hasCover}
+            status={draft.status}
+            onAddCover={() => setImgSheet({ open: true, role: "cover" })}
+            onSchedule={() => setSchedOpen(true)}
+          />
+
+
 
           {/* Image tray by role */}
           <ImageRow
