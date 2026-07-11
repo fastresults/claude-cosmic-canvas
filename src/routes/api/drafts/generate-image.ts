@@ -226,7 +226,7 @@ export const Route = createFileRoute("/api/drafts/generate-image")({
             }
           },
         });
-        return new Response(upstream.body, {
+        return new Response(stream, {
           headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
