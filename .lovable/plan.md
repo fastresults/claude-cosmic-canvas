@@ -1,55 +1,28 @@
+# Fix: Draft sheet action dock hidden behind bottom nav
+
 ## Problem
+In `DraftDetailSheet`, the sticky action dock (Polish / Image / Schedule / Archive) sits at the bottom of a sheet rendered at `z-40`. The app's `BottomNav` is also `fixed bottom-0 z-40`. Same stacking level + later DOM position means the nav paints on top of the dock, so those primary actions are unreachable.
 
-When a user opens a library item, the detail sheet header shows "Untitled draft" and a set of image slots. Two things confuse them:
+The sheet is meant to be a modal surface stacked above the app shell, not an inline panel that shares space with the nav.
 
-1. **"Untitled draft" reads like a system state, not a label.** They think they must name it and hit Save before anything else works — but there is no name field and no Save button. In reality, the draft is already persisted; the title is just empty because the generator never set one.
-2. **No clear "what do I do next" story.** The sheet offers Cover / Social / Inline / Polish / Schedule / Archive, but nothing tells the user this is their draft, that changes auto-save, or which single action to take next.
+## Fix (presentation-only, scoped to the sheet)
 
-## Recommendation
+**`src/components/drafts/DraftDetailSheet.tsx`**
 
-Treat the sheet as an **already-saved draft workspace**, not a form. Fix the copy and add a lightweight title affordance so the header stops looking like an unfinished form field.
+1. Raise the sheet above the app chrome.
+   - Overlay container: `z-40` → `z-50` (matches `EveSheet` convention).
+   - This makes the overlay cover `BottomNav` (`z-40`), so nothing shows through underneath.
 
-### Changes to `src/components/drafts/DraftDetailSheet.tsx`
+2. Make the sticky action dock respect the iOS safe area so it doesn't clip on notched devices now that it's no longer sharing space with the nav.
+   - Add `style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}` to the dock.
+   - Add matching bottom padding to the scroll region (`pb-24` → `pb-32`) so content isn't hidden under the dock.
 
-1. **Replace the "Untitled draft" heading with an inline-editable title.**
-   - When `draft.title` is null/empty, show placeholder text `Name this draft (optional)` in muted color instead of the alarming "Untitled draft".
-   - Tap-to-edit → text input → blur/Enter saves via a new `renameDraft` server fn (or extend `updateDraftContext`). Auto-saves; no Save button.
-   - Small pencil icon beside the title on desktop; tap-anywhere on mobile.
+3. Same z-index bump for the loading and not-found shells (they use the same `SheetShell`), so bump `SheetShell` itself from `z-40` → `z-50`. `ImageAssociationSheet` and `SchedulePicker` already use `EveSheet` at `z-50`, so they'll continue to stack correctly above the draft sheet.
 
-2. **Add a status/auto-save line under the title.**
-   - Format: `Draft · Saved · 3m ago` (uses existing `status` and `updated_at`).
-   - Makes clear this is persisted content, not an unsaved form.
+## Why this over alternatives
 
-3. **Rewrite the top "next step" banner into a clearer 1-2-3 progression.**
-   - Step 1 done: content generated ✓
-   - Step 2 (current): "Add a cover image so this is ready to share"
-   - Step 3 (after cover): "Polish the copy, then schedule"
-   - Only the current step is highlighted; completed steps show a check.
-
-4. **Rename the action dock's "Archive" default position and add a primary "Ready to schedule" CTA** once a cover exists, so the user always sees the recommended next action.
-
-### Changes to `src/lib/drafts/drafts.functions.ts`
-
-- Add `renameDraft({ id, title })` server fn (auth-guarded, trims, max 120 chars, writes `create_drafts.title`). Invalidates `["draft", id]` and `["drafts"]`.
-
-### Changes to `src/routes/_authenticated/library.tsx`
-
-- In the list row, when `title` is set, show it as the primary line and the body preview as the secondary line (currently only body is shown). Encourages naming without requiring it.
-
-### Copy changes only (no logic)
-
-- "Add a cover image to make this shareable" → "Next: add a cover image so this post is ready to share."
-- Section labels stay (COVER / SOCIAL / INLINE).
-- Empty dropzone: "Generate or upload" → "Generate with AI or upload your own".
+- **Hiding `BottomNav` when the sheet opens**: requires lifting sheet state into `AppShell` or a global store; larger blast radius for a visual bug.
+- **Adding `bottom-16` to the dock to sit above the nav**: leaves the nav visible behind a modal surface, which is inconsistent with every other sheet in the app (`EveSheet` overlays everything at `z-50`).
 
 ## Out of scope
-
-- No new save/submit flow — the draft is already saved.
-- No changes to image generation pipeline (recently landed).
-- No changes to Schedule or Polish behavior.
-
-## Verification
-
-- Open a library item at 390×844: header shows editable title placeholder, status line, and a single highlighted next-step.
-- Tap the title, type a name, blur → row in library reflects the new name after refetch.
-- With a cover attached, the banner advances to the "Polish then schedule" step.
+No changes to `BottomNav`, `AppShell`, business logic, or any other sheet. No copy changes.

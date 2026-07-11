@@ -141,7 +141,7 @@ export function DraftDetailSheet({
           </button>
         </header>
 
-        <div className="flex flex-col gap-5 px-4 pb-24 pt-4">
+        <div className="flex flex-col gap-5 px-4 pb-32 pt-4">
           {/* Progress: what's next */}
           <NextStepBanner
             hasCover={hasCover}
