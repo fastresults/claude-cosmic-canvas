@@ -48,12 +48,23 @@ export function ThumbPeek({
   children,
 }: ThumbPeekProps) {
   const [open, setOpen] = useState(false);
+  const openedAtRef = useRef(0);
   const hoverCapable = useHoverCapable();
   const hoverTimer = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const canConfirm = confirmLabel !== undefined;
 
-  const close = useCallback(() => setOpen(false), []);
+  // Ignore close events within 350ms of opening to avoid the mobile
+  // "ghost click" that fires the same tap on the freshly-mounted backdrop.
+  const close = useCallback(() => {
+    if (Date.now() - openedAtRef.current < 350) return;
+    setOpen(false);
+  }, []);
+
+  const openOverlay = useCallback(() => {
+    openedAtRef.current = Date.now();
+    setOpen(true);
+  }, []);
 
   const commit = useCallback(() => {
     onConfirm?.();
