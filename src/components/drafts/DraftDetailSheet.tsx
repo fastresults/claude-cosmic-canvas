@@ -311,6 +311,37 @@ function ImageRow({
 }
 
 
+function DockButton({
+  onClick,
+  disabled,
+  icon,
+  label,
+  tone,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  tone?: "destructive";
+}) {
+  const isDestructive = tone === "destructive";
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-colors disabled:opacity-50 sm:flex-row sm:gap-1.5 sm:rounded-full sm:border sm:px-3 sm:py-2 sm:text-xs " +
+        (isDestructive
+          ? "text-destructive hover:bg-destructive/10 sm:border-destructive/30 sm:bg-destructive/10"
+          : "text-foreground hover:bg-surface sm:border-border sm:bg-surface")
+      }
+    >
+      {icon}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
 function SheetShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
