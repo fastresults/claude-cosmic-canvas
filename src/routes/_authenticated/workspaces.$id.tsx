@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-ro
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2, Send, Calendar } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspaces";
 import { PhaseChip } from "@/components/workspaces/PhaseChip";
 import { ProgressRing } from "@/components/workspaces/ProgressRing";
@@ -14,6 +14,8 @@ import {
   bulkShiftWorkspaceItems,
 } from "@/lib/workspaces/workspaces.functions";
 import { sendItemToQueue } from "@/lib/workspaces/queue.functions";
+import { scheduleWorkspaceItemInQueue } from "@/lib/workspaces/pipeline.functions";
+import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
 import { CREATE_FORMATS } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
