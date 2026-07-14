@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/primitives/Pill";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { usePresets } from "@/hooks/usePresets";
@@ -302,12 +303,12 @@ function CreatePresetSheet({
           <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Seed
           </label>
-          <textarea
+          <Textarea
             value={seed}
             onChange={(e) => setSeed(e.target.value)}
             placeholder="Describe what this preset is for. e.g. 'Thought-leader op-eds on AI safety for enterprise CTOs, cautious and evidence-based.'"
             rows={4}
-            className="w-full rounded-md border border-input bg-surface-elev p-3 text-sm outline-none focus:border-accent"
+            className="border-input bg-surface-elev p-3 focus-visible:border-accent"
           />
         </div>
 
@@ -347,11 +348,11 @@ function CreatePresetSheet({
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Description
               </div>
-              <textarea
+              <Textarea
                 value={preview.description}
                 onChange={(e) => setPreview({ ...preview, description: e.target.value })}
                 rows={2}
-                className="mt-1 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+                className="mt-1 border-input bg-surface focus-visible:border-accent"
               />
             </div>
 

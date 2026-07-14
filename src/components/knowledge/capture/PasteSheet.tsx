@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { Pill } from "@/components/primitives/Pill";
+import { Textarea } from "@/components/ui/textarea";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ingestEntry } from "@/lib/knowledge/knowledge.functions";
@@ -45,13 +46,13 @@ export function PasteSheet({ open, onOpenChange, profileId, domainId }: Props) {
   return (
     <EveSheet open={open} onOpenChange={onOpenChange} title="Paste a note">
       <div className="space-y-3">
-        <textarea
+        <Textarea
           autoFocus
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Paste bio, article, transcript, notes…"
           rows={8}
-          className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+          className="border-border bg-surface"
         />
         <div className="flex flex-wrap items-center gap-1.5">
           {tags.map((t) => (

@@ -12,6 +12,7 @@ import {
   updateVoiceProfile,
 } from "@/lib/voice/voice.functions";
 import { useConfirm } from "@/components/confirm-dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/settings/voice/$id")({
   component: VoiceEditor,
@@ -224,12 +225,12 @@ function VoiceEditor() {
       {/* Guidelines */}
       <section className="mb-4 rounded-lg border border-border bg-card p-4">
         <h3 className="mb-2 text-sm font-semibold">Guidelines</h3>
-        <textarea
+        <Textarea
           rows={5}
           value={form.guidelines}
           onChange={(e) => setForm({ ...form, guidelines: e.target.value })}
           placeholder="Bullet rules Eve must follow."
-          className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+          className="border-input bg-surface-elev focus-visible:border-accent"
         />
       </section>
 
@@ -274,12 +275,12 @@ function VoiceEditor() {
       {/* Samples */}
       <section className="mb-4 rounded-lg border border-border bg-card p-4">
         <h3 className="mb-2 text-sm font-semibold">Writing samples</h3>
-        <textarea
+        <Textarea
           rows={4}
           value={newSample}
           onChange={(e) => setNewSample(e.target.value)}
           placeholder="Paste something you wrote."
-          className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+          className="border-input bg-surface-elev focus-visible:border-accent"
         />
         <button
           type="button"

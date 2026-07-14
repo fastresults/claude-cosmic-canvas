@@ -3,6 +3,7 @@ import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Paperclip, Link as LinkIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 type Props = {
   value: string;
@@ -71,12 +72,12 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-3">
-      <textarea
+      <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={4}
-        className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        className="resize-none border-0 bg-transparent p-0 text-sm text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
       />
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">

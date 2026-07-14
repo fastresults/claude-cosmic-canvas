@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { finishOnboarding } from "@/lib/onboarding/onboarding.functions";
 import { Orb } from "@/components/primitives/Orb";
 import { Pill } from "@/components/primitives/Pill";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   component: OnboardingPage,
@@ -145,7 +146,7 @@ function OnboardingPage() {
               </p>
             </div>
             {toneSamples.map((s, i) => (
-              <textarea
+              <Textarea
                 key={i}
                 value={s}
                 onChange={(e) =>
@@ -157,7 +158,7 @@ function OnboardingPage() {
                 }
                 placeholder={`Sample ${i + 1}`}
                 rows={3}
-                className="w-full resize-none rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+                className="resize-none border-input bg-surface-elev focus-visible:border-accent"
               />
             ))}
             <div>
