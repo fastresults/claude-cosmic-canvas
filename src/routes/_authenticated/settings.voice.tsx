@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/primitives/Pill";
 import { useConfirm } from "@/components/confirm-dialog";
 import {
@@ -597,12 +598,12 @@ function AnalyzeSheet({
           placeholder="Voice name (optional)"
           className="mb-2 w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <textarea
+        <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
           placeholder="Paste a sample of your writing (a post, email, tweet — 100+ words works best)."
-          className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+          className="border-input bg-surface-elev focus-visible:border-accent"
         />
         {status === "error" && (
           <p className="mt-2 text-xs text-destructive">

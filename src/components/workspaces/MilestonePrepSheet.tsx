@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, ArrowRight, Trash2 } from "lucide-react";
 import { EveSheet } from "@/components/primitives/EveSheet";
+import { Textarea } from "@/components/ui/textarea";
 import { PhaseChip } from "@/components/workspaces/PhaseChip";
 import { StrategyPanel, ChannelChip } from "@/components/workspaces/StrategyPanel";
 import {
@@ -150,12 +151,12 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
         <div className="flex flex-col gap-4 pb-4">
           <div>
             <label className="text-xs uppercase tracking-wide text-muted-foreground">What are you preparing for?</label>
-            <textarea
+            <Textarea
               value={intent}
               onChange={(e) => setIntent(e.target.value)}
               rows={4}
               placeholder="We're launching X on March 12 — a new pricing tier for teams."
-              className="mt-1 w-full rounded-2xl border border-border bg-background p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-accent/60"
+              className="mt-1 rounded-2xl border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-accent/60"
             />
           </div>
 
