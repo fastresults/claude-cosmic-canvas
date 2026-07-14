@@ -217,7 +217,10 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
         target && it.scheduled_offset_days !== null
           ? addDays(target, it.scheduled_offset_days).toISOString()
           : null;
-      return { ...it, sort_order: idx, scheduled_date };
+      // Prefer the strategist's per-item brief as the description — the
+      // downstream drafter uses description as its seed.
+      const description = it.brief?.trim() ? it.brief.trim() : it.description;
+      return { ...it, description, sort_order: idx, scheduled_date };
     });
 
     return { fallback: false as const, items: materialized, strategy };
