@@ -15,6 +15,8 @@ const SECTIONS = [
   { to: "/settings/presets", icon: Layers, label: "Presets", hint: "Reusable content lenses (voice + domains + audience + refs)" },
   { to: "/settings/distribution", icon: Link2, label: "Distribution", hint: "Channels, email sender, calendar" },
   { to: "/settings/notifications", icon: Bell, label: "Notifications", hint: "Inbox rules, snoozes" },
+  { to: "/settings/appearance", icon: SunMoon, label: "Appearance", hint: "Light or dark theme" },
+
   { to: "/settings/content-ops", icon: Zap, label: "Content Ops", hint: "Templates, presets, tuning" },
 ] as const;
 
