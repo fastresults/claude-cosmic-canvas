@@ -53,7 +53,14 @@ export const getWorkspace = createServerFn({ method: "POST" })
       .eq("workspace_id", ws.id)
       .order("sort_order", { ascending: true });
     if (iErr) throw iErr;
-    return { workspace: ws, items: items ?? [] };
+    const { data: strategy } = await context.supabase
+      .from("workspace_strategy")
+      .select("*")
+      .eq("workspace_id", ws.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { workspace: ws, items: items ?? [], strategy: strategy ?? null };
   });
 
 // ---- Milestone interview -------------------------------------------------
