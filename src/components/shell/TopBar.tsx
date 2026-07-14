@@ -1,5 +1,7 @@
 import { Bell, Flame } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { ThemeToggle } from "./ThemeToggle";
+
 
 export function TopBar() {
   return (
