@@ -213,3 +213,31 @@ function StatusPill({ status }: { status: string }) {
     </span>
   );
 }
+
+function SendToQueueButton({ itemId }: { itemId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(sendItemToQueue);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function onClick() {
+    setBusy(true);
+    try {
+      await fn({ data: { id: itemId } });
+      setDone(true);
+      qc.invalidateQueries({ queryKey: ["workspace"] });
+      qc.invalidateQueries({ queryKey: ["release-queue"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy || done}
+      className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] text-foreground disabled:opacity-40"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+      {done ? "Queued" : "Send to queue"}
+    </button>
+  );
+}
