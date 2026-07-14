@@ -141,6 +141,8 @@ function WorkspaceDetail() {
         </div>
       )}
 
+      <StrategyPanel strategy={(data.strategy as unknown as MilestoneStrategy | null) ?? null} />
+
       {grouped.map(([phase, items]) =>
         items.length === 0 ? null : (
           <section key={phase}>
@@ -150,30 +152,35 @@ function WorkspaceDetail() {
             <ul className="flex flex-col gap-2">
               {items.map((it) => {
                 const fmt = CREATE_FORMATS.find((f) => f.id === it.content_type);
+                const channels = ((it as unknown as { channels?: string[] }).channels) ?? [];
                 return (
-                  <li key={it.id}>
+                  <li key={it.id} className="rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-accent/60">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <PhaseChip phase={(it.phase as WorkspacePhase) ?? "ongoing"} />
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {fmt?.label ?? it.content_type}
+                      </span>
+                      <StatusPill status={it.status ?? "pending"} />
+                      {channels.map((c) => <ChannelChip key={c} channel={c} />)}
+                    </div>
                     <Link
                       to="/create/$formatId"
                       params={{ formatId: it.content_type }}
                       search={{ wsId: id, wsItemId: it.id, seed: it.description ?? it.title }}
-                      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-accent/60"
+                      className="mt-1 block truncate text-sm text-foreground"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <PhaseChip phase={(it.phase as WorkspacePhase) ?? "ongoing"} />
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {fmt?.label ?? it.content_type}
-                          </span>
-                          <StatusPill status={it.status ?? "pending"} />
-                        </div>
-                        <div className="mt-1 truncate text-sm text-foreground">{it.title}</div>
-                        {it.scheduled_date && (
-                          <div className="text-[11px] text-muted-foreground">
-                            {new Date(it.scheduled_date).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
+                      {it.title}
                     </Link>
+                    <div className="mt-1 flex items-center gap-2">
+                      {it.scheduled_date ? (
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(it.scheduled_date).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-amber-500">No date · held</span>
+                      )}
+                      <SendToQueueButton itemId={it.id} />
+                    </div>
                   </li>
                 );
               })}
