@@ -1483,6 +1483,9 @@ export type Database = {
       }
       workspace_items: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          channels: string[]
           content_generation_id: string | null
           content_type: string
           created_at: string
@@ -1492,6 +1495,8 @@ export type Database = {
           id: string
           phase: string
           priority: string
+          release_notes: string | null
+          release_status: string
           scheduled_date: string | null
           sort_order: number
           status: string
@@ -1500,6 +1505,9 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channels?: string[]
           content_generation_id?: string | null
           content_type: string
           created_at?: string
@@ -1509,6 +1517,8 @@ export type Database = {
           id?: string
           phase?: string
           priority?: string
+          release_notes?: string | null
+          release_status?: string
           scheduled_date?: string | null
           sort_order?: number
           status?: string
@@ -1517,6 +1527,9 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channels?: string[]
           content_generation_id?: string | null
           content_type?: string
           created_at?: string
@@ -1526,6 +1539,8 @@ export type Database = {
           id?: string
           phase?: string
           priority?: string
+          release_notes?: string | null
+          release_status?: string
           scheduled_date?: string | null
           sort_order?: number
           status?: string
@@ -1536,6 +1551,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workspace_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "opportunity_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_strategy: {
+        Row: {
+          ai_model: string | null
+          channel_strategy: Json
+          created_at: string
+          id: string
+          phases: Json
+          risks: Json
+          target_outcomes: Json
+          thesis: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          ai_model?: string | null
+          channel_strategy?: Json
+          created_at?: string
+          id?: string
+          phases?: Json
+          risks?: Json
+          target_outcomes?: Json
+          thesis?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          ai_model?: string | null
+          channel_strategy?: Json
+          created_at?: string
+          id?: string
+          phases?: Json
+          risks?: Json
+          target_outcomes?: Json
+          thesis?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_strategy_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "opportunity_workspaces"

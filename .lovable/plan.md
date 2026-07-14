@@ -1,87 +1,125 @@
-# Add global Light / Dark mode toggle
+# AI-First Milestone Workflow
 
-## Goal
-Let the user switch between Dark (current) and Light themes, with a persistent preference and a global icon control. Dark stays the default so nothing changes for existing users until they opt in.
+Goal: when a user starts a Milestone, the system doesn't just collect selections — it produces a full strategic release plan (channels, frequency, mix, caps, schedule) and enforces day-of user approval before anything leaves the queue.
 
-## 1. Design tokens — add a Light palette
-`src/styles.css`
+## 1. Planner output becomes a strategy, not a list
 
-- Keep current `:root` values as the Dark theme, but move them under both `:root` and `.dark` so `.dark` explicitly wins when toggling.
-- Add a `.light` block overriding every semantic token with a warm-paper Light palette that keeps the Eve identity (amber primary, violet accent-2, same radii, same brain colors):
-  - `--background`: near-white warm paper (oklch ~0.98 0.01 85)
-  - `--surface` / `--surface-elev`: soft cream layers
-  - `--foreground`: deep plum-ink (oklch ~0.18 0.03 285)
-  - `--muted-foreground`: mid warm grey
-  - `--border` / `--input`: dark-on-light at low alpha
-  - `--primary` / `--accent`: same amber, but `--primary-foreground` flips to deep ink for contrast on amber buttons
-  - `--destructive`, `--success`, `--accent-2`, brain colors: retuned for AA contrast on light
-- Update `html { color-scheme }` and the `::selection` rule to react to the active class (use `:where(.dark)` / `:where(.light)`).
-- Tune `.frosted` and `.amber-glow` so they still read on a light background (lower blur opacity mix, softer glow).
-- Remove the "Force dark; no light theme in v1" comment.
+Extend `planWorkspaceArc` in `src/lib/workspaces/workspaces.functions.ts` so the model returns a `strategy` block alongside `items`:
 
-## 2. Theme runtime
-New file `src/lib/theme/theme.ts` — tiny framework-agnostic helper:
+```text
+strategy: {
+  thesis: string                    // 1-2 sentence "why this arc wins"
+  target_outcomes: string[]         // press hits, signups, pipeline, etc.
+  phases: {
+    tease | announce | amplify | sustain: {
+      window: { start_offset, end_offset }   // days from T
+      cadence_per_week: number
+      max_items: number
+      channels: Channel[]                    // ranked, with rationale
+      format_mix: { content_type, count, why }[]
+      primary_message: string
+    }
+  }
+  channel_strategy: {
+    channel: Channel
+    role: "anchor" | "amplifier" | "proof" | "community"
+    audience_fit: string
+    cap_per_week: number
+  }[]
+  risks: string[]
+}
+items: [ ...existing, plus channel, rationale, depends_on? ]
+```
 
-- `type Theme = "light" | "dark" | "system"`
-- `getStoredTheme()`, `setStoredTheme(t)` using `localStorage` key `eve-theme`
-- `resolveTheme(t)` → `"light" | "dark"` (reads `matchMedia('(prefers-color-scheme: light)')` for `system`)
-- `applyTheme(t)` → toggles `.dark` / `.light` on `<html>` and sets `color-scheme`
-- SSR-safe: all `window`/`document` access guarded
+Prompt changes:
+- Feed the interview's `audience`, `key_messages`, `proof_points` into the arc prompt (currently unused).
+- Ask the model to pick channels per phase from a fixed enum (LinkedIn, X, blog, press release, email, podcast, YouTube, event, community) and justify each.
+- Ask for cadence + max caps per phase, and format-mix rationale (why 2 tweets + 1 PR at announce, not 5 tweets).
+- Keep `scheduled_offset_days` per item, but each item also inherits `phase.channels` unless the model overrides.
 
-New file `src/lib/theme/ThemeProvider.tsx`:
+Structured output via AI SDK `Output.object` (no schema bounds — clamp in code). Use `google/gemini-3-flash-preview`.
 
-- React context exposing `{ theme, resolved, setTheme }`
-- On mount, reads stored theme (default `"system"`), applies it, subscribes to `matchMedia` changes when in system mode
-- `useTheme()` hook
+## 2. New tables: strategy + approval queue
 
-## 3. Prevent flash of wrong theme
-`src/routes/__root.tsx`
+Migration:
 
-- Remove hardcoded `className="dark"` on `<html>`.
-- Inject a tiny blocking inline script in `<head>` (via TanStack `Scripts`/`HeadContent` — add a raw `<script>` before `<Scripts />` in `RootShell`) that reads `localStorage.eve-theme` (or system) and sets the correct class on `document.documentElement` before first paint.
-- Wrap `<Outlet />` in `<ThemeProvider>` inside `RootComponent`.
-- Update `<meta name="theme-color">` to switch based on resolved theme (two `<meta>` tags with `media="(prefers-color-scheme: light)"` and `"(prefers-color-scheme: dark)"`), plus a runtime update when user picks a non-system value.
+```sql
+-- Strategy snapshot per milestone (regenerated on re-plan)
+create table public.workspace_strategy (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.opportunity_workspaces(id) on delete cascade,
+  user_id uuid not null,
+  thesis text,
+  target_outcomes jsonb not null default '[]',
+  phases jsonb not null default '{}',
+  channel_strategy jsonb not null default '[]',
+  risks jsonb not null default '[]',
+  ai_model text,
+  created_at timestamptz not null default now()
+);
 
-## 4. Global icon control
-New file `src/components/shell/ThemeToggle.tsx`
+-- Per-item channel + queue state
+alter table public.workspace_items
+  add column channels text[] not null default '{}',
+  add column release_status text not null default 'draft'
+    check (release_status in ('draft','scheduled','awaiting_approval','held_missing_day','approved','released','skipped')),
+  add column approved_at timestamptz,
+  add column approved_by uuid,
+  add column release_notes text;
+```
 
-- Small icon button (Sun / Moon / Monitor from `lucide-react`) matching the TopBar's existing icon-button styling (`rounded-full p-1.5 text-muted-foreground hover:bg-surface-elev hover:text-foreground`, `h-4 w-4` icon).
-- Behavior: single tap cycles `system → light → dark → system`. Long-press / right-click is not needed for v1.
-- `aria-label` reflects current state, e.g. "Theme: dark, tap to switch to system".
-- Icon: shows Sun in light, Moon in dark, Monitor in system.
+Grants + RLS + `has_role` service policies per the public-schema rule.
 
-Mount in `src/components/shell/TopBar.tsx` between the streak pill and the Bell — one line, no layout reshuffle. This surfaces the toggle on every authenticated screen without hunting through settings.
+## 3. Day-of approval queue
 
-Also expose it in Settings for discoverability: add a small "Appearance" row to `src/routes/_authenticated/settings.index.tsx` (icon: `SunMoon`, hint: "Light or dark theme") that opens a new lightweight route `src/routes/_authenticated/settings.appearance.tsx` with three radio cards: System / Light / Dark.
+New route `src/routes/_authenticated/queue.tsx` — the release cockpit:
 
-## 5. Component sweep (contrast fixes only)
-Grep for hardcoded color utilities that would break in light mode and swap to semantic tokens where they exist:
+- Sections: **Today needs approval**, **Missing schedule (held)**, **Upcoming 7 days**, **Released**.
+- Each row: milestone chip, phase chip, channel chips, scheduled time, "Approve & release" / "Reschedule" / "Skip" / "Edit".
+- Approve → sets `release_status='approved'`, `approved_at=now()`, `approved_by=userId`; server fn `releaseWorkspaceItem` writes to channel adapters (stub for now, real adapters later) then flips to `'released'`.
+- Missing day rule: cron/serverFn `reconcileQueue` runs at load and on any workspace mutation — items where `scheduled_date is null` OR `scheduled_date < today AND status != released` flip to `held_missing_day` and stay in the queue until the user reschedules or skips.
+- Nothing auto-publishes. Day-of approval is required for every item, matching the rest of the scheduling system.
 
-- `text-white`, `bg-black`, `bg-white`, `text-black` under `src/components/**` and `src/routes/**`.
-- Any `bg-[#...]` / `text-[#...]` in shell, drafts, brain views, workspaces.
+## 4. Milestone UI: show the strategy
 
-Only fix violations that visibly break light mode. Do not restyle. Three.js brain colors in `src/components/brain/three/palette.ts` stay as-is (hex is required for three), but verify the starfield and canvas background read on light — if not, gate the canvas background color on `document.documentElement.classList.contains('light')` via the existing scene setup.
+`MilestonePrepSheet` preview step (`src/components/workspaces/MilestonePrepSheet.tsx`):
+- Add a **Strategy** panel above the item list: thesis, per-phase cards (cadence, max, channels, mix), channel role table, risks.
+- User can accept, tweak cadence/channels per phase (writes back into strategy JSON), or "Regenerate strategy" (re-runs planner with a nudge prompt).
+- Item list groups by phase, shows channel chips per item, editable.
 
-## 6. Out of scope
-- No changes to auth flow, data model, or server functions.
-- No per-workspace theme overrides.
-- No custom brand-theming beyond Light/Dark.
-- Onboarding does not gain a theme step in this pass.
+Workspace detail (`src/routes/_authenticated/workspaces.$id.tsx`):
+- New "Strategy" tab that renders the same panel read-only.
+- "Send to queue" button on each item: sets `release_status='scheduled'` (or `held_missing_day` if no date).
+
+## 5. Bottom nav / entry point
+
+Add "Queue" item to `src/components/shell/BottomNav.tsx` with a badge count of items needing approval today.
+
+## 6. Stress test — walked through the workflow
+
+Scenarios the plan must survive:
+
+1. **Keynote, 3 weeks out, no target date given.** Interview must ask/assume date; planner without date should still produce phases as relative offsets and mark the milestone `target_date_pending`. Queue: everything sits as `held_missing_day` until user sets the date. ✅ handled by held state.
+2. **User removes 3 items from the arc.** Strategy caps say announce = max 4, mix = 2 posts + 1 PR + 1 email. Deleting items must not silently violate caps — show "below target cadence" hint, offer "Fill gap with AI".
+3. **User changes channels on 1 item.** Item override wins; channel_strategy weekly cap recomputes; if cap exceeded, warn.
+4. **T-day arrives, user hasn't approved.** Item stays in queue, does NOT auto-release. Notification fires at 8am local (existing `notifications` table).
+5. **Re-plan mid-arc.** Regenerating strategy must preserve already-released items (immutable) and only replan future items.
+6. **Two milestones overlap on same day/channel.** `reconcileQueue` surfaces a "channel collision" chip; user resolves manually.
+7. **Model returns malformed strategy.** `Output.object` may fail — wrap with `NoObjectGeneratedError` fallback, parse `error.text`, and if still bad, save items only and mark `strategy = null` with a "Generate strategy" retry button.
+8. **Anon SSR.** All new server fns use `requireSupabaseAuth`; never called from public loaders.
+9. **Long arcs (30+ items).** Cap planner at 20 items per generation, paginate sustain phase into a second call if needed.
+10. **User on mobile approves in queue.** Row = single-tap approve, swipe to reschedule/skip; matches EveSheet + mobile-first system.
 
 ## Technical notes
-- Storage key: `eve-theme`. Values: `"light" | "dark" | "system"`. Default: `"system"`.
-- Class strategy over `data-theme` because the codebase already relies on Tailwind's `dark:` variant (`html.dark`); adding `.light` is additive.
-- The pre-hydration inline script is the standard fix for flash-of-wrong-theme; without it, users see a Dark→Light flicker on first load.
-- Provider is client-only (`useEffect` for `matchMedia` subscription); the inline script handles SSR correctness.
 
-## Files touched
-- `src/styles.css` — add `.light` palette, adjust utilities
-- `src/routes/__root.tsx` — remove hardcoded `dark`, add pre-hydration script, wrap in provider, dual theme-color meta
-- `src/components/shell/TopBar.tsx` — mount `<ThemeToggle />`
-- `src/components/shell/ThemeToggle.tsx` — new
-- `src/lib/theme/theme.ts` — new
-- `src/lib/theme/ThemeProvider.tsx` — new
-- `src/routes/_authenticated/settings.index.tsx` — add Appearance row
-- `src/routes/_authenticated/settings.appearance.tsx` — new
-- `public/manifest.webmanifest` — leave `theme_color` as dark (PWA install color); runtime meta handles browser chrome
-- Targeted contrast fixes in components using hardcoded colors
+- Files to add: migration, `src/lib/workspaces/queue.functions.ts`, `src/lib/workspaces/strategy.ts` (types), `src/routes/_authenticated/queue.tsx`, `src/components/workspaces/StrategyPanel.tsx`, `src/components/workspaces/QueueRow.tsx`, `src/hooks/useReleaseQueue.ts`.
+- Files to edit: `workspaces.functions.ts` (planner + new `releaseWorkspaceItem`, `reconcileQueue`, `regenerateStrategy`), `MilestonePrepSheet.tsx`, `workspaces.$id.tsx`, `BottomNav.tsx`, `routeTree.gen.ts` (auto).
+- Model: `google/gemini-3-flash-preview` via existing orchestrator/gateway. Structured output with schema-lite + code clamps.
+- Channel adapters: stubbed `releaseToChannel(channel, item)` returning `{ ok, url? }`; real integrations are out of scope for this plan.
+
+## Out of scope
+
+- Real channel publishing integrations (LinkedIn/X/email APIs).
+- Cross-milestone budget optimizer.
+- Auto-approval / auto-release rules.
+- Analytics loop from released → performance.

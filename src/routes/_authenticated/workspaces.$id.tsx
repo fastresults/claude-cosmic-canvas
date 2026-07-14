@@ -2,18 +2,21 @@ import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-ro
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2, Send } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspaces";
 import { PhaseChip } from "@/components/workspaces/PhaseChip";
 import { ProgressRing } from "@/components/workspaces/ProgressRing";
+import { StrategyPanel, ChannelChip } from "@/components/workspaces/StrategyPanel";
 import {
   archiveWorkspace,
   deleteWorkspace,
   curateWorkspace,
   bulkShiftWorkspaceItems,
 } from "@/lib/workspaces/workspaces.functions";
+import { sendItemToQueue } from "@/lib/workspaces/queue.functions";
 import { CREATE_FORMATS } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
+import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 
 export const Route = createFileRoute("/_authenticated/workspaces/$id")({
   component: WorkspaceDetail,
@@ -138,6 +141,8 @@ function WorkspaceDetail() {
         </div>
       )}
 
+      <StrategyPanel strategy={(data.strategy as unknown as MilestoneStrategy | null) ?? null} />
+
       {grouped.map(([phase, items]) =>
         items.length === 0 ? null : (
           <section key={phase}>
@@ -147,30 +152,35 @@ function WorkspaceDetail() {
             <ul className="flex flex-col gap-2">
               {items.map((it) => {
                 const fmt = CREATE_FORMATS.find((f) => f.id === it.content_type);
+                const channels = ((it as unknown as { channels?: string[] }).channels) ?? [];
                 return (
-                  <li key={it.id}>
+                  <li key={it.id} className="rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-accent/60">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <PhaseChip phase={(it.phase as WorkspacePhase) ?? "ongoing"} />
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {fmt?.label ?? it.content_type}
+                      </span>
+                      <StatusPill status={it.status ?? "pending"} />
+                      {channels.map((c) => <ChannelChip key={c} channel={c} />)}
+                    </div>
                     <Link
                       to="/create/$formatId"
                       params={{ formatId: it.content_type }}
                       search={{ wsId: id, wsItemId: it.id, seed: it.description ?? it.title }}
-                      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-accent/60"
+                      className="mt-1 block truncate text-sm text-foreground"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <PhaseChip phase={(it.phase as WorkspacePhase) ?? "ongoing"} />
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {fmt?.label ?? it.content_type}
-                          </span>
-                          <StatusPill status={it.status ?? "pending"} />
-                        </div>
-                        <div className="mt-1 truncate text-sm text-foreground">{it.title}</div>
-                        {it.scheduled_date && (
-                          <div className="text-[11px] text-muted-foreground">
-                            {new Date(it.scheduled_date).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
+                      {it.title}
                     </Link>
+                    <div className="mt-1 flex items-center gap-2">
+                      {it.scheduled_date ? (
+                        <span className="text-[11px] text-muted-foreground">
+                          {new Date(it.scheduled_date).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-amber-500">No date · held</span>
+                      )}
+                      <SendToQueueButton itemId={it.id} />
+                    </div>
                   </li>
                 );
               })}
@@ -201,5 +211,33 @@ function StatusPill({ status }: { status: string }) {
     <span className="rounded-full border border-border bg-background px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
       {status}
     </span>
+  );
+}
+
+function SendToQueueButton({ itemId }: { itemId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(sendItemToQueue);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function onClick() {
+    setBusy(true);
+    try {
+      await fn({ data: { id: itemId } });
+      setDone(true);
+      qc.invalidateQueries({ queryKey: ["workspace"] });
+      qc.invalidateQueries({ queryKey: ["release-queue"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy || done}
+      className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] text-foreground disabled:opacity-40"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+      {done ? "Queued" : "Send to queue"}
+    </button>
   );
 }

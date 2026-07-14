@@ -53,7 +53,14 @@ export const getWorkspace = createServerFn({ method: "POST" })
       .eq("workspace_id", ws.id)
       .order("sort_order", { ascending: true });
     if (iErr) throw iErr;
-    return { workspace: ws, items: items ?? [] };
+    const { data: strategy } = await context.supabase
+      .from("workspace_strategy")
+      .select("*")
+      .eq("workspace_id", ws.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { workspace: ws, items: items ?? [], strategy: strategy ?? null };
   });
 
 // ---- Milestone interview -------------------------------------------------
@@ -103,6 +110,8 @@ const PlanItem = z.object({
   priority: Priority.default("normal"),
   sort_order: z.number().int().default(0),
   scheduled_offset_days: z.number().int().nullable().default(null),
+  channels: z.array(z.string()).default([]),
+  rationale: z.string().default(""),
 });
 
 const PlanArcInput = z.object({
@@ -122,32 +131,40 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
     const { CREATE_FORMATS } = await import("@/config/createFormats");
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
+    const { CHANNELS } = await import("./strategy");
 
     const registry = CREATE_FORMATS.map((f) => `- ${f.id} (${f.category}): ${f.label} — ${f.description}`).join("\n");
+    const channelList = CHANNELS.join(", ");
 
     const system = [
-      "You are Eve's milestone arc planner. Given a moment, produce a phased content arc.",
+      "You are Eve's milestone arc strategist. Produce BOTH a strategy and a concrete phased content arc that maximizes positive press and audience impact.",
       "Phase rules: Tease T-14..T-4 · Announce T-1..T+1 · Amplify T+2..T+10 · Sustain T+11..T+30.",
-      "Pick content_type ONLY from the provided Create Hub registry ids.",
-      "Return ONLY JSON: { \"items\": [ { content_type, title, description, phase, priority, sort_order, scheduled_offset_days } ] }. 6–12 items.",
+      `Channels enum (pick ONLY from): ${channelList}.`,
+      "Every item's content_type MUST be a Create Hub registry id below.",
+      "Use the interview audience, key_messages, and proof_points to justify channels and format mix per phase.",
+      'Return ONLY JSON: { "strategy": { "thesis": string, "target_outcomes": string[], "phases": { "tease"?: PhasePlan, "announce"?: PhasePlan, "amplify"?: PhasePlan, "sustain"?: PhasePlan }, "channel_strategy": [ { "channel": Channel, "role": "anchor"|"amplifier"|"proof"|"community", "audience_fit": string, "cap_per_week": number } ], "risks": string[] }, "items": [ { content_type, title, description, phase, priority, sort_order, scheduled_offset_days, channels: Channel[], rationale: string } ] }',
+      "PhasePlan = { window: {start_offset, end_offset}, cadence_per_week: number, max_items: number, channels: Channel[], format_mix: [{content_type, count, why}], primary_message: string }.",
+      "6–14 items total, respecting per-phase max_items.",
     ].join("\n");
 
     const prompt = [
       `Moment type: ${data.moment_type}`,
-      data.target_date ? `Target date: ${data.target_date}` : "No fixed target date.",
+      data.target_date ? `Target date: ${data.target_date}` : "No fixed target date — plan phases as relative T-offsets only.",
       `Intent: ${data.intent}`,
-      `Analysis: ${JSON.stringify(data.ai_analysis).slice(0, 2000)}`,
+      `Analysis: ${JSON.stringify(data.ai_analysis).slice(0, 2500)}`,
       "",
-      "Registry:",
+      "Create Hub registry:",
       registry,
       "",
-      "Return only the JSON described in the system message.",
+      "Return only the JSON. No prose, no code fences.",
     ].join("\n");
 
     let items: z.infer<typeof PlanItem>[] = [];
+    let strategy: Json | null = null;
     try {
       const { text } = await callAnthropic({ model: ORCHESTRATOR_MODEL, maxTokens: MAX_TOKENS, prompt, system });
       const parsed = safeParseJson(text);
+      strategy = (parsed?.strategy as Json) ?? null;
       const raw = Array.isArray(parsed?.items) ? parsed.items : [];
       items = raw
         .map((r: unknown) => {
@@ -155,19 +172,20 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
           return res.success ? res.data : null;
         })
         .filter((v): v is z.infer<typeof PlanItem> => v !== null)
-        // Only keep items whose content_type is a real registry id.
         .filter((v) => CREATE_FORMATS.some((f) => f.id === v.content_type))
-        .slice(0, 12);
+        .map((v) => ({
+          ...v,
+          channels: v.channels.filter((c) => (CHANNELS as readonly string[]).includes(c)),
+        }))
+        .slice(0, 14);
     } catch (err) {
-      return { fallback: true as const, message: err instanceof Error ? err.message : "planner failed", items: [] };
+      return { fallback: true as const, message: err instanceof Error ? err.message : "planner failed", items: [], strategy: null };
     }
 
-    // Fallback shape — if the model returned nothing usable, seed a light arc.
     if (items.length === 0) {
       items = fallbackArc();
     }
 
-    // Materialize scheduled_date if a target_date is present.
     const target = data.target_date ? new Date(data.target_date) : null;
     const materialized = items.map((it, idx) => {
       const scheduled_date =
@@ -177,7 +195,7 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
       return { ...it, sort_order: idx, scheduled_date };
     });
 
-    return { fallback: false as const, items: materialized };
+    return { fallback: false as const, items: materialized, strategy };
   });
 
 // ---- Create workspace + items (one shot) --------------------------------
@@ -188,6 +206,7 @@ const CreateWorkspaceInput = z.object({
   moment_type: MomentType,
   target_date: z.string().optional(),
   ai_analysis: z.record(z.string(), z.unknown()).default({}),
+  strategy: z.record(z.string(), z.unknown()).nullable().optional(),
   items: z.array(
     z.object({
       content_type: z.string(),
@@ -197,6 +216,7 @@ const CreateWorkspaceInput = z.object({
       priority: Priority.default("normal"),
       sort_order: z.number().int().default(0),
       scheduled_date: z.string().nullable().optional(),
+      channels: z.array(z.string()).default([]),
     }),
   ).default([]),
 });
@@ -230,13 +250,27 @@ export const createWorkspace = createServerFn({ method: "POST" })
         priority: it.priority,
         sort_order: it.sort_order ?? idx,
         scheduled_date: it.scheduled_date ?? null,
+        channels: it.channels ?? [],
+        release_status: it.scheduled_date ? "scheduled" : "held_missing_day",
         status: "pending" as const,
       }));
       const { error: iErr } = await context.supabase.from("workspace_items").insert(rows);
       if (iErr) throw iErr;
     }
 
-    // Second Brain provenance.
+    if (data.strategy) {
+      const s = data.strategy as Record<string, unknown>;
+      await context.supabase.from("workspace_strategy").insert({
+        workspace_id: ws.id,
+        user_id: context.userId,
+        thesis: (s.thesis as string) ?? null,
+        target_outcomes: (s.target_outcomes ?? []) as Json,
+        phases: (s.phases ?? {}) as Json,
+        channel_strategy: (s.channel_strategy ?? []) as Json,
+        risks: (s.risks ?? []) as Json,
+      });
+    }
+
     const { writeEdgeServer } = await import("@/lib/ai/provenance.server");
     await writeEdgeServer(context.supabase, context.userId, {
       srcType: "you",
@@ -248,6 +282,21 @@ export const createWorkspace = createServerFn({ method: "POST" })
     });
 
     return { workspaceId: ws.id };
+  });
+
+export const getWorkspaceStrategy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ workspace_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("workspace_strategy")
+      .select("*")
+      .eq("workspace_id", data.workspace_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return row;
   });
 
 // ---- Item ops -----------------------------------------------------------
@@ -457,6 +506,8 @@ function fallbackArc(): z.infer<typeof PlanItem>[] {
     priority: "normal" as const,
     sort_order: i,
     scheduled_offset_days: it.offset,
+    channels: [] as string[],
+    rationale: "",
   }));
 }
 
