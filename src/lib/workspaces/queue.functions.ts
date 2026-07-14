@@ -119,26 +119,22 @@ export const updateItemChannels = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Reconcile — flip past-due unreleased to held_missing_day; keep no-date items held. */
-async function reconcileInternal(
-  supabase: Parameters<Parameters<typeof createServerFn>[0] extends never ? never : never>[0] extends never ? never : any,
-  userId: string,
-) {
+/** Reconcile — flip past-due unreleased to held_missing_day; scheduled-today → awaiting_approval. */
+async function reconcileInternal(supabase: any, userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const iso = today.toISOString();
-  // Past-due scheduled → awaiting_approval (day-of window)
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
   await supabase
     .from("workspace_items")
     .update({ release_status: "awaiting_approval" })
     .eq("release_status", "scheduled")
-    .lte("scheduled_date", new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString())
+    .lte("scheduled_date", tomorrow)
     .gte("scheduled_date", iso);
-  // Very past + not released → held
   await supabase
     .from("workspace_items")
     .update({ release_status: "held_missing_day" })
-    .eq("release_status", "scheduled")
+    .in("release_status", ["scheduled", "awaiting_approval"])
     .lt("scheduled_date", iso);
   void userId;
 }
