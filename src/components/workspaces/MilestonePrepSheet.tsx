@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, ArrowRight, Trash2 } from "lucide-react";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { PhaseChip } from "@/components/workspaces/PhaseChip";
+import { StrategyPanel, ChannelChip } from "@/components/workspaces/StrategyPanel";
 import {
   runWorkspaceInterview,
   planWorkspaceArc,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/workspaces/workspaces.functions";
 import { CREATE_FORMATS } from "@/config/createFormats";
 import type { WorkspacePhase } from "@/lib/workspaces/phase";
+import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void; prefill?: string };
 
@@ -25,6 +27,7 @@ type Draft = {
   priority: "low" | "normal" | "high";
   sort_order: number;
   scheduled_date: string | null;
+  channels: string[];
 };
 
 const MOMENT_OPTIONS: { id: MomentType; label: string }[] = [
@@ -51,6 +54,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
+  const [strategy, setStrategy] = useState<MilestoneStrategy | null>(null);
   const [items, setItems] = useState<Draft[]>([]);
 
   function resetAll() {
@@ -62,6 +66,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
     setBusy(false);
     setError(null);
     setAnalysis({});
+    setStrategy(null);
     setItems([]);
   }
 
@@ -82,19 +87,21 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
           ai_analysis: interview.ai_analysis,
         },
       });
-      const planned: Draft[] = plan.items.map((it, idx) => ({
-        content_type: it.content_type,
-        title: it.title,
-        description: it.description ?? "",
-        phase: it.phase,
-        priority: it.priority,
+      const planItems = (plan as { items: Array<Record<string, unknown>> }).items ?? [];
+      const planStrategy = (plan as { strategy: MilestoneStrategy | null }).strategy ?? null;
+      const planned: Draft[] = planItems.map((it, idx) => ({
+        content_type: String(it.content_type),
+        title: String(it.title),
+        description: String(it.description ?? ""),
+        phase: (it.phase as WorkspacePhase) ?? "ongoing",
+        priority: (it.priority as "low" | "normal" | "high") ?? "normal",
         sort_order: idx,
-        scheduled_date: (it as { scheduled_date?: string | null }).scheduled_date ?? null,
+        scheduled_date: (it.scheduled_date as string | null) ?? null,
+        channels: Array.isArray(it.channels) ? (it.channels as string[]) : [],
       }));
       setItems(planned);
-      if (!title) {
-        setTitle(intent.trim().slice(0, 80));
-      }
+      setStrategy(planStrategy);
+      if (!title) setTitle(intent.trim().slice(0, 80));
       setStep("preview");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Planning failed");
@@ -114,6 +121,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
           moment_type: momentType,
           target_date: targetDate || undefined,
           ai_analysis: analysis,
+          strategy: (strategy as unknown as Record<string, unknown>) ?? undefined,
           items,
         },
       });
@@ -188,7 +196,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
             className="flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            {busy ? "Planning arc…" : "Preview arc"}
+            {busy ? "Planning strategy…" : "Generate strategy"}
           </button>
         </div>
       )}
@@ -203,9 +211,22 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
               className="mt-1 w-full rounded-2xl border border-border bg-background p-3 text-sm text-foreground outline-none focus:border-accent/60"
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            {items.length} pieces across the arc. Tap a row to edit.
-          </p>
+
+          <StrategyPanel strategy={strategy} />
+
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-muted-foreground">
+              {items.length} pieces · tap to edit
+            </p>
+            <button
+              onClick={runPlan}
+              disabled={busy}
+              className="text-[11px] text-accent hover:underline disabled:opacity-40"
+            >
+              Regenerate
+            </button>
+          </div>
+
           <ul className="flex flex-col gap-2">
             {items.map((it, idx) => {
               const fmt = CREATE_FORMATS.find((f) => f.id === it.content_type);
@@ -216,11 +237,14 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <PhaseChip phase={it.phase} />
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                           {fmt?.label ?? it.content_type}
                         </span>
+                        {it.channels.map((c) => (
+                          <ChannelChip key={c} channel={c} />
+                        ))}
                       </div>
                       <input
                         value={it.title}
@@ -230,10 +254,12 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
                       {it.description && (
                         <p className="text-xs text-muted-foreground">{it.description}</p>
                       )}
-                      {it.scheduled_date && (
+                      {it.scheduled_date ? (
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {new Date(it.scheduled_date).toLocaleDateString()}
                         </p>
+                      ) : (
+                        <p className="mt-1 text-[10px] text-amber-500">Held · no date</p>
                       )}
                     </div>
                     <button
@@ -262,7 +288,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
               className="flex flex-[2] items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create workspace
+              Create milestone
             </button>
           </div>
         </div>
@@ -271,7 +297,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
       {step === "confirming" && (
         <div className="grid place-items-center py-10 text-sm text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="mt-3">Creating workspace…</span>
+          <span className="mt-3">Creating milestone…</span>
         </div>
       )}
     </EveSheet>
