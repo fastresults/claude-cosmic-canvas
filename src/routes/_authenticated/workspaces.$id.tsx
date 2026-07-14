@@ -162,6 +162,22 @@ function WorkspaceDetail() {
 
       <StrategyPanel strategy={(data.strategy as unknown as MilestoneStrategy | null) ?? null} />
 
+      {(running || progress) && (
+        <div className="rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs text-foreground">
+          <div className="flex items-center gap-2">
+            {running && <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />}
+            <span>
+              Auto-drafting · {progress?.drafted ?? 0} of {progress?.total ?? 0} drafted · {progress?.scheduled ?? 0} queued
+            </span>
+          </div>
+          {Object.keys(failed).length > 0 && (
+            <p className="mt-1 text-[11px] text-destructive">
+              {Object.keys(failed).length} item(s) failed — retry from the row below.
+            </p>
+          )}
+        </div>
+      )}
+
       {grouped.map(([phase, items]) =>
         items.length === 0 ? null : (
           <section key={phase}>
