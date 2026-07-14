@@ -215,6 +215,9 @@ function WorkspaceDetail() {
                         <span className="text-[11px] text-amber-500">No date · held</span>
                       )}
                       <SendToQueueButton itemId={it.id} />
+                      {it.scheduled_date && (it as unknown as { content_generation_id?: string | null }).content_generation_id && (
+                        <ScheduleInQueueButton itemId={it.id} />
+                      )}
                     </div>
                   </li>
                 );
