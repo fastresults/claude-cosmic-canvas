@@ -153,11 +153,11 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
     ].join("\n");
 
     let items: z.infer<typeof PlanItem>[] = [];
-    let strategy: Record<string, unknown> | null = null;
+    let strategy: Json | null = null;
     try {
       const { text } = await callAnthropic({ model: ORCHESTRATOR_MODEL, maxTokens: MAX_TOKENS, prompt, system });
       const parsed = safeParseJson(text);
-      strategy = (parsed?.strategy as Record<string, unknown>) ?? null;
+      strategy = (parsed?.strategy as Json) ?? null;
       const raw = Array.isArray(parsed?.items) ? parsed.items : [];
       items = raw
         .map((r: unknown) => {
