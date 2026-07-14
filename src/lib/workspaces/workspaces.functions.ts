@@ -74,16 +74,23 @@ export const runWorkspaceInterview = createServerFn({ method: "POST" })
       intent: z.string().min(2),
     }).parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
+    const { MILESTONE_ACTOR_SYSTEM } = await import("./actor");
+    const { resolveMilestoneContext, contextBlock } = await import("./context.server");
+
+    const ctx = await resolveMilestoneContext(context.supabase, context.userId, data.intent);
 
     const system = [
-      "You are Eve's milestone strategist. Turn a short intent into a compact JSON analysis for planning a coordinated content arc.",
-      'Return ONLY JSON matching: { "summary": string, "goals": string[], "audience": string[], "key_messages": string[], "proof_points": string[], "risks": string[] }',
+      MILESTONE_ACTOR_SYSTEM,
+      "Task: turn a short intent into a compact JSON analysis for planning a coordinated content arc that maximally elevates the user's personal brand.",
+      'Return ONLY JSON matching: { "summary": string, "goals": string[], "audience": string[], "key_messages": string[], "proof_points": string[], "risks": string[], "pov": string, "personal_brand_angle": string, "differentiators": string[] }',
     ].join("\n");
 
     const prompt = [
+      contextBlock(ctx),
+      "",
       `Moment type: ${data.moment_type}`,
       data.target_date ? `Target date: ${data.target_date}` : "No target date given.",
       `Intent: ${data.intent}`,
@@ -93,10 +100,10 @@ export const runWorkspaceInterview = createServerFn({ method: "POST" })
 
     try {
       const { text } = await callAnthropic({ model: ORCHESTRATOR_MODEL, maxTokens: MAX_TOKENS, prompt, system });
-      const ai_analysis = safeParseJson(text) ?? { summary: data.intent };
-      return { ai_analysis };
+      const parsed = safeParseJson(text) ?? { summary: data.intent };
+      return { ai_analysis: { ...parsed, _missing_context: ctx.missing } };
     } catch (err) {
-      return { ai_analysis: { summary: data.intent, error: err instanceof Error ? err.message : "interview failed" } };
+      return { ai_analysis: { summary: data.intent, _missing_context: ctx.missing, error: err instanceof Error ? err.message : "interview failed" } };
     }
   });
 
@@ -127,34 +134,51 @@ const PlanArcInput = z.object({
 export const planWorkspaceArc = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PlanArcInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { CREATE_FORMATS } = await import("@/config/createFormats");
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
     const { CHANNELS } = await import("./strategy");
+    const { MILESTONE_ACTOR_SYSTEM } = await import("./actor");
+    const { resolveMilestoneContext, contextBlock } = await import("./context.server");
+    const { CHANNEL_SPECS } = await import("./channelSpecs");
+
+    const ctx = await resolveMilestoneContext(context.supabase, context.userId, data.intent);
 
     const registry = CREATE_FORMATS.map((f) => `- ${f.id} (${f.category}): ${f.label} — ${f.description}`).join("\n");
     const channelList = CHANNELS.join(", ");
+    const channelDigest = CHANNELS.map((c) => {
+      const s = CHANNEL_SPECS[c];
+      return `- ${c}: ${s.tone_hint} · ideal ${s.ideal_chars[0]}–${s.ideal_chars[1]} chars`;
+    }).join("\n");
 
     const system = [
-      "You are Eve's milestone arc strategist. Produce BOTH a strategy and a concrete phased content arc that maximizes positive press and audience impact.",
+      MILESTONE_ACTOR_SYSTEM,
+      "",
+      "Task: produce BOTH a strategy and a concrete phased content arc that maximizes positive press and audience impact for the user's personal brand.",
       "Phase rules: Tease T-14..T-4 · Announce T-1..T+1 · Amplify T+2..T+10 · Sustain T+11..T+30.",
       `Channels enum (pick ONLY from): ${channelList}.`,
       "Every item's content_type MUST be a Create Hub registry id below.",
-      "Use the interview audience, key_messages, and proof_points to justify channels and format mix per phase.",
-      'Return ONLY JSON: { "strategy": { "thesis": string, "target_outcomes": string[], "phases": { "tease"?: PhasePlan, "announce"?: PhasePlan, "amplify"?: PhasePlan, "sustain"?: PhasePlan }, "channel_strategy": [ { "channel": Channel, "role": "anchor"|"amplifier"|"proof"|"community", "audience_fit": string, "cap_per_week": number } ], "risks": string[] }, "items": [ { content_type, title, description, phase, priority, sort_order, scheduled_offset_days, channels: Channel[], rationale: string } ] }',
+      "Use the [AUDIENCE], [KNOWLEDGE], and [VOICE] to justify channels and format mix per phase.",
+      "For each item, write a `brief` (2–3 sentences) that a downstream drafter will follow verbatim.",
+      'Return ONLY JSON: { "strategy": { "thesis": string, "target_outcomes": string[], "phases": { "tease"?: PhasePlan, "announce"?: PhasePlan, "amplify"?: PhasePlan, "sustain"?: PhasePlan }, "channel_strategy": [ { "channel": Channel, "role": "anchor"|"amplifier"|"proof"|"community", "audience_fit": string, "cap_per_week": number } ], "risks": string[] }, "items": [ { content_type, title, description, phase, priority, sort_order, scheduled_offset_days, channels: Channel[], rationale: string, brief: string } ] }',
       "PhasePlan = { window: {start_offset, end_offset}, cadence_per_week: number, max_items: number, channels: Channel[], format_mix: [{content_type, count, why}], primary_message: string }.",
       "6–14 items total, respecting per-phase max_items.",
     ].join("\n");
 
     const prompt = [
+      contextBlock(ctx),
+      "",
       `Moment type: ${data.moment_type}`,
       data.target_date ? `Target date: ${data.target_date}` : "No fixed target date — plan phases as relative T-offsets only.",
       `Intent: ${data.intent}`,
       `Analysis: ${JSON.stringify(data.ai_analysis).slice(0, 2500)}`,
       "",
-      "Create Hub registry:",
+      "Create Hub registry (content_type must be one of these ids):",
       registry,
+      "",
+      "Channel digest:",
+      channelDigest,
       "",
       "Return only the JSON. No prose, no code fences.",
     ].join("\n");
