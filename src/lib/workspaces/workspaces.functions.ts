@@ -518,10 +518,10 @@ function addDays(d: Date, n: number): Date {
 
 function fallbackArc(): z.infer<typeof PlanItem>[] {
   const items: Array<{ content_type: string; title: string; description: string; phase: WorkspacePhase; offset: number }> = [
-    { content_type: "tweet", title: "Teaser tweet", description: "Cryptic hint at what's coming.", phase: "tease", offset: -10 },
-    { content_type: "linkedin-post", title: "Behind-the-scenes post", description: "Show the making of.", phase: "tease", offset: -5 },
+    { content_type: "post-content", title: "Teaser post", description: "Cryptic hint at what's coming.", phase: "tease", offset: -10 },
+    { content_type: "post-content", title: "Behind-the-scenes post", description: "Show the making of.", phase: "tease", offset: -5 },
     { content_type: "press-release", title: "Launch press release", description: "Newsroom-ready announcement.", phase: "announce", offset: 0 },
-    { content_type: "linkedin-post", title: "Launch day post", description: "Personal announcement.", phase: "announce", offset: 0 },
+    { content_type: "post-content", title: "Launch day post", description: "Personal announcement.", phase: "announce", offset: 0 },
     { content_type: "email-sequence", title: "Announcement email", description: "Send to the list.", phase: "announce", offset: 1 },
     { content_type: "case-study", title: "Amplify: proof-point case study", description: "Concrete customer story.", phase: "amplify", offset: 5 },
     { content_type: "op-ed", title: "Sustain: opinion piece", description: "POV essay to keep momentum.", phase: "sustain", offset: 14 },
