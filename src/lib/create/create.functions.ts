@@ -148,9 +148,12 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => GenerateInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { CREATE_FORMATS } = await import("@/config/createFormats");
-    const format = CREATE_FORMATS.find((f) => f.id === data.formatId);
-    if (!format) throw new Error(`Unknown format: ${data.formatId}`);
+    const { CREATE_FORMATS, normalizeCreateFormatId } = await import("@/config/createFormats");
+    const formatId = normalizeCreateFormatId(data.formatId);
+    const format = CREATE_FORMATS.find((f) => f.id === formatId);
+    if (!format) {
+      return { fallback: true as const, message: `Unknown format: ${data.formatId}`, draftId: null };
+    }
 
     const { formatRules } = await import("./format-rules");
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
