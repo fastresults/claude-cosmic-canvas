@@ -288,7 +288,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
               className="flex flex-[2] items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create milestone
+              Create & auto-draft
             </button>
           </div>
         </div>
