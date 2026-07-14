@@ -533,6 +533,7 @@ function fallbackArc(): z.infer<typeof PlanItem>[] {
     scheduled_offset_days: it.offset,
     channels: [] as string[],
     rationale: "",
+    brief: "",
   }));
 }
 
