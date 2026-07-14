@@ -468,6 +468,8 @@ function fallbackArc(): z.infer<typeof PlanItem>[] {
     priority: "normal" as const,
     sort_order: i,
     scheduled_offset_days: it.offset,
+    channels: [] as string[],
+    rationale: "",
   }));
 }
 
