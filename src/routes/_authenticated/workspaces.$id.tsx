@@ -36,6 +36,23 @@ function WorkspaceDetail() {
   const [curating, setCurating] = useState(false);
   const [curation, setCuration] = useState<Record<string, unknown> | null>(null);
 
+  // Auto-draft any pending items with the veteran-copywriter Actor.
+  const itemsRaw = useMemo(
+    () =>
+      (data?.items ?? []).map((it) => ({
+        id: it.id,
+        title: it.title,
+        description: it.description,
+        content_type: it.content_type,
+        channels: ((it as unknown as { channels?: string[] }).channels) ?? [],
+        scheduled_date: it.scheduled_date,
+        content_generation_id: (it as unknown as { content_generation_id?: string | null }).content_generation_id ?? null,
+        status: it.status,
+      })),
+    [data],
+  );
+  const { running, progress, failed } = useMilestoneAutoDraft(id, itemsRaw);
+
   const grouped = useMemo(() => {
     const items = data?.items ?? [];
     const map = new Map<WorkspacePhase, typeof items>();
