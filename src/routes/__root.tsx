@@ -162,9 +162,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfirmDialogProvider>
-        <Outlet />
-      </ConfirmDialogProvider>
+      <ThemeProvider>
+        <ConfirmDialogProvider>
+          <Outlet />
+        </ConfirmDialogProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
+
 }
