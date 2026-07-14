@@ -1,10 +1,11 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, BookOpen, Zap, Brain, Settings as SettingsIcon } from "lucide-react";
+import { Home, BookOpen, Zap, Send, Brain, Settings as SettingsIcon } from "lucide-react";
 
 const TABS = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
   { to: "/library", label: "Library", icon: BookOpen, match: (p: string) => p.startsWith("/library") },
   { to: "/arcs", label: "Arcs", icon: Zap, match: (p: string) => p.startsWith("/arcs") },
+  { to: "/queue", label: "Queue", icon: Send, match: (p: string) => p.startsWith("/queue") },
   { to: "/brain", label: "Brain", icon: Brain, match: (p: string) => p.startsWith("/brain") },
   { to: "/settings", label: "Settings", icon: SettingsIcon, match: (p: string) => p.startsWith("/settings") },
 ] as const;

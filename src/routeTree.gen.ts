@@ -16,6 +16,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authenticated/workspaces'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
@@ -73,6 +74,11 @@ const AuthenticatedWorkspacesRoute = AuthenticatedWorkspacesRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof AuthenticatedCreateRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/queue': typeof AuthenticatedQueueRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
   '/content/archive': typeof AuthenticatedContentArchiveRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/brain': typeof AuthenticatedBrainRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/queue': typeof AuthenticatedQueueRoute
   '/': typeof AuthenticatedIndexRoute
   '/content/archive': typeof AuthenticatedContentArchiveRoute
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/_authenticated/create': typeof AuthenticatedCreateRouteWithChildren
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/_authenticated/queue': typeof AuthenticatedQueueRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
   '/_authenticated/workspaces': typeof AuthenticatedWorkspacesRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/library'
     | '/onboarding'
+    | '/queue'
     | '/settings'
     | '/workspaces'
     | '/content/archive'
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/brain'
     | '/library'
     | '/onboarding'
+    | '/queue'
     | '/'
     | '/content/archive'
     | '/create/$formatId'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/_authenticated/create'
     | '/_authenticated/library'
     | '/_authenticated/onboarding'
+    | '/_authenticated/queue'
     | '/_authenticated/settings'
     | '/_authenticated/workspaces'
     | '/_authenticated/'
@@ -463,6 +475,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/queue': {
+      id: '/_authenticated/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof AuthenticatedQueueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/onboarding': {
@@ -734,6 +753,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCreateRoute: typeof AuthenticatedCreateRouteWithChildren
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedQueueRoute: typeof AuthenticatedQueueRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
   AuthenticatedWorkspacesRoute: typeof AuthenticatedWorkspacesRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
@@ -747,6 +767,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCreateRoute: AuthenticatedCreateRouteWithChildren,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedQueueRoute: AuthenticatedQueueRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
   AuthenticatedWorkspacesRoute: AuthenticatedWorkspacesRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
