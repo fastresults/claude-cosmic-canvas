@@ -12,7 +12,7 @@ import {
   planWorkspaceArc,
   createWorkspace,
 } from "@/lib/workspaces/workspaces.functions";
-import { CREATE_FORMATS } from "@/config/createFormats";
+import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import type { WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 
@@ -237,7 +237,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
 
           <ul className="flex flex-col gap-2">
             {items.map((it, idx) => {
-              const fmt = CREATE_FORMATS.find((f) => f.id === it.content_type);
+              const fmt = CREATE_FORMATS.find((f) => f.id === normalizeCreateFormatId(it.content_type));
               return (
                 <li
                   key={idx}

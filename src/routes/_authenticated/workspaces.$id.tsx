@@ -16,7 +16,7 @@ import {
 import { sendItemToQueue } from "@/lib/workspaces/queue.functions";
 import { scheduleWorkspaceItemInQueue } from "@/lib/workspaces/pipeline.functions";
 import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
-import { CREATE_FORMATS } from "@/config/createFormats";
+import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 
@@ -186,7 +186,8 @@ function WorkspaceDetail() {
             </h2>
             <ul className="flex flex-col gap-2">
               {items.map((it) => {
-                const fmt = CREATE_FORMATS.find((f) => f.id === it.content_type);
+                const formatId = normalizeCreateFormatId(it.content_type);
+                const fmt = CREATE_FORMATS.find((f) => f.id === formatId);
                 const channels = ((it as unknown as { channels?: string[] }).channels) ?? [];
                 return (
                   <li key={it.id} className="rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-accent/60">
@@ -200,7 +201,7 @@ function WorkspaceDetail() {
                     </div>
                     <Link
                       to="/create/$formatId"
-                      params={{ formatId: it.content_type }}
+                      params={{ formatId }}
                       search={{ wsId: id, wsItemId: it.id, seed: it.description ?? it.title }}
                       className="mt-1 block truncate text-sm text-foreground"
                     >
