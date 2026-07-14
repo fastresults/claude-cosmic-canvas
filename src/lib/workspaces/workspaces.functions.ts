@@ -119,6 +119,7 @@ const PlanItem = z.object({
   scheduled_offset_days: z.number().int().nullable().default(null),
   channels: z.array(z.string()).default([]),
   rationale: z.string().default(""),
+  brief: z.string().default(""),
 });
 
 const PlanArcInput = z.object({
