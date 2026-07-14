@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-ro
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Plus, Archive, Trash2, Sparkles, Loader2, Send, Calendar } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspaces";
 import { PhaseChip } from "@/components/workspaces/PhaseChip";
 import { ProgressRing } from "@/components/workspaces/ProgressRing";
@@ -14,6 +14,8 @@ import {
   bulkShiftWorkspaceItems,
 } from "@/lib/workspaces/workspaces.functions";
 import { sendItemToQueue } from "@/lib/workspaces/queue.functions";
+import { scheduleWorkspaceItemInQueue } from "@/lib/workspaces/pipeline.functions";
+import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
 import { CREATE_FORMATS } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
@@ -33,6 +35,23 @@ function WorkspaceDetail() {
   const shiftFn = useServerFn(bulkShiftWorkspaceItems);
   const [curating, setCurating] = useState(false);
   const [curation, setCuration] = useState<Record<string, unknown> | null>(null);
+
+  // Auto-draft any pending items with the veteran-copywriter Actor.
+  const itemsRaw = useMemo(
+    () =>
+      (data?.items ?? []).map((it) => ({
+        id: it.id,
+        title: it.title,
+        description: it.description,
+        content_type: it.content_type,
+        channels: ((it as unknown as { channels?: string[] }).channels) ?? [],
+        scheduled_date: it.scheduled_date,
+        content_generation_id: (it as unknown as { content_generation_id?: string | null }).content_generation_id ?? null,
+        status: it.status,
+      })),
+    [data],
+  );
+  const { running, progress, failed } = useMilestoneAutoDraft(id, itemsRaw);
 
   const grouped = useMemo(() => {
     const items = data?.items ?? [];
@@ -143,6 +162,22 @@ function WorkspaceDetail() {
 
       <StrategyPanel strategy={(data.strategy as unknown as MilestoneStrategy | null) ?? null} />
 
+      {(running || progress) && (
+        <div className="rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs text-foreground">
+          <div className="flex items-center gap-2">
+            {running && <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />}
+            <span>
+              Auto-drafting · {progress?.drafted ?? 0} of {progress?.total ?? 0} drafted · {progress?.scheduled ?? 0} queued
+            </span>
+          </div>
+          {Object.keys(failed).length > 0 && (
+            <p className="mt-1 text-[11px] text-destructive">
+              {Object.keys(failed).length} item(s) failed — retry from the row below.
+            </p>
+          )}
+        </div>
+      )}
+
       {grouped.map(([phase, items]) =>
         items.length === 0 ? null : (
           <section key={phase}>
@@ -180,6 +215,9 @@ function WorkspaceDetail() {
                         <span className="text-[11px] text-amber-500">No date · held</span>
                       )}
                       <SendToQueueButton itemId={it.id} />
+                      {it.scheduled_date && (it as unknown as { content_generation_id?: string | null }).content_generation_id && (
+                        <ScheduleInQueueButton itemId={it.id} />
+                      )}
                     </div>
                   </li>
                 );
@@ -238,6 +276,35 @@ function SendToQueueButton({ itemId }: { itemId: string }) {
     >
       {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
       {done ? "Queued" : "Send to queue"}
+    </button>
+  );
+}
+
+function ScheduleInQueueButton({ itemId }: { itemId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(scheduleWorkspaceItemInQueue);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function onClick() {
+    setBusy(true);
+    try {
+      await fn({ data: { workspace_item_id: itemId } });
+      setDone(true);
+      qc.invalidateQueries({ queryKey: ["workspace"] });
+      qc.invalidateQueries({ queryKey: ["release-queue"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy || done}
+      title="Add to the shared scheduling queue"
+      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Calendar className="h-3 w-3" />}
+      {done ? "Scheduled" : "Schedule"}
     </button>
   );
 }

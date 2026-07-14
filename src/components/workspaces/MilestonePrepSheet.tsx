@@ -214,6 +214,13 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
 
           <StrategyPanel strategy={strategy} />
 
+          {Array.isArray((analysis as { _missing_context?: string[] })._missing_context) &&
+            ((analysis as { _missing_context: string[] })._missing_context.length > 0) && (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-500">
+                Missing signals: {(analysis as { _missing_context: string[] })._missing_context.join(", ")}. Add these in Settings for stronger personalization on your next milestone.
+              </div>
+            )}
+
           <div className="flex items-center justify-between pt-2">
             <p className="text-xs text-muted-foreground">
               {items.length} pieces · tap to edit
@@ -288,7 +295,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
               className="flex flex-[2] items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create milestone
+              Create & auto-draft
             </button>
           </div>
         </div>
