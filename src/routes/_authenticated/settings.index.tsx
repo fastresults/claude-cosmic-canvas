@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, User, Zap, Mic, Link2, Bell, BookOpen, Compass, Layers, ChevronRight } from "lucide-react";
+import { LogOut, User, Zap, Mic, Link2, Bell, BookOpen, Compass, Layers, ChevronRight, SunMoon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
