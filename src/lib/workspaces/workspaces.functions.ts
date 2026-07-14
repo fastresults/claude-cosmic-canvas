@@ -199,6 +199,7 @@ const CreateWorkspaceInput = z.object({
   moment_type: MomentType,
   target_date: z.string().optional(),
   ai_analysis: z.record(z.string(), z.unknown()).default({}),
+  strategy: z.record(z.string(), z.unknown()).nullable().optional(),
   items: z.array(
     z.object({
       content_type: z.string(),
@@ -208,6 +209,7 @@ const CreateWorkspaceInput = z.object({
       priority: Priority.default("normal"),
       sort_order: z.number().int().default(0),
       scheduled_date: z.string().nullable().optional(),
+      channels: z.array(z.string()).default([]),
     }),
   ).default([]),
 });
@@ -241,13 +243,27 @@ export const createWorkspace = createServerFn({ method: "POST" })
         priority: it.priority,
         sort_order: it.sort_order ?? idx,
         scheduled_date: it.scheduled_date ?? null,
+        channels: it.channels ?? [],
+        release_status: it.scheduled_date ? "scheduled" : "held_missing_day",
         status: "pending" as const,
       }));
       const { error: iErr } = await context.supabase.from("workspace_items").insert(rows);
       if (iErr) throw iErr;
     }
 
-    // Second Brain provenance.
+    if (data.strategy) {
+      const s = data.strategy as Record<string, unknown>;
+      await context.supabase.from("workspace_strategy").insert({
+        workspace_id: ws.id,
+        user_id: context.userId,
+        thesis: (s.thesis as string) ?? null,
+        target_outcomes: (s.target_outcomes ?? []) as Json,
+        phases: (s.phases ?? {}) as Json,
+        channel_strategy: (s.channel_strategy ?? []) as Json,
+        risks: (s.risks ?? []) as Json,
+      });
+    }
+
     const { writeEdgeServer } = await import("@/lib/ai/provenance.server");
     await writeEdgeServer(context.supabase, context.userId, {
       srcType: "you",
@@ -259,6 +275,21 @@ export const createWorkspace = createServerFn({ method: "POST" })
     });
 
     return { workspaceId: ws.id };
+  });
+
+export const getWorkspaceStrategy = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ workspace_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("workspace_strategy")
+      .select("*")
+      .eq("workspace_id", data.workspace_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return row;
   });
 
 // ---- Item ops -----------------------------------------------------------
