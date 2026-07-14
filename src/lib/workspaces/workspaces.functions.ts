@@ -136,7 +136,7 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PlanArcInput.parse(input))
   .handler(async ({ data, context }) => {
-    const { CREATE_FORMATS } = await import("@/config/createFormats");
+    const { CREATE_FORMATS, normalizeCreateFormatId } = await import("@/config/createFormats");
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
     const { CHANNELS } = await import("./strategy");
@@ -197,6 +197,7 @@ export const planWorkspaceArc = createServerFn({ method: "POST" })
           return res.success ? res.data : null;
         })
         .filter((v): v is z.infer<typeof PlanItem> => v !== null)
+        .map((v) => ({ ...v, content_type: normalizeCreateFormatId(v.content_type) }))
         .filter((v) => CREATE_FORMATS.some((f) => f.id === v.content_type))
         .map((v) => ({
           ...v,

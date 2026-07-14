@@ -656,8 +656,8 @@ export const polishDraft = createServerFn({ method: "POST" })
     if (error) throw error;
     if (!draft) throw new Error("Draft not found");
 
-    const { CREATE_FORMATS } = await import("@/config/createFormats");
-    const format = CREATE_FORMATS.find((f) => f.id === draft.format_id);
+    const { CREATE_FORMATS, normalizeCreateFormatId } = await import("@/config/createFormats");
+    const format = CREATE_FORMATS.find((f) => f.id === normalizeCreateFormatId(draft.format_id));
     if (!format) throw new Error("Unknown format");
     const { formatRules } = await import("@/lib/create/format-rules");
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");

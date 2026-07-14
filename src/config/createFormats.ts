@@ -93,8 +93,20 @@ export const CATEGORY_LABELS: Record<CreateCategory, string> = {
   media: "Media",
 };
 
+const FORMAT_ID_ALIASES: Record<string, string> = {
+  tweet: "post-content",
+  "linkedin-post": "post-content",
+  "x-post": "post-content",
+  post: "post-content",
+};
+
+export function normalizeCreateFormatId(id: string): string {
+  return FORMAT_ID_ALIASES[id] ?? id;
+}
+
 export function getFormat(id: string): CreateFormat | undefined {
-  return CREATE_FORMATS.find((f) => f.id === id);
+  const normalizedId = normalizeCreateFormatId(id);
+  return CREATE_FORMATS.find((f) => f.id === normalizedId);
 }
 
 export function formatsByCategory(): Array<[CreateCategory, CreateFormat[]]> {

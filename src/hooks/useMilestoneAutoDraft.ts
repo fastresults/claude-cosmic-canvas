@@ -13,6 +13,7 @@ import {
   scheduleWorkspaceItemInQueue,
   getWorkspaceProgress,
 } from "@/lib/workspaces/pipeline.functions";
+import { normalizeCreateFormatId } from "@/config/createFormats";
 import { CHANNEL_SPECS } from "@/lib/workspaces/channelSpecs";
 import type { Channel } from "@/lib/workspaces/strategy";
 
@@ -70,7 +71,7 @@ export function useMilestoneAutoDraft(workspaceId: string, items: Item[]) {
         try {
           const res = await generate({
             data: {
-              formatId: it.content_type,
+              formatId: normalizeCreateFormatId(it.content_type),
               seed: seedFor(it),
               workspaceId,
               workspaceItemId: it.id,
