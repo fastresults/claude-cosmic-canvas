@@ -279,3 +279,32 @@ function SendToQueueButton({ itemId }: { itemId: string }) {
     </button>
   );
 }
+
+function ScheduleInQueueButton({ itemId }: { itemId: string }) {
+  const qc = useQueryClient();
+  const fn = useServerFn(scheduleWorkspaceItemInQueue);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function onClick() {
+    setBusy(true);
+    try {
+      await fn({ data: { workspace_item_id: itemId } });
+      setDone(true);
+      qc.invalidateQueries({ queryKey: ["workspace"] });
+      qc.invalidateQueries({ queryKey: ["release-queue"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy || done}
+      title="Add to the shared scheduling queue"
+      className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Calendar className="h-3 w-3" />}
+      {done ? "Scheduled" : "Schedule"}
+    </button>
+  );
+}
