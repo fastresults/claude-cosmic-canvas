@@ -20,6 +20,9 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
+import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { themeBootScript } from "@/lib/theme/theme";
+
 
 function NotFoundComponent() {
   return (
@@ -129,8 +132,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <HeadContent />
       </head>
       <body className="bg-background text-foreground">
@@ -140,6 +144,7 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -157,9 +162,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfirmDialogProvider>
-        <Outlet />
-      </ConfirmDialogProvider>
+      <ThemeProvider>
+        <ConfirmDialogProvider>
+          <Outlet />
+        </ConfirmDialogProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
+
 }

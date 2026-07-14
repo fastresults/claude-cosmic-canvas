@@ -1,5 +1,7 @@
 import { Bell, Flame } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { ThemeToggle } from "./ThemeToggle";
+
 
 export function TopBar() {
   return (
@@ -17,7 +19,9 @@ export function TopBar() {
             <Flame className="h-3 w-3 text-accent" />
             <span>0</span>
           </div>
+          <ThemeToggle />
           <button
+
             aria-label="Notifications"
             className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-elev hover:text-foreground"
           >
