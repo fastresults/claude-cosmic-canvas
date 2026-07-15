@@ -55,7 +55,6 @@ function CreateHub() {
   const showMilestones = category === "milestones";
 
   return (
-  return (
     <RequireDefaultsGate>
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-24 pt-6">
       <header className="flex flex-col gap-2">
@@ -206,6 +205,7 @@ function CreateHub() {
 
       <MilestonePrepSheet open={sheetOpen} onOpenChange={setSheetOpen} />
     </div>
+    </RequireDefaultsGate>
   );
 }
 
