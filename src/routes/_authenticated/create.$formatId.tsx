@@ -66,6 +66,11 @@ function FormatPage() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Title-naming gate: when generation returns pendingTitle, we hold the sections
+  // in state and prompt for a name before persisting.
+  const [pendingTitleInput, setPendingTitleInput] = useState<string>("");
+  const [titlePending, setTitlePending] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
 
   // Hydrate existing draft if resuming.
   useEffect(() => {
@@ -78,6 +83,7 @@ function FormatPage() {
       setSeed("");
     });
   }, [draftId, getDraftFn]);
+
 
   async function runGenerate() {
     if (!seed.trim()) return;
