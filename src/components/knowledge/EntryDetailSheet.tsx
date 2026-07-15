@@ -7,6 +7,7 @@ import type { KnowledgeEntry } from "./shared";
 import { SOURCE_LABELS } from "./shared";
 import { Pill } from "@/components/primitives/Pill";
 import { Pin, Archive, ExternalLink } from "lucide-react";
+import { Markdown } from "@/components/primitives/Markdown";
 
 type Props = {
   entry: KnowledgeEntry | null;
@@ -127,8 +128,8 @@ export function EntryDetailSheet({ entry, onOpenChange }: Props) {
 
           <div>
             <div className="mb-1 text-xs uppercase text-muted-foreground">Content</div>
-            <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-surface p-3 text-sm">
-              {entry.content}
+            <div className="max-h-96 overflow-y-auto rounded-md border border-border bg-surface p-3">
+              <Markdown>{entry.content ?? ""}</Markdown>
             </div>
           </div>
 
