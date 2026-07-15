@@ -16,18 +16,22 @@ const GenerateInput = z.object({
   briefOverrides: z.record(z.string(), z.unknown()).optional(),
   workspaceId: z.string().uuid().nullable().optional(),
   workspaceItemId: z.string().uuid().nullable().optional(),
+  // User-provided draft name. Required to persist a NEW draft; ignored on updates
+  // (rename goes through `renameDraft`).
+  title: z.string().trim().min(1).max(120).optional(),
 });
 
 const SaveInput = z.object({
   draftId: z.string().uuid().optional(),
   formatId: z.string().min(1),
-  title: z.string().nullable().optional(),
+  title: z.string().trim().min(1, "Please name your draft.").max(120),
   sections: z.array(z.unknown()),
   briefSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
   status: z.enum(["draft", "ready", "archived"]).default("draft"),
   workspaceId: z.string().uuid().nullable().optional(),
   workspaceItemId: z.string().uuid().nullable().optional(),
 });
+
 
 const IdInput = z.object({ id: z.string().uuid() });
 const ListInput = z.object({
