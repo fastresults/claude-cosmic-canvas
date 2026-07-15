@@ -227,7 +227,7 @@ export type Database = {
           scheduled_date: string | null
           sections: Json
           status: string
-          title: string | null
+          title: string
           updated_at: string
           user_id: string
           videos: Json
@@ -256,7 +256,7 @@ export type Database = {
           scheduled_date?: string | null
           sections?: Json
           status?: string
-          title?: string | null
+          title: string
           updated_at?: string
           user_id: string
           videos?: Json
@@ -285,7 +285,7 @@ export type Database = {
           scheduled_date?: string | null
           sections?: Json
           status?: string
-          title?: string | null
+          title?: string
           updated_at?: string
           user_id?: string
           videos?: Json

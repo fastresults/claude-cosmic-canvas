@@ -170,7 +170,7 @@ export const duplicateDraft = createServerFn({ method: "POST" })
     const insertRow = {
       user_id: context.userId,
       format_id: s.format_id as string,
-      title: s.title ? `${s.title} (copy)` : "Untitled (copy)",
+      title: `${s.title as string} (copy)`,
       sections: (s.sections ?? []) as Json,
       brief_snapshot: (s.brief_snapshot ?? null) as Json | null,
       preset_id: (s.preset_id ?? null) as string | null,
@@ -264,12 +264,11 @@ export const renameDraft = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       id: z.string().uuid(),
-      title: z.string().max(120).nullable(),
+      title: z.string().trim().min(1, "Please name your draft.").max(120),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const trimmed = data.title?.trim() ?? "";
-    const nextTitle = trimmed.length ? trimmed : null;
+    const nextTitle = data.title.trim();
     const { error } = await context.supabase
       .from("create_drafts")
       .update({ title: nextTitle })
@@ -278,6 +277,7 @@ export const renameDraft = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true, title: nextTitle };
   });
+
 
 
 // -------- Schedule -------------------------------------------------------
@@ -493,7 +493,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       summaryText: string,
       style?: { name: string; description: string | null } | null,
     ) => {
-      const subject = title && title !== "Untitled" ? `"${title}"` : "this draft";
+      const subject = title ? `"${title}"` : "this draft";
       const aspect = role === "social" ? "1:1" : "16:9";
       const contextLine = summaryText
         .replace(/\s+/g, " ")
@@ -563,7 +563,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
       console.warn("[draft-image] concepts:fallback_missing_key", { draftId: data.draftId, role: data.role });
-      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
     }
 
     const system =
@@ -623,7 +623,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       clearTimeout(timeoutId);
       if (clean.length === 0) {
         console.warn("[draft-image] concepts:fallback_empty", { draftId: data.draftId, role: data.role });
-        return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+        return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
       }
       console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null, count: clean.length });
       return { fallback: false as const, summary: summary.slice(0, 500), concepts: clean };
@@ -635,7 +635,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         timedOut: controller.signal.aborted,
         message: e instanceof Error ? e.message.slice(0, 240) : "Unknown error",
       });
-      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
     }
   });
 

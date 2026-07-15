@@ -66,6 +66,11 @@ function FormatPage() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Title-naming gate: when generation returns pendingTitle, we hold the sections
+  // in state and prompt for a name before persisting.
+  const [pendingTitleInput, setPendingTitleInput] = useState<string>("");
+  const [titlePending, setTitlePending] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
 
   // Hydrate existing draft if resuming.
   useEffect(() => {
@@ -79,7 +84,8 @@ function FormatPage() {
     });
   }, [draftId, getDraftFn]);
 
-  async function runGenerate() {
+
+  async function runGenerate(providedTitle?: string) {
     if (!seed.trim()) return;
     setBusy(true);
     setError(null);
@@ -93,13 +99,21 @@ function FormatPage() {
           draftId: currentDraftId ?? undefined,
           workspaceId: ctx.workspace_id ?? wsId ?? null,
           workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+          title: providedTitle,
         },
       });
       if ("fallback" in res && res.fallback) {
         setError(res.message);
+      } else if (res.pendingTitle) {
+        // Draft NOT saved yet — user must name it before we persist.
+        setSections(res.sections);
+        setTitle(null);
+        setPendingTitleInput(res.suggestedTitle ?? "");
+        setTitlePending(true);
       } else {
         setSections(res.sections);
-        setTitle(res.title);
+        setTitle(res.title ?? null);
+        setTitlePending(false);
         if (res.draftId) setCurrentDraftId(res.draftId);
         qc.invalidateQueries({ queryKey: ["create-drafts"] });
         qc.invalidateQueries({ queryKey: ["workspace", ctx.workspace_id] });
@@ -110,6 +124,22 @@ function FormatPage() {
       setBusy(false);
     }
   }
+
+  async function confirmTitle() {
+    const next = pendingTitleInput.trim();
+    if (!next) {
+      setError("Please name your draft to continue.");
+      return;
+    }
+    setSavingTitle(true);
+    setError(null);
+    try {
+      await runGenerate(next);
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
 
   // Voice Orb / Home CTA auto-start.
   useEffect(() => {
@@ -147,7 +177,7 @@ function FormatPage() {
       <SeedInput
         value={seed}
         onChange={setSeed}
-        onSubmit={runGenerate}
+        onSubmit={() => runGenerate()}
         busy={busy}
         placeholder={
           format.mobileFlow === "voice-first"
@@ -162,6 +192,43 @@ function FormatPage() {
         </div>
       )}
 
+      {titlePending && (
+        <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
+          <div className="text-xs uppercase tracking-wide text-primary">Name this draft</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Give your draft a title so it's easy to find later. It won't save until you name it.
+          </p>
+          <input
+            autoFocus
+            value={pendingTitleInput}
+            onChange={(e) => setPendingTitleInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); void confirmTitle(); }
+            }}
+            maxLength={120}
+            placeholder="e.g. Why remote-first is stalling"
+            className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+          />
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => { setTitlePending(false); setSections([]); }}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-foreground"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmTitle()}
+              disabled={!pendingTitleInput.trim() || savingTitle}
+              className="rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40"
+            >
+              {savingTitle ? "Saving…" : "Save draft"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {(hasDraft || busy) && (
         <div className="space-y-3">
           {title && <h2 className="font-display text-xl text-foreground">{title}</h2>}
@@ -169,10 +236,10 @@ function FormatPage() {
         </div>
       )}
 
-      {hasDraft && (
+      {hasDraft && !titlePending && (
         <DecisionDock>
           <button
-            onClick={runGenerate}
+            onClick={() => runGenerate()}
             disabled={busy}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-xs text-foreground disabled:opacity-40"
           >
@@ -195,6 +262,7 @@ function FormatPage() {
           )}
         </DecisionDock>
       )}
+
     </div>
     </RequireDefaultsGate>
   );

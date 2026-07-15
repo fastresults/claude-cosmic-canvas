@@ -181,7 +181,7 @@ function CreateHub() {
                     className="min-w-[180px] max-w-[220px] shrink-0 rounded-2xl border border-border bg-surface p-3"
                   >
                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.format_id}</div>
-                    <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title ?? "Untitled draft"}</div>
+                    <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title}</div>
                   </Link>
                 ))}
               </div>

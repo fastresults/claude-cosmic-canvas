@@ -16,18 +16,22 @@ const GenerateInput = z.object({
   briefOverrides: z.record(z.string(), z.unknown()).optional(),
   workspaceId: z.string().uuid().nullable().optional(),
   workspaceItemId: z.string().uuid().nullable().optional(),
+  // User-provided draft name. Required to persist a NEW draft; ignored on updates
+  // (rename goes through `renameDraft`).
+  title: z.string().trim().min(1).max(120).optional(),
 });
 
 const SaveInput = z.object({
   draftId: z.string().uuid().optional(),
   formatId: z.string().min(1),
-  title: z.string().nullable().optional(),
+  title: z.string().trim().min(1, "Please name your draft.").max(120),
   sections: z.array(z.unknown()),
   briefSnapshot: z.record(z.string(), z.unknown()).nullable().optional(),
   status: z.enum(["draft", "ready", "archived"]).default("draft"),
   workspaceId: z.string().uuid().nullable().optional(),
   workspaceItemId: z.string().uuid().nullable().optional(),
 });
+
 
 const IdInput = z.object({ id: z.string().uuid() });
 const ListInput = z.object({
@@ -83,7 +87,7 @@ export const saveCreateDraft = createServerFn({ method: "POST" })
     const payload = {
       user_id: context.userId,
       format_id: data.formatId,
-      title: data.title ?? null,
+      title: data.title,
       sections: (data.sections ?? []) as unknown as Json,
       brief_snapshot: (data.briefSnapshot ?? null) as Json | null,
       status: data.status,
@@ -274,13 +278,25 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
     }
 
     const sections = splitSections(bodyText, format.id);
-    const title = deriveTitle(bodyText, data.seed);
+    const suggestedTitle = deriveTitle(bodyText, data.seed);
 
-    // Upsert draft.
-    const payload = {
+    // Naming gate: never persist a new draft without a user-provided title.
+    // For updates to an existing draft, the title lives in the row already.
+    if (!data.draftId && !data.title) {
+      return {
+        fallback: false as const,
+        draftId: null,
+        pendingTitle: true as const,
+        suggestedTitle,
+        sections,
+      };
+    }
+
+    // Build payload. Only set `title` when the client sent one; on updates without
+    // a title, preserve whatever the row already has.
+    const basePayload = {
       user_id: context.userId,
       format_id: format.id,
-      title,
       sections: sections as unknown as Json,
       brief_snapshot: (data.briefOverrides ?? null) as Json | null,
       preset_id: data.presetId ?? null,
@@ -291,21 +307,31 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
     };
 
     let draftId = data.draftId ?? null;
+    let finalTitle: string;
     if (draftId) {
-      const { error } = await context.supabase
-        .from("create_drafts")
-        .update(payload)
-        .eq("id", draftId)
-        .eq("user_id", context.userId);
-      if (error) throw error;
-    } else {
+      const updatePayload = data.title
+        ? { ...basePayload, title: data.title }
+        : basePayload;
       const { data: row, error } = await context.supabase
         .from("create_drafts")
-        .insert(payload)
-        .select("id")
+        .update(updatePayload)
+        .eq("id", draftId)
+        .eq("user_id", context.userId)
+        .select("title")
+        .single();
+      if (error) throw error;
+      finalTitle = row.title;
+    } else {
+      // Guaranteed by the gate above.
+      const insertPayload = { ...basePayload, title: data.title! };
+      const { data: row, error } = await context.supabase
+        .from("create_drafts")
+        .insert(insertPayload)
+        .select("id, title")
         .single();
       if (error) throw error;
       draftId = row.id;
+      finalTitle = row.title;
     }
 
     // Brain provenance edge.
@@ -336,8 +362,15 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
       }
     }
 
-    return { fallback: false as const, draftId, title, sections };
+    return {
+      fallback: false as const,
+      draftId,
+      pendingTitle: false as const,
+      title: finalTitle,
+      sections,
+    };
   });
+
 
 function splitSections(body: string, formatId: string): Array<{ heading: string | null; body: string }> {
   const sep = formatId === "email-sequence" ? /---EMAIL---/i

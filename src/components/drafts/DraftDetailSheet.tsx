@@ -76,8 +76,14 @@ export function DraftDetailSheet({
   function commitTitle() {
     const next = titleDraft.trim();
     const current = draft.title ?? "";
+    if (!next.length) {
+      // Names are required — revert to the existing title, do not blank it out.
+      setTitleDraft(current);
+      setEditingTitle(false);
+      return;
+    }
     if (next !== current) {
-      rename.mutate({ id: draft.id, title: next.length ? next : null });
+      rename.mutate({ id: draft.id, title: next });
     }
     setEditingTitle(false);
   }
@@ -85,6 +91,7 @@ export function DraftDetailSheet({
     setTitleDraft(draft.title ?? "");
     setEditingTitle(true);
   }
+
 
   return (
     <>
