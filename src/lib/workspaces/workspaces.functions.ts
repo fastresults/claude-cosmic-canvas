@@ -254,6 +254,9 @@ export const createWorkspace = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CreateWorkspaceInput.parse(input))
   .handler(async ({ data, context }) => {
+    const { assertUserDefaults } = await import("@/lib/defaults/assert.server");
+    await assertUserDefaults(context.supabase, context.userId);
+
     const { data: ws, error } = await context.supabase
       .from("opportunity_workspaces")
       .insert({

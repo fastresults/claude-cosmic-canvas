@@ -148,6 +148,9 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => GenerateInput.parse(input))
   .handler(async ({ data, context }) => {
+    const { assertUserDefaults } = await import("@/lib/defaults/assert.server");
+    await assertUserDefaults(context.supabase, context.userId);
+
     const { CREATE_FORMATS, normalizeCreateFormatId } = await import("@/config/createFormats");
     const formatId = normalizeCreateFormatId(data.formatId);
     const format = CREATE_FORMATS.find((f) => f.id === formatId);
