@@ -118,6 +118,32 @@ function SettingsIndex() {
                       )}
                     </span>
                   )}
+                  {showPill && s.slot === "knowledge" && missing && knowledgeProfiles.length > 0 && (
+                    <select
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = e.target.value;
+                        if (id) setKnowledgeDefault.mutate(id);
+                      }}
+                      defaultValue=""
+                      disabled={setKnowledgeDefault.isPending}
+                      className="rounded-pill border border-accent/40 bg-surface-elev px-2 py-0.5 font-display text-[10px] tracking-wide text-accent"
+                    >
+                      <option value="" disabled>
+                        Pick default…
+                      </option>
+                      {knowledgeProfiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{s.hint}</div>
               </div>
