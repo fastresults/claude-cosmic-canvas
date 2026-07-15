@@ -177,12 +177,30 @@ function DomainsSettings() {
                     className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-elev"
                   >
                     <Compass className="h-4 w-4 text-accent" />
-                    <span className="flex-1 text-sm text-foreground">{d.name}</span>
+                    <span className="flex-1 truncate text-sm text-foreground">
+                      {d.name}
+                      {d.is_default && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent align-middle">
+                          <Star className="h-2.5 w-2.5" /> default
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       {count === 0 ? "Add sources" : `${count} source${count === 1 ? "" : "s"}`}
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </button>
+                  {!d.is_default && (
+                    <button
+                      type="button"
+                      onClick={() => setDefault.mutate(d.id)}
+                      aria-label={`Set ${d.name} as default`}
+                      title="Set as default domain"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-accent"
+                    >
+                      <Star className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => remove.mutate(d.id)}
