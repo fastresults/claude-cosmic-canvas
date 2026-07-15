@@ -77,6 +77,11 @@ function DomainsSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "domains"] }),
   });
 
+  const setDefault = useMutation({
+    mutationFn: (id: string) => setDefaultFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "domains"] }),
+  });
+
   const existing = new Set(domains.map((d) => d.name.toLowerCase()));
   const available = SUGGESTIONS.filter((s) => !existing.has(s.toLowerCase()));
 
