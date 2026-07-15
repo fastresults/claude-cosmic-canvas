@@ -1,11 +1,14 @@
-import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2, Pencil, Check } from "lucide-react";
+import { X, Sparkles, Archive as ArchiveIcon, Copy, Calendar, ImagePlus, RefreshCw, Trash2, Pencil, Check, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 
 import { useDraft, useDraftMutations } from "@/hooks/useDrafts";
 import { useDraftImages, useRemoveDraftImage } from "@/hooks/useDraftImages";
 import { ImageAssociationSheet } from "./ImageAssociationSheet";
 import { SchedulePicker } from "./SchedulePicker";
 import { ThumbPeek } from "@/components/primitives/ThumbPeek";
+import { suggestDraftTitle } from "@/lib/create/create.functions";
+
 
 type Role = "cover" | "social" | "inline";
 
