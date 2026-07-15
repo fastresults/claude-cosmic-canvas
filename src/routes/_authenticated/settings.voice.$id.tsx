@@ -113,7 +113,12 @@ function VoiceEditor() {
   });
   const setDefault = useMutation({
     mutationFn: () => setDefaultFn({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-profiles"] }),
+    onSuccess: () => {
+      // Default now also flips active on the server — refresh every surface.
+      qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
+      qc.invalidateQueries({ queryKey: ["voice-profile", id] });
+    },
   });
   const del = useMutation({
     mutationFn: () => delFn({ data: { id } }),
