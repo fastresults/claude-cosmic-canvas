@@ -127,19 +127,6 @@ export function DomainDetailSheet({ open, onOpenChange, domainId, domainName }: 
           profileId={null}
           domainId={domainId}
         />
-        <YouTubeSheet
-          open={action === "youtube"}
-          onOpenChange={(v) => !v && setAction(null)}
-          profileId={null}
-          domainId={domainId}
-        />
-        <ResearchSheet
-          open={action === "research"}
-          onOpenChange={(v) => !v && setAction(null)}
-          profileId={null}
-          domainId={domainId}
-          domainName={domainName}
-        />
 
         <EntryDetailSheet entry={detail} onOpenChange={(v) => !v && setDetail(null)} />
       </div>
