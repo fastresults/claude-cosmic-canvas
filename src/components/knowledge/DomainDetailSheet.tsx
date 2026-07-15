@@ -12,6 +12,7 @@ import { SpeakSheet } from "@/components/knowledge/capture/SpeakSheet";
 import { EntryCard } from "@/components/knowledge/EntryCard";
 import { EntryDetailSheet } from "@/components/knowledge/EntryDetailSheet";
 import { IngestionStatusStrip } from "@/components/knowledge/IngestionStatusStrip";
+import { DomainIngestZone } from "@/components/knowledge/DomainIngestZone";
 import type { KnowledgeEntry } from "@/components/knowledge/shared";
 import {
   listEntries,
@@ -69,6 +70,10 @@ export function DomainDetailSheet({ open, onOpenChange, domainId, domainName }: 
         </p>
 
         <IngestionStatusStrip userId={userId} />
+
+        <div className="mt-3">
+          <DomainIngestZone domainId={domainId} domainName={domainName} />
+        </div>
 
         <div className="mt-3 space-y-2">
           {entries.length === 0 && (

@@ -6,17 +6,21 @@ import {
   Link as LinkIcon,
   Upload,
   Linkedin,
+  Youtube,
+  Sparkles,
   Plus,
   X,
 } from "lucide-react";
 
-export type CaptureAction = "speak" | "paste" | "url" | "upload" | "linkedin";
+export type CaptureAction = "speak" | "paste" | "url" | "upload" | "linkedin" | "youtube" | "research";
 
 type Props = {
   onPick: (action: CaptureAction) => void;
 };
 
 const ACTIONS: { id: CaptureAction; label: string; Icon: typeof Mic }[] = [
+  { id: "research", label: "AI research", Icon: Sparkles },
+  { id: "youtube", label: "YouTube", Icon: Youtube },
   { id: "linkedin", label: "LinkedIn", Icon: Linkedin },
   { id: "upload", label: "Upload", Icon: Upload },
   { id: "url", label: "URL", Icon: LinkIcon },
