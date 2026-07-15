@@ -385,8 +385,8 @@ function NewVoiceSheet({
                 key={s.id}
                 type="button"
                 disabled={busyId === s.id}
-
                 onClick={() => adopt.mutate(s.id)}
+
                 className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
               >
                 <BookOpen className="mt-0.5 h-4 w-4 text-accent" />
