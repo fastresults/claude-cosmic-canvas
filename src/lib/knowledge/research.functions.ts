@@ -48,20 +48,33 @@ Write a ~600-900 word brief following the required structure. Use only well-know
       throw new Error("Research returned empty. Try a more specific topic.");
     }
 
-    return ingestEntry({
-      data: {
-        profile_id: data.profile_id ?? null,
-        domain_id: data.domain_id ?? null,
-        source_type: "research",
-        title: data.topic.slice(0, 120),
-        content: text,
-        tags: ["ai-research"],
-        kind: "note",
-        meta: {
-          topic: data.topic,
-          domain: data.domain_name ?? null,
-          model: "google/gemini-3-flash-preview",
+    try {
+      return await ingestEntry({
+        data: {
+          profile_id: data.profile_id ?? null,
+          domain_id: data.domain_id ?? null,
+          source_type: "research",
+          title: data.topic.slice(0, 120),
+          content: text,
+          tags: ["ai-research"],
+          kind: "note",
+          meta: {
+            topic: data.topic,
+            domain: data.domain_name ?? null,
+            model: "google/gemini-3-flash-preview",
+          },
         },
-      },
-    });
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[runDeepResearch] ingestEntry failed", {
+        topic: data.topic,
+        domain_id: data.domain_id ?? null,
+        error: msg,
+      });
+      const preview = text.slice(0, 200).replace(/\s+/g, " ");
+      throw new Error(
+        `Research generated but could not be saved: ${msg}. Preview: "${preview}…"`,
+      );
+    }
   });
