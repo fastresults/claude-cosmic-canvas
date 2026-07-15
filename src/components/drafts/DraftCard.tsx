@@ -68,7 +68,7 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
             </span>
           )}
         </div>
-        <div className="line-clamp-1 text-sm text-foreground">{draft.title ?? "Untitled draft"}</div>
+        <div className="line-clamp-1 text-sm text-foreground">{draft.title}</div>
         {snippet && <div className="line-clamp-2 text-xs text-muted-foreground">{snippet}</div>}
         <div className="mt-auto flex items-center gap-2 text-[10px] text-muted-foreground">
           {draft.quality_score != null && (
