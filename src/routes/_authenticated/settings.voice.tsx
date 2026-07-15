@@ -307,10 +307,13 @@ function NewVoiceSheet({
     mutationFn: (id: string) => adoptFn({ data: { id } }),
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
       onClose();
       navigate({ to: "/settings/voice/$id", params: { id: row.id } });
     },
   });
+  const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
