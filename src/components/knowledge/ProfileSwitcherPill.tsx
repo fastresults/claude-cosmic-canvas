@@ -48,6 +48,12 @@ export function ProfileSwitcherPill({ activeId, onChange }: Props) {
     },
   });
 
+  const setDefaultFn = useServerFn(setDefaultKnowledgeProfile);
+  const setDefault = useMutation({
+    mutationFn: (id: string) => setDefaultFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
+  });
+
   const active = profiles.find((p) => p.id === activeId) ?? profiles[0] ?? null;
   const ActiveIcon = active ? KIND_ICON[active.kind as keyof typeof KIND_ICON] : User;
 
