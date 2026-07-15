@@ -10,6 +10,7 @@ import { StreamCanvas } from "@/components/create/shared/StreamCanvas";
 import { DecisionDock } from "@/components/create/shared/DecisionDock";
 import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill";
 import { useWorkspaceUrlContext } from "@/hooks/useWorkspaceUrlContext";
+import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
 import { useWorkspaceContext, readWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
 import {
   generateCreateDraft,
@@ -127,6 +128,7 @@ function FormatPage() {
   const hasDraft = sections.length > 0;
 
   return (
+    <RequireDefaultsGate>
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-6 pt-4">
       <div className="flex items-center justify-between">
         <Link to="/create" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
