@@ -7,6 +7,7 @@ import type { KnowledgeEntry } from "./shared";
 import { SOURCE_LABELS } from "./shared";
 import { Pill } from "@/components/primitives/Pill";
 import { Pin, Archive, ExternalLink } from "lucide-react";
+import { Markdown } from "@/components/primitives/Markdown";
 
 type Props = {
   entry: KnowledgeEntry | null;
