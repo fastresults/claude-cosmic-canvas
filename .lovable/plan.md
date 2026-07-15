@@ -1,44 +1,102 @@
-# Global speak-or-type on every textarea
+## Problem
 
-## Goal
-Anywhere the app renders a multi-line text field, the user can either type OR hold a mic button to dictate. Transcribed text is appended into the same field they'd type in. One rule, one component, applied globally.
+Two separate bugs collapse into the same user experience:
 
-## Approach
-Upgrade the shared `src/components/ui/textarea.tsx` in place so every existing `<Textarea />` gets the mic automatically — no call-site changes required. This is the only way "global" actually holds; wrapping opt-in would drift.
+1. **"Set as default" doesn't take effect.** On the voice editor and voice list, `setDefaultVoiceProfile` only flips the `is_default` column. It does not set `profiles.active_voice_id`, and its mutation only invalidates `voice-profiles` (not `voice-active`). So after clicking "Set as default":
+   - The "Active voice" chip on top does not update.
+   - The `ActiveVoiceBadge` above the composer does not update.
+   - Every downstream resolver keeps using whatever `active_voice_id` was there before.
+2. **Defaults are voice-only.** There is no "default knowledge profile" and no "default domain". The milestone/orchestrator context resolver (`src/lib/workspaces/context.server.ts`) picks the *first* knowledge profile by `created_at` and derives domain/audience from it. The user has no way to pin the ones every workflow should use.
 
-### New behavior of `<Textarea />`
-- Renders the current textarea, plus a small mic button pinned to the bottom-right inside the field (does not overlap typed text — right/bottom padding reserved).
-- Tap-to-toggle on mobile, also supports press-and-hold. Shows recording pulse + elapsed seconds; shows "Transcribing…" while the server call runs.
-- On success, appends transcript to current `value` (with a space/newline separator) and fires `onChange` with a synthetic event so controlled forms, React Hook Form, and zod resolvers all keep working unchanged.
-- Uncontrolled textareas (no `value`) are also supported: writes into the DOM node and dispatches `input`.
-- Graceful degradation: if `navigator.mediaDevices` is unavailable, permission denied, or the transcription call fails, the mic hides / shows an inline error and typing still works.
-- Escape hatch: `voiceInput={false}` prop to disable on the rare field where dictation doesn't make sense (e.g. code snippets, hidden fields). Default is `true`.
-- Respects `disabled` and `readOnly`.
+## Fix
 
-### Reused infrastructure (no new backend)
-- Recording: same MediaRecorder + base64 pattern already used in `SpeakSheet.tsx`.
-- Transcription: existing `aiTranscribe` server function in `src/lib/ai/ai.functions.ts` via `useServerFn`.
-- Iconography: `Mic` / `Square` from `lucide-react`, styled with existing tokens.
+Make "default" a single, global, propagated concept per user, spanning **voice + knowledge profile + domain**, and make every AI surface read from one resolver.
 
-### New file
-- `src/hooks/useVoiceDictation.ts` — encapsulates getUserMedia + MediaRecorder + transcribe + status; returns `{ recording, status, error, start, stop, toggle, supported }`. Keeps `textarea.tsx` small.
+### 1. Voice: unify "default" with "active"
 
-### Files touched
-- `src/components/ui/textarea.tsx` — wrap the `<textarea>` in a relative container, add mic button, wire hook, keep forwardRef + all existing props/classNames intact.
-- `src/hooks/useVoiceDictation.ts` — new.
-- No changes to any call site. The three raw `<textarea>` usages found (`SpeakSheet.tsx` already dedicated to voice; `PasteSheet.tsx`; and inline ones in a couple of settings/onboarding routes) — switch those raw `<textarea>` tags to `<Textarea />` so the rule truly is global. `SpeakSheet.tsx` keeps its dedicated big mic; pass `voiceInput={false}` on its transcript field to avoid a redundant second mic.
+- `setDefaultVoiceProfile` becomes the single button users press. In addition to setting `is_default`, it updates `profiles.active_voice_id` to the same id — so "default" and "active" stay in sync.
+- Remove the "Set active" / "Use" secondary buttons from the editor and list (or hide them behind an "Override for this session" advanced action). The primary action is **Set as default**.
+- Both mutation `onSuccess` handlers invalidate `["voice-profiles"]` **and** `["voice-active"]`.
+- Add a toast confirming "X is now your default voice."
 
-## Stress tests
-- Controlled + RHF form (MilestonePrepSheet "What are you preparing for?") — verify appended text updates form state and validation.
-- Uncontrolled textarea — verify DOM value + input event.
-- Mid-recording sheet close / route change — hook cleans up stream + recorder.
-- Permission denied → mic button shows disabled state with tooltip; typing unaffected.
-- Long recording → status shows elapsed; transcript appends without clobbering user edits made while recording.
-- Small textareas (1–2 rows) — mic sits inside without breaking min-height; padding-right reserved.
-- Dark mode + focus ring — mic doesn't clip the ring.
-- Mobile 390px (current viewport) — 44px tap target, no layout shift.
+### 2. Knowledge profile: add `is_default`
+
+- Migration: add `is_default boolean not null default false` to `public.knowledge_profiles`, plus a partial unique index `(user_id) where is_default` so only one default per user.
+- New server fn `setDefaultKnowledgeProfile({ id })` in `src/lib/knowledge/knowledge.functions.ts` — unsets siblings, sets this one, invalidates.
+- In `src/routes/_authenticated/settings.knowledge.tsx`, add a "Default" star button on each profile row (mirrors the voice list UX).
+- `listKnowledgeProfiles` returns `is_default`.
+
+### 3. Domain: add `is_default`
+
+- Migration: add `is_default boolean not null default false` on `public.domains`, partial unique index per user.
+- New server fn `setDefaultDomain({ id })` in `src/lib/settings/settings.functions.ts`.
+- Update `settings.domains.tsx` with a "Default" toggle per row.
+
+### 4. Central resolver used by every AI workflow
+
+Create `src/lib/defaults/user-defaults.server.ts` (server-only helper):
+
+```
+resolveUserDefaults(supabase, userId) -> {
+  voice:            { id, name, ... } | null,
+  knowledgeProfile: { id, name, domain, audience } | null,
+  domain:           { id, name } | null,
+  preset:           { id } | null,
+  missing:          string[],
+}
+```
+
+Priority for each slot: explicit override → `is_default=true` row → most-recent → null.
+
+Refactor callers to use it:
+- `src/lib/workspaces/context.server.ts` — replace the "first knowledge profile by created_at" logic and voice lookup with `resolveUserDefaults`.
+- `src/lib/voice/voice.functions.ts` — `resolveActiveVoice` delegates to the same helper for the voice slot.
+- `src/lib/create/create.functions.ts` and `src/lib/drafts/drafts.functions.ts` — where they currently resolve voice/knowledge ad-hoc, call the shared resolver.
+- `src/hooks/useMilestoneAutoDraft.ts` path (server side) already goes through workspaces context, so it inherits the fix.
+
+### 5. UI feedback so the user sees "it worked"
+
+- `ActiveVoiceBadge` re-renders after default change (query key `voice-active` invalidation covers it).
+- Settings > Voice: default row gets a solid `default · active` pill so the state is unambiguous.
+- Add a small "Your defaults" summary card at the top of `/settings` showing the resolved default voice, knowledge profile, and domain, each linking to the relevant settings page. Confirms globally what every workflow will use.
+
+## Technical details
+
+**Migrations (single migration file):**
+```
+alter table public.knowledge_profiles
+  add column is_default boolean not null default false;
+create unique index knowledge_profiles_one_default_per_user
+  on public.knowledge_profiles(user_id) where is_default;
+
+alter table public.domains
+  add column is_default boolean not null default false;
+create unique index domains_one_default_per_user
+  on public.domains(user_id) where is_default;
+```
+No new grants — both tables already have them.
+
+**Server fns touched/added:**
+- `setDefaultVoiceProfile` (modified): also `profiles.active_voice_id = id`.
+- `setDefaultKnowledgeProfile` (new).
+- `setDefaultDomain` (new).
+- `resolveUserDefaults` (new server-only helper, not a serverFn).
+
+**Files edited:**
+- `src/lib/voice/voice.functions.ts`
+- `src/routes/_authenticated/settings.voice.tsx`
+- `src/routes/_authenticated/settings.voice.$id.tsx`
+- `src/routes/_authenticated/settings.knowledge.tsx`
+- `src/routes/_authenticated/settings.domains.tsx`
+- `src/routes/_authenticated/settings.index.tsx` (add "Your defaults" card)
+- `src/lib/knowledge/knowledge.functions.ts`
+- `src/lib/settings/settings.functions.ts`
+- `src/lib/workspaces/context.server.ts`
+- `src/lib/create/create.functions.ts`, `src/lib/drafts/drafts.functions.ts` (thin adjustments to read from the resolver)
+- `src/lib/defaults/user-defaults.server.ts` (new)
 
 ## Out of scope
-- Streaming partial transcripts (current server fn returns final text).
-- Language selection UI (auto-detect on server).
-- Replacing single-line `<Input />` — user asked about textareas only.
+
+- No changes to Preset default behavior (already handled via `is_default` on presets).
+- No changes to voice learning / directives flow.
+- No overrides UI ("use a different voice for this one draft") — kept for a follow-up.
