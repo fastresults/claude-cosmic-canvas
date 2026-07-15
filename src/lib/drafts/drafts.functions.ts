@@ -170,7 +170,7 @@ export const duplicateDraft = createServerFn({ method: "POST" })
     const insertRow = {
       user_id: context.userId,
       format_id: s.format_id as string,
-      title: s.title ? `${s.title} (copy)` : "Untitled (copy)",
+      title: `${s.title as string} (copy)`,
       sections: (s.sections ?? []) as Json,
       brief_snapshot: (s.brief_snapshot ?? null) as Json | null,
       preset_id: (s.preset_id ?? null) as string | null,
