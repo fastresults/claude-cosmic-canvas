@@ -47,16 +47,25 @@ export async function resolveMilestoneContext(
   }
   if (!voiceDirectives) missing.push("voice");
 
-  // Active knowledge profile — first one, or null.
+  // Active knowledge profile — user-pinned default, else first created.
   const { data: kp } = await supabase
     .from("knowledge_profiles")
-    .select("id, name, domain, audience")
+    .select("id, name, is_default")
     .eq("user_id", userId)
+    .order("is_default", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
   const knowledgeProfileId: string | null = kp?.id ?? null;
   if (!knowledgeProfileId) missing.push("knowledge");
+
+  // Default domain (name only — used as [DOMAIN] hint in the prompt).
+  const { data: defaultDomain } = await supabase
+    .from("domains")
+    .select("name")
+    .eq("user_id", userId)
+    .eq("is_default", true)
+    .maybeSingle();
 
   // Pull a handful of matching knowledge entries by title/tag substring —
   // avoids requiring an embedding call inside the milestone flow.
