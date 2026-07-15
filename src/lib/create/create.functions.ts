@@ -278,13 +278,25 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
     }
 
     const sections = splitSections(bodyText, format.id);
-    const title = deriveTitle(bodyText, data.seed);
+    const suggestedTitle = deriveTitle(bodyText, data.seed);
 
-    // Upsert draft.
-    const payload = {
+    // Naming gate: never persist a new draft without a user-provided title.
+    // For updates to an existing draft, the title lives in the row already.
+    if (!data.draftId && !data.title) {
+      return {
+        fallback: false as const,
+        draftId: null,
+        pendingTitle: true as const,
+        suggestedTitle,
+        sections,
+      };
+    }
+
+    // Build payload. Only set `title` when the client sent one; on updates without
+    // a title, preserve whatever the row already has.
+    const basePayload = {
       user_id: context.userId,
       format_id: format.id,
-      title,
       sections: sections as unknown as Json,
       brief_snapshot: (data.briefOverrides ?? null) as Json | null,
       preset_id: data.presetId ?? null,
@@ -295,21 +307,31 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
     };
 
     let draftId = data.draftId ?? null;
+    let finalTitle: string;
     if (draftId) {
-      const { error } = await context.supabase
-        .from("create_drafts")
-        .update(payload)
-        .eq("id", draftId)
-        .eq("user_id", context.userId);
-      if (error) throw error;
-    } else {
+      const updatePayload = data.title
+        ? { ...basePayload, title: data.title }
+        : basePayload;
       const { data: row, error } = await context.supabase
         .from("create_drafts")
-        .insert(payload)
-        .select("id")
+        .update(updatePayload)
+        .eq("id", draftId)
+        .eq("user_id", context.userId)
+        .select("title")
+        .single();
+      if (error) throw error;
+      finalTitle = row.title;
+    } else {
+      // Guaranteed by the gate above.
+      const insertPayload = { ...basePayload, title: data.title! };
+      const { data: row, error } = await context.supabase
+        .from("create_drafts")
+        .insert(insertPayload)
+        .select("id, title")
         .single();
       if (error) throw error;
       draftId = row.id;
+      finalTitle = row.title;
     }
 
     // Brain provenance edge.
@@ -340,8 +362,15 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
       }
     }
 
-    return { fallback: false as const, draftId, title, sections };
+    return {
+      fallback: false as const,
+      draftId,
+      pendingTitle: false as const,
+      title: finalTitle,
+      sections,
+    };
   });
+
 
 function splitSections(body: string, formatId: string): Array<{ heading: string | null; body: string }> {
   const sep = formatId === "email-sequence" ? /---EMAIL---/i
