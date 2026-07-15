@@ -108,39 +108,66 @@ export function DraftDetailSheet({
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {draft.format_id} {draft.platform ? `· ${draft.platform}` : ""}
             </div>
-            {editingTitle ? (
-              <input
-                ref={titleInputRef}
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={commitTitle}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
-                  else if (e.key === "Escape") { setEditingTitle(false); }
-                }}
-                maxLength={120}
-                placeholder="Name this draft (optional)"
-                className="w-full bg-transparent font-display text-lg text-foreground outline-none placeholder:text-muted-foreground/60"
-              />
-            ) : (
+            <div className="flex items-center gap-1.5">
+              {editingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onBlur={commitTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
+                    else if (e.key === "Escape") { setEditingTitle(false); }
+                  }}
+                  maxLength={120}
+                  placeholder="Name this draft"
+                  className="min-w-0 flex-1 bg-transparent font-display text-lg text-foreground outline-none placeholder:text-muted-foreground/60"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={beginEditTitle}
+                  className="group flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                  aria-label="Rename draft"
+                >
+                  <span
+                    className={
+                      draft.title
+                        ? "truncate font-display text-lg text-foreground"
+                        : "truncate font-display text-lg text-muted-foreground/70"
+                    }
+                  >
+                    {draft.title ?? "Name this draft"}
+                  </span>
+                  <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              )}
               <button
                 type="button"
-                onClick={beginEditTitle}
-                className="group flex w-full items-center gap-1.5 text-left"
-                aria-label="Rename draft"
-              >
-                <span
-                  className={
-                    draft.title
-                      ? "truncate font-display text-lg text-foreground"
-                      : "truncate font-display text-lg text-muted-foreground/70"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={async () => {
+                  if (suggestingTitle) return;
+                  setSuggestingTitle(true);
+                  setSuggestError(null);
+                  try {
+                    const res = await suggestFn({ data: { draftId: draft.id } });
+                    setTitleDraft(res.title);
+                    setEditingTitle(true);
+                  } catch (e) {
+                    setSuggestError(e instanceof Error ? e.message : "Could not suggest a title");
+                  } finally {
+                    setSuggestingTitle(false);
                   }
-                >
-                  {draft.title ?? "Name this draft (optional)"}
-                </span>
-                <Pencil className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                }}
+                disabled={suggestingTitle}
+                aria-label="Suggest a title from the content"
+                title="Suggest a title from the content"
+                className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full border border-border bg-surface text-muted-foreground hover:text-primary disabled:opacity-40"
+              >
+                {suggestingTitle ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               </button>
-            )}
+            </div>
+            {suggestError && <p className="mt-1 text-[11px] text-destructive">{suggestError}</p>}
             <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="capitalize text-foreground/70">{draft.status}</span>
               <span className="text-border">·</span>
@@ -149,6 +176,7 @@ export function DraftDetailSheet({
                 Saved{savedLabel ? ` ${savedLabel}` : ""}
               </span>
             </div>
+
           </div>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-surface">
             <X className="h-5 w-5" />
