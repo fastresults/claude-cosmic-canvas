@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
+import { listDomains, setDefaultDomain } from "@/lib/settings/settings.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
