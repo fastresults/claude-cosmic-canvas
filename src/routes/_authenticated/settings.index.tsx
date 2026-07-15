@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   LogOut,
   User,
@@ -16,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
+import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
