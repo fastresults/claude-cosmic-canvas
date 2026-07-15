@@ -78,6 +78,8 @@ function FormatPage() {
   const [pendingTitleInput, setPendingTitleInput] = useState<string>("");
   const [titlePending, setTitlePending] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
+  const [suggestingGate, setSuggestingGate] = useState(false);
+
 
   // Hydrate existing draft if resuming.
   useEffect(() => {
