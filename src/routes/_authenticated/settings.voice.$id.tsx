@@ -145,18 +145,24 @@ function VoiceEditor() {
       <div className="mb-4 flex gap-2">
         <button
           type="button"
-          onClick={() => setActive.mutate()}
-          className="flex-1 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground"
+          onClick={() => setDefault.mutate()}
+          disabled={setDefault.isPending || profile.is_default}
+          className="flex-1 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground disabled:opacity-60"
         >
           <Sparkles className="mr-1 inline h-3.5 w-3.5" />
-          Set active
+          {profile.is_default
+            ? "Default voice"
+            : setDefault.isPending
+              ? "Setting…"
+              : "Set as default voice"}
         </button>
         <button
           type="button"
-          onClick={() => setDefault.mutate()}
-          className="flex-1 rounded-md border border-border px-3 py-2 text-xs font-medium"
+          onClick={() => setActive.mutate()}
+          className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground"
+          title="Use just for this session, without changing your default"
         >
-          Set as default
+          Use once
         </button>
       </div>
 
