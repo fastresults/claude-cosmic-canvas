@@ -15,6 +15,8 @@ import {
 import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import type { WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
+import { useUserDefaults } from "@/hooks/useUserDefaults";
+import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void; prefill?: string };
 
