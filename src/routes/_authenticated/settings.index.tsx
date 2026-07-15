@@ -38,6 +38,8 @@ function SettingsIndex() {
         <h1 className="font-display text-3xl text-foreground">Settings</h1>
       </header>
 
+      <DefaultsCard />
+
       <div className="space-y-2">
         {SECTIONS.map((s) => (
           <Link
