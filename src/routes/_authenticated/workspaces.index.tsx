@@ -20,6 +20,13 @@ export const Route = createFileRoute("/_authenticated/workspaces/")({
 function WorkspacesList() {
   const { data: workspaces = [], isLoading } = useWorkspaces();
   const [open, setOpen] = useState(false);
+  const defaults = useUserDefaults();
+  const canCreate = defaults.ready;
+
+  function handleNew() {
+    if (!canCreate) return;
+    setOpen(true);
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-32 pt-6">
