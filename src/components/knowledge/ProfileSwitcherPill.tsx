@@ -2,8 +2,12 @@ import { EveSheet } from "@/components/primitives/EveSheet";
 import { Pill } from "@/components/primitives/Pill";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createProfile, listProfiles } from "@/lib/knowledge/knowledge.functions";
-import { ChevronDown, Plus, User, Briefcase, Megaphone } from "lucide-react";
+import {
+  createProfile,
+  listProfiles,
+  setDefaultKnowledgeProfile,
+} from "@/lib/knowledge/knowledge.functions";
+import { ChevronDown, Plus, User, Briefcase, Megaphone, Star } from "lucide-react";
 import { useState } from "react";
 import { KIND_LABELS, type KnowledgeProfile, saveActiveProfileId } from "./shared";
 
