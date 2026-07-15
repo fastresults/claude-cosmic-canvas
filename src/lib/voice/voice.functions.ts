@@ -440,12 +440,30 @@ export const adoptSystemVoice = createServerFn({ method: "POST" })
       .single();
     if (e2) throw e2;
     await upsertBrainNode(context.supabase, context.userId, row.id, row.name);
+    // Adopting = "start using this voice now". Make it the user's default and
+    // active voice so every downstream flow (composer, workspaces, drafts,
+    // orchestrator) picks it up immediately.
+    await context.supabase
+      .from("voice_profiles")
+      .update({ is_default: false })
+      .eq("user_id", context.userId)
+      .is("persona_id", null);
+    await context.supabase
+      .from("voice_profiles")
+      .update({ is_default: true })
+      .eq("id", row.id);
+    await context.supabase
+      .from("profiles")
+      .update({ active_voice_id: row.id })
+      .eq("user_id", context.userId);
     await logAudit(context.supabase, context.userId, "voice.adopted_from_persona", {
       voice_id: row.id,
       system_voice_id: data.id,
+      set_default: true,
     });
     return row;
   });
+
 
 // ---------- signals + directives ----------
 

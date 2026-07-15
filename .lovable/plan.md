@@ -1,67 +1,57 @@
-## Goal
+## Two bugs, one root cause
 
-Make the three global defaults — **Voice**, **Curriculum Vitae (Knowledge)**, **Domain** — impossible to miss, and refuse content/milestone/campaign creation until all three are set.
+Adopt on the Persona library is doing less than the user expects (it creates a copy but never selects it) and the UI makes it look like every row is firing at once. Fix both.
 
-## 1. Settings list: inline "default" pills
+### Bug 1 — "All Adopt buttons trigger"
 
-In `src/routes/_authenticated/settings.index.tsx`, augment each row for Voice & Style, Curriculum Vitae, and Domains with a right-aligned pill showing the current default in a distinctive display font (`font-display`, accent color, rounded-pill).
+In `src/routes/_authenticated/settings.voice.tsx`, both `PersonaLibrary` (main list) and `NewVoiceSheet` (library tab) render:
 
-- Row shows `Default: <name>` in accent pill when set.
-- Row shows `Not set` in destructive pill when missing.
-- Data comes from the same three queries already used in `DefaultsCard` (`voice-active`, `knowledge/profiles`, `settings/domains`) — hoist into a shared `useUserDefaults()` hook in `src/hooks/useUserDefaults.ts` so the settings list, `DefaultsCard`, top bar, and create-gate all share one source of truth.
-- Remove/downgrade the standalone `DefaultsCard` above the list since the info now lives on each row (keep a slim "Your defaults" summary line at the very top: `Voice · Knowledge · Domain` with green/red dots).
+```tsx
+disabled={adopt.isPending}
+```
 
-## 2. Persistent global visibility
+`adopt.isPending` is a single mutation flag, so while one adopt is in flight **every** row's button greys out — the user reads that as "all of them just triggered."
 
-Add a compact **DefaultsStrip** just below the top bar on every authenticated route (mount in `src/routes/_authenticated/route.tsx` so it renders once for the whole shell).
+Fix: only disable / relabel the row whose id matches the in-flight variables.
 
-- Three tiny pills side-by-side: Voice, Knowledge, Domain.
-- Each pill: icon + short name when set (accent styling), or `Set <thing>` in destructive styling when missing, linking to the right settings page.
-- Collapses to a single "⚠ Setup required" pill on narrow screens when any default is missing; expands on tap.
-- Reuses `useUserDefaults()` so it updates instantly after a change.
+```tsx
+const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
+// per row:
+disabled={busyId === s.id}
+// optional label swap: busyId === s.id ? "Adopting…" : "Adopt"
+```
 
-## 3. Gate content / milestone / campaign creation
+Applied in both `PersonaLibrary` and `NewVoiceSheet`.
 
-Add `src/components/settings/RequireDefaultsGate.tsx`:
+### Bug 2 — "Adopt doesn't set it as default"
 
-- Reads `useUserDefaults()`.
-- If any of voice / knowledge / domain is missing, replaces its children with a friendly empty state: heading "Set your defaults first", three checklist rows (✓/✗) each linking to the matching settings page, and a disabled primary action explaining why.
-- If all set, renders `children` untouched.
+`adoptSystemVoice` in `src/lib/voice/voice.functions.ts` inserts a new `voice_profiles` row and returns it, but never:
 
-Wrap the gate around the entry points that produce content:
+- sets `is_default = true` on the new row (and unsets it on the user's other voice profiles), or
+- updates `profiles.active_voice_id`.
 
-- `src/routes/_authenticated/create.index.tsx` — wrap the whole `CreateHub` body.
-- `src/routes/_authenticated/create.$formatId.tsx` — wrap the composer.
-- `src/components/workspaces/MilestonePrepSheet.tsx` — replace sheet body with the gate when defaults missing (so "New milestone" from any surface is blocked).
-- `src/routes/_authenticated/workspaces.index.tsx` — gate the "New milestone" CTA the same way (button becomes "Finish setup" linking to `/settings`).
+So after Adopt the DefaultsStrip still shows "Pick a voice" (matches the red pill in the screenshot) and every downstream flow that resolves defaults sees nothing. Users hit Adopt expecting "start using this voice now."
 
-Server-side belt-and-suspenders: in `generateCreateDraft` (create.functions.ts) and the milestone create path (workspaces.functions.ts), after resolving defaults via `resolveUserDefaults`, throw a typed `{ error: "defaults_missing", missing: [...] }` when any of the three are null. The client already surfaces server errors; the gate prevents users from ever hitting this.
+Fix (server-side, atomic): after the insert in `adoptSystemVoice`, in the same handler:
 
-## 4. Persistence guarantee
+1. `update voice_profiles set is_default = false where user_id = context.userId and persona_id is null`
+2. `update voice_profiles set is_default = true where id = row.id`
+3. `update profiles set active_voice_id = row.id where user_id = context.userId`
+4. Log an extra audit entry: `voice.adopted_and_defaulted`.
 
-Defaults already persist in Postgres (`profiles.active_voice_id`, `knowledge_profiles.is_default`, `domains.is_default`). What's changing:
+This mirrors the existing `setDefaultVoiceProfile` behavior (which also flips `active_voice_id`) so the meaning of "default" stays consistent across Adopt and the explicit Star button.
 
-- `useUserDefaults()` centralizes cache keys so every mutation (`setDefaultVoiceProfile`, `setDefaultKnowledgeProfile`, `setDefaultDomain`) invalidates one place and every consumer updates.
-- The three surfaces above (settings rows, global strip, create gate) all subscribe, so a change made anywhere is visible everywhere on the next render — no stale UI.
+Return shape stays `{ id, name }` so the client keeps working; the caller already invalidates `voice-profiles` and `voice-active`.
 
-## Files
+### Client cache invalidation touch-up
 
-**New**
-- `src/hooks/useUserDefaults.ts`
-- `src/components/settings/DefaultsStrip.tsx`
-- `src/components/settings/RequireDefaultsGate.tsx`
+`NewVoiceSheet.adopt.onSuccess` only invalidates `["voice-profiles"]`. Add `["voice-active"]` so the header pill / DefaultsStrip flip immediately without a page reload. `PersonaLibrary.adopt` already invalidates both via `onAdopted` → parent `invalidate()`, so no change there.
 
-**Edited**
-- `src/routes/_authenticated/settings.index.tsx` — inline pills per row, slim summary, drop full `DefaultsCard`.
-- `src/components/settings/DefaultsCard.tsx` — either deleted or reduced to the slim summary line.
-- `src/routes/_authenticated/route.tsx` — mount `<DefaultsStrip />`.
-- `src/routes/_authenticated/create.index.tsx` — wrap in gate.
-- `src/routes/_authenticated/create.$formatId.tsx` — wrap in gate.
-- `src/components/workspaces/MilestonePrepSheet.tsx` — gate inside sheet.
-- `src/routes/_authenticated/workspaces.index.tsx` — gate the new-milestone CTA.
-- `src/lib/create/create.functions.ts` — server-side defaults check in `generateCreateDraft`.
-- `src/lib/workspaces/workspaces.functions.ts` — server-side defaults check on milestone create.
+### Files
 
-## Out of scope
+- `src/lib/voice/voice.functions.ts` — extend `adoptSystemVoice` handler (steps 1–4 above).
+- `src/routes/_authenticated/settings.voice.tsx` — per-row `busyId` logic in `PersonaLibrary` and `NewVoiceSheet`; add `voice-active` invalidation in the sheet.
 
-Preset defaults, per-draft override UX, and any change to how defaults are computed server-side (already handled by `resolveUserDefaults` from the previous turn).
+### Out of scope
+
+Redesign of the persona library, samples/copying strategy, and any change to `setDefaultVoiceProfile` (already correct).
