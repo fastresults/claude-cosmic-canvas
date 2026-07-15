@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, X, Compass, Layers, ArrowRight, ChevronRight } from "lucide-react";
+import { Plus, X, Compass, Layers, ArrowRight, ChevronRight, Star } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Pill } from "@/components/primitives/Pill";
@@ -11,6 +11,7 @@ import {
   listDomains,
   addDomain,
   deleteDomain,
+  setDefaultDomain,
 } from "@/lib/settings/settings.functions";
 import { countEntriesByDomain } from "@/lib/knowledge/knowledge.functions";
 
