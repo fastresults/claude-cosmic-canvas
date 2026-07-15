@@ -436,6 +436,8 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
     mutationFn: (id: string) => adoptFn({ data: { id } }),
     onSuccess: (row) => onAdopted(row.id),
   });
+  const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
+
 
   const filtered = sys.filter((s) => {
     if (cat !== "all" && s.category !== cat) return false;
