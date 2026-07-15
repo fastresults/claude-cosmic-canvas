@@ -1,0 +1,2 @@
+ALTER TABLE public.knowledge_entries DROP CONSTRAINT knowledge_entries_source_type_check;
+ALTER TABLE public.knowledge_entries ADD CONSTRAINT knowledge_entries_source_type_check CHECK (source_type = ANY (ARRAY['paste'::text, 'url'::text, 'upload'::text, 'audio'::text, 'voice_memo'::text, 'linkedin'::text, 'resume'::text, 'youtube'::text, 'research'::text]));
