@@ -48,6 +48,19 @@ function SettingsIndex() {
   const queryClient = useQueryClient();
   const d = useUserDefaults();
 
+  const listProfilesFn = useServerFn(listProfiles);
+  const setDefaultKnowledgeFn = useServerFn(setDefaultKnowledgeProfile);
+  const { data: knowledgeProfiles = [] } = useQuery({
+    queryKey: ["knowledge", "profiles"],
+    queryFn: () =>
+      listProfilesFn() as Promise<{ id: string; name: string; is_default?: boolean }[]>,
+    staleTime: 30_000,
+  });
+  const setKnowledgeDefault = useMutation({
+    mutationFn: (id: string) => setDefaultKnowledgeFn({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
+  });
+
   const valueFor = (slot?: DefaultSlot): string | null => {
     if (!slot) return null;
     if (slot === "voice") return d.voice?.name ?? null;
