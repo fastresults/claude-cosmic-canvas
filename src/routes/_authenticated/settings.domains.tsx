@@ -195,10 +195,11 @@ function DomainsSettings() {
                       type="button"
                       onClick={() => setDefault.mutate(d.id)}
                       aria-label={`Set ${d.name} as default`}
-                      title="Set as default domain"
-                      className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-accent"
+                      title="Make this the global default domain"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface-elev hover:text-accent"
                     >
-                      <Star className="h-4 w-4" />
+                      <Star className="h-3.5 w-3.5" />
+                      <span>Set default</span>
                     </button>
                   )}
                   <button
