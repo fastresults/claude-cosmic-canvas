@@ -147,9 +147,19 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  const defaults = useUserDefaults();
+
   return (
     <EveSheet open={open} onOpenChange={onOpenChange} title="New milestone">
-      {step === "intake" && (
+      {!defaults.ready && !defaults.loading ? (
+        <RequireDefaultsGate
+          title="Finish setup before planning a milestone"
+          description="A milestone drafts many pieces at once. Pick your defaults so every draft sounds like you and hits the right audience."
+        >
+          <div />
+        </RequireDefaultsGate>
+      ) : null}
+      {defaults.ready && step === "intake" && (
         <div className="flex flex-col gap-4 pb-4">
           <div>
             <label className="text-xs uppercase tracking-wide text-muted-foreground">What are you preparing for?</label>
