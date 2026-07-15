@@ -493,7 +493,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       summaryText: string,
       style?: { name: string; description: string | null } | null,
     ) => {
-      const subject = title && title !== "Untitled" ? `"${title}"` : "this draft";
+      const subject = title ? `"${title}"` : "this draft";
       const aspect = role === "social" ? "1:1" : "16:9";
       const contextLine = summaryText
         .replace(/\s+/g, " ")
