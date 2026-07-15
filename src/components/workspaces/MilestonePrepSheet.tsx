@@ -214,7 +214,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
         </div>
       )}
 
-      {step === "preview" && (
+      {defaults.ready && step === "preview" && (
         <div className="flex flex-col gap-3 pb-4">
           <div>
             <label className="text-xs uppercase tracking-wide text-muted-foreground">Milestone title</label>
@@ -314,7 +314,7 @@ export function MilestonePrepSheet({ open, onOpenChange, prefill }: Props) {
         </div>
       )}
 
-      {step === "confirming" && (
+      {defaults.ready && step === "confirming" && (
         <div className="grid place-items-center py-10 text-sm text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="mt-3">Creating milestone…</span>
