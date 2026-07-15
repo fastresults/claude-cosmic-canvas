@@ -18,7 +18,7 @@ const GenerateImageInput = z.object({
 });
 
 type DraftRow = {
-  title: string | null;
+  title: string;
   sections: unknown;
   format_id: string;
   domain: string | null;
@@ -40,6 +40,7 @@ function compact(value: string, max = 1800) {
 
 function draftText(draft: DraftRow) {
   if (!Array.isArray(draft.sections)) return draft.title;
+
   const body = (draft.sections as Array<{ heading?: string | null; body?: string | null }>)
     .map((section) => [section.heading, section.body].filter(Boolean).join("\n"))
     .filter(Boolean)
