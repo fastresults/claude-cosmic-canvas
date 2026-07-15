@@ -196,5 +196,6 @@ function FormatPage() {
         </DecisionDock>
       )}
     </div>
+    </RequireDefaultsGate>
   );
 }
