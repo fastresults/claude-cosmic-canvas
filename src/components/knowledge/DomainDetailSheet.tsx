@@ -9,8 +9,6 @@ import { UrlSheet } from "@/components/knowledge/capture/UrlSheet";
 import { UploadSheet } from "@/components/knowledge/capture/UploadSheet";
 import { LinkedInSheet } from "@/components/knowledge/capture/LinkedInSheet";
 import { SpeakSheet } from "@/components/knowledge/capture/SpeakSheet";
-import { YouTubeSheet } from "@/components/knowledge/capture/YouTubeSheet";
-import { ResearchSheet } from "@/components/knowledge/capture/ResearchSheet";
 import { EntryCard } from "@/components/knowledge/EntryCard";
 import { EntryDetailSheet } from "@/components/knowledge/EntryDetailSheet";
 import { IngestionStatusStrip } from "@/components/knowledge/IngestionStatusStrip";
@@ -126,19 +124,6 @@ export function DomainDetailSheet({ open, onOpenChange, domainId, domainName }: 
           onOpenChange={(v) => !v && setAction(null)}
           profileId={null}
           domainId={domainId}
-        />
-        <YouTubeSheet
-          open={action === "youtube"}
-          onOpenChange={(v) => !v && setAction(null)}
-          profileId={null}
-          domainId={domainId}
-        />
-        <ResearchSheet
-          open={action === "research"}
-          onOpenChange={(v) => !v && setAction(null)}
-          profileId={null}
-          domainId={domainId}
-          domainName={domainName}
         />
 
         <EntryDetailSheet entry={detail} onOpenChange={(v) => !v && setDetail(null)} />

@@ -1,62 +1,23 @@
-# Domain ingestion — one-click, AI-first
+# Why nothing was returned or saved
 
-Make it obvious and effortless to feed a domain. Turn `DomainDetailSheet` from a static "tap the +" surface into an ingest workbench: drop files, paste anything, run deep research, all resolving to entries under the current domain.
+The research call succeeded at the model level but failed at the database insert.
 
-## What the user sees
+Timeline from AI Gateway + migration history:
+- `17:29:48Z` — `runDeepResearch` → Gemini 3 Flash, HTTP 200, 1094 output tokens. Brief was generated.
+- `17:29:48Z` (right after) — `ingestEntry` insert with `source_type='research'` violated `knowledge_entries_source_type_check`. Insert rolled back, server fn threw, mutation `onError` fired, UI showed the error, no row saved.
+- `17:30:18Z` — migration extended the check constraint to allow `youtube` and `research`.
 
-Inside a domain sheet (e.g. "Product-led growth"), the top of the sheet becomes an **Ingest zone**:
+Result: your one research attempt happened ~30s before the fix. There has been no research request since (gateway log confirms), so you're still looking at the pre-fix failure — not a new bug.
 
-```text
-┌──────────────────────────────────────────────────────────┐
-│  Drop files here — or paste a URL, YouTube link, text    │
-│  [PDF][DOCX][MD][MP3][URL][YouTube]                      │
-└──────────────────────────────────────────────────────────┘
+## Plan
 
-  One-tap sources
-  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-  │ Upload │ │ Paste  │ │  URL   │ │YouTube │ │Research│
-  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
-
-  Recently added …
-```
-
-Four one-click flows, all pre-scoped to the current `domainId`:
-
-1. **Dropzone** — full-sheet drop target (uses existing `DesktopDropzone` pattern, scoped to domain). On mobile, tapping opens the file picker.
-2. **Smart paste** — a single input that auto-detects: URL → scrape; YouTube URL → transcript; plain text → note. No mode switching.
-3. **YouTube** — dedicated tile; paste link, we fetch transcript + metadata, store as entry with `source_type: "youtube"`.
-4. **AI deep research** — tile opens a small prompt sheet ("What should Eve research for this domain?"). Runs a grounded research pass via Lovable AI, streams a markdown brief with citations, saves as entry `source_type: "research"`.
-
-Every card in the sheet shows an inline status row while ingesting (parsing / transcribing / researching / embedding) reusing `IngestionStatusStrip`.
-
-## Scope of changes
-
-### New components
-- `src/components/knowledge/DomainIngestZone.tsx` — dropzone + smart-paste bar + one-tap tile row. Renders inside `DomainDetailSheet` above `IngestionStatusStrip`. Handles drop/paste detection and routes to the right server fn.
-- `src/components/knowledge/capture/YouTubeSheet.tsx` — thin sheet, URL input, calls new `ingestYouTube` server fn.
-- `src/components/knowledge/capture/ResearchSheet.tsx` — prompt textarea + "Research" button; streams status; calls new `runDeepResearch` server fn.
-
-### Edited
-- `src/components/knowledge/DomainDetailSheet.tsx` — mount `DomainIngestZone` at top; keep `CaptureFab` for parity but demote its visual weight (dropzone is the primary affordance on desktop).
-- `src/components/knowledge/CaptureFab.tsx` — add `youtube` and `research` actions so the FAB stays consistent with the tile row.
-
-### New server functions (`src/lib/knowledge/`)
-- `youtube.functions.ts` → `ingestYouTube({ url, domain_id })`: extract video id, fetch transcript (YouTube transcript API via fetch; fall back to Lovable AI transcription of audio if unavailable), fetch oEmbed metadata for title/thumbnail, call existing `ingestEntry` with `source_type: "youtube"`, `meta: { videoId, channel, thumbnail, duration }`.
-- `research.functions.ts` → `runDeepResearch({ topic, domain_id, domain_name })`: prompt Lovable AI (`google/gemini-3-flash-preview`) with a structured research brief template scoped to the domain; return `{ markdown, citations[] }`; call `ingestEntry` with `source_type: "research"`.
-- Extend `ingestEntry`'s `source_type` union to include `"youtube" | "research"`; add labels in `src/components/knowledge/shared.ts` `SOURCE_LABELS`.
-
-### Smart-paste detection (client-side, in `DomainIngestZone`)
-- YouTube regex (`youtube.com/watch`, `youtu.be/`) → YouTube flow.
-- Any other `http(s)://` → URL scrape flow.
-- Everything else → paste-as-note flow (reuses existing `PasteSheet` handler inline, no sheet needed for short text).
-
-## Out of scope
-- Voice/domain redesign beyond the ingest zone.
-- Changes to embeddings pipeline; new sources ride the existing `ingestEntry` → chunk → embed path.
-- LinkedIn / résumé flows (already covered by existing sheets).
-- Background job orchestration changes; deep research runs inline with streamed status.
+1. **Verify** — trigger a research run from a domain sheet. Expected: brief saves and appears in the entry list.
+2. **Harden `runDeepResearch`** — if `ingestEntry` throws, re-throw with a message that includes the first ~200 chars of the generated brief so the user (and logs) can see the model output wasn't lost silently. Also log `topic` + `domain_id` server-side for traceability.
+3. **Deduplicate `ResearchSheet` mount** — it is currently rendered by both `DomainDetailSheet` and `DomainIngestZone`. Keep it in `DomainIngestZone` only (that's the entry point) to avoid double-mounted state.
+4. **No schema changes** — constraint already allows `research`.
 
 ## Technical notes
-- YouTube transcripts: try `https://www.youtube.com/api/timedtext` list first; if empty, download audio via `yt-dlp`-style fetch is not viable on Workers — fall back to asking the user to upload the audio, or use a public transcript endpoint. Confirm approach when we hit that fallback.
-- Deep research citations stored in `meta.citations` as `[{ title, url }]`; entry `content` is the markdown brief so it feeds the existing embed pipeline unchanged.
-- All new server fns use `requireSupabaseAuth` and pass `domain_id` through to `ingestEntry` (already supported).
+
+- Files touched: `src/lib/knowledge/research.functions.ts` (wrap `ingestEntry` in try/catch, rethrow with context), `src/components/knowledge/DomainDetailSheet.tsx` (remove duplicate `<ResearchSheet />`).
+- No new migrations, no new deps.
+- Verification: after build, run a research query; check `_serverFn/...runDeepResearch` returns 200 and `listEntries` refetch includes the new `research` entry.
