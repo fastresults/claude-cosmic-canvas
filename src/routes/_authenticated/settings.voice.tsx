@@ -307,10 +307,13 @@ function NewVoiceSheet({
     mutationFn: (id: string) => adoptFn({ data: { id } }),
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
       onClose();
       navigate({ to: "/settings/voice/$id", params: { id: row.id } });
     },
   });
+  const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
@@ -381,8 +384,9 @@ function NewVoiceSheet({
               <button
                 key={s.id}
                 type="button"
-                disabled={adopt.isPending}
+                disabled={busyId === s.id}
                 onClick={() => adopt.mutate(s.id)}
+
                 className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
               >
                 <BookOpen className="mt-0.5 h-4 w-4 text-accent" />
@@ -432,6 +436,8 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
     mutationFn: (id: string) => adoptFn({ data: { id } }),
     onSuccess: (row) => onAdopted(row.id),
   });
+  const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
+
 
   const filtered = sys.filter((s) => {
     if (cat !== "all" && s.category !== cat) return false;
@@ -517,11 +523,12 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
                       </div>
                       <button
                         type="button"
-                        disabled={adopt.isPending}
+                        disabled={busyId === s.id}
                         onClick={() => adopt.mutate(s.id)}
                         className="h-11 shrink-0 rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground disabled:opacity-50"
                       >
-                        Adopt
+                        {busyId === s.id ? "Adopting…" : "Adopt"}
+
                       </button>
                     </li>
                   ))}
