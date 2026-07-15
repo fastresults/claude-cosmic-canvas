@@ -275,7 +275,7 @@ export const updateEntry = createServerFn({ method: "POST" })
 const IngestInput = z.object({
   profile_id: z.string().uuid().nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
-  source_type: z.enum(["paste", "url", "upload", "audio", "voice_memo", "linkedin", "resume"]),
+  source_type: z.enum(["paste", "url", "upload", "audio", "voice_memo", "linkedin", "resume", "youtube", "research"]),
   title: z.string().max(200).nullable().optional(),
   content: z.string().min(1),
   source_url: z.string().url().nullable().optional(),

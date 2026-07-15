@@ -1,38 +1,62 @@
-# Make "Default Knowledge Profile" Obvious
+# Domain ingestion — one-click, AI-first
 
-## Problem
+Make it obvious and effortless to feed a domain. Turn `DomainDetailSheet` from a static "tap the +" surface into an ingest workbench: drop files, paste anything, run deep research, all resolving to entries under the current domain.
 
-Setting a knowledge profile as the global default is currently buried:
-- The only affordance is a tiny ★ icon inside a sheet you have to open first
-- The DefaultsStrip pill "Set Knowledge" routes to `/settings/knowledge`, which shows no visible way to set a default
-- Creating your first (or only) profile does not auto-mark it as default
-- Nothing on the Settings index tells you which profile is default or lets you change it
+## What the user sees
 
-## Fix (3 changes, UI-only + one server tweak)
+Inside a domain sheet (e.g. "Product-led growth"), the top of the sheet becomes an **Ingest zone**:
 
-### 1. Auto-default first profile
-In `src/lib/knowledge/knowledge.functions.ts` → `createProfile`: after insert, if the user has no other `is_default = true` knowledge profile, mark the new row as default in the same handler. Same idea as the voice auto-default flow.
+```text
+┌──────────────────────────────────────────────────────────┐
+│  Drop files here — or paste a URL, YouTube link, text    │
+│  [PDF][DOCX][MD][MP3][URL][YouTube]                      │
+└──────────────────────────────────────────────────────────┘
 
-### 2. Prominent header control on the CV page
-In `src/routes/_authenticated/settings.knowledge.tsx`, next to the `ProfileSwitcherPill`, render a clear status pill for the *currently viewed* profile:
-- If it IS the default → static pill: "★ Default profile"
-- If it is NOT the default → button pill: "Set as default" (calls `setDefaultKnowledgeProfile`, invalidates `["knowledge","profiles"]`)
+  One-tap sources
+  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+  │ Upload │ │ Paste  │ │  URL   │ │YouTube │ │Research│
+  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
 
-This is what the user actually looks for on this page and matches how Voice/Domain rows work.
+  Recently added …
+```
 
-### 3. Discoverable star + inline default on Settings index
-- In `src/components/knowledge/ProfileSwitcherPill.tsx`: keep the ★, but add visible `title` copy "Set as default profile" (already partly there) and a text label under the star on hover-focus rows so it doesn't read as "favorite". Add `aria-pressed` state.
-- In `src/routes/_authenticated/settings.index.tsx` Knowledge row: the pill already shows `Default · <name>` when set. When NOT set but profiles exist, replace the "Not set" hint with a small "Set default" quick-picker (dropdown of profiles → calls `setDefaultKnowledgeProfile`) so the user never has to leave the settings index.
+Four one-click flows, all pre-scoped to the current `domainId`:
 
-## Files touched
+1. **Dropzone** — full-sheet drop target (uses existing `DesktopDropzone` pattern, scoped to domain). On mobile, tapping opens the file picker.
+2. **Smart paste** — a single input that auto-detects: URL → scrape; YouTube URL → transcript; plain text → note. No mode switching.
+3. **YouTube** — dedicated tile; paste link, we fetch transcript + metadata, store as entry with `source_type: "youtube"`.
+4. **AI deep research** — tile opens a small prompt sheet ("What should Eve research for this domain?"). Runs a grounded research pass via Lovable AI, streams a markdown brief with citations, saves as entry `source_type: "research"`.
 
-- `src/lib/knowledge/knowledge.functions.ts` — `createProfile` auto-defaults when none exists
-- `src/routes/_authenticated/settings.knowledge.tsx` — add header default-status/set-default pill
-- `src/components/knowledge/ProfileSwitcherPill.tsx` — clearer ★ affordance/label
-- `src/routes/_authenticated/settings.index.tsx` — inline "Set default" quick-picker on the Knowledge row
+Every card in the sheet shows an inline status row while ingesting (parsing / transcribing / researching / embedding) reusing `IngestionStatusStrip`.
+
+## Scope of changes
+
+### New components
+- `src/components/knowledge/DomainIngestZone.tsx` — dropzone + smart-paste bar + one-tap tile row. Renders inside `DomainDetailSheet` above `IngestionStatusStrip`. Handles drop/paste detection and routes to the right server fn.
+- `src/components/knowledge/capture/YouTubeSheet.tsx` — thin sheet, URL input, calls new `ingestYouTube` server fn.
+- `src/components/knowledge/capture/ResearchSheet.tsx` — prompt textarea + "Research" button; streams status; calls new `runDeepResearch` server fn.
+
+### Edited
+- `src/components/knowledge/DomainDetailSheet.tsx` — mount `DomainIngestZone` at top; keep `CaptureFab` for parity but demote its visual weight (dropzone is the primary affordance on desktop).
+- `src/components/knowledge/CaptureFab.tsx` — add `youtube` and `research` actions so the FAB stays consistent with the tile row.
+
+### New server functions (`src/lib/knowledge/`)
+- `youtube.functions.ts` → `ingestYouTube({ url, domain_id })`: extract video id, fetch transcript (YouTube transcript API via fetch; fall back to Lovable AI transcription of audio if unavailable), fetch oEmbed metadata for title/thumbnail, call existing `ingestEntry` with `source_type: "youtube"`, `meta: { videoId, channel, thumbnail, duration }`.
+- `research.functions.ts` → `runDeepResearch({ topic, domain_id, domain_name })`: prompt Lovable AI (`google/gemini-3-flash-preview`) with a structured research brief template scoped to the domain; return `{ markdown, citations[] }`; call `ingestEntry` with `source_type: "research"`.
+- Extend `ingestEntry`'s `source_type` union to include `"youtube" | "research"`; add labels in `src/components/knowledge/shared.ts` `SOURCE_LABELS`.
+
+### Smart-paste detection (client-side, in `DomainIngestZone`)
+- YouTube regex (`youtube.com/watch`, `youtu.be/`) → YouTube flow.
+- Any other `http(s)://` → URL scrape flow.
+- Everything else → paste-as-note flow (reuses existing `PasteSheet` handler inline, no sheet needed for short text).
 
 ## Out of scope
+- Voice/domain redesign beyond the ingest zone.
+- Changes to embeddings pipeline; new sources ride the existing `ingestEntry` → chunk → embed path.
+- LinkedIn / résumé flows (already covered by existing sheets).
+- Background job orchestration changes; deep research runs inline with streamed status.
 
-- Changing the underlying `is_default` schema or `setDefaultKnowledgeProfile` server logic (already correct)
-- Voice/Domain redesign (Voice already has adopt-as-default; Domain is a separate ticket if needed)
-- Onboarding wizard changes
+## Technical notes
+- YouTube transcripts: try `https://www.youtube.com/api/timedtext` list first; if empty, download audio via `yt-dlp`-style fetch is not viable on Workers — fall back to asking the user to upload the audio, or use a public transcript endpoint. Confirm approach when we hit that fallback.
+- Deep research citations stored in `meta.citations` as `[{ title, url }]`; entry `content` is the markdown brief so it feeds the existing embed pipeline unchanged.
+- All new server fns use `requireSupabaseAuth` and pass `domain_id` through to `ingestEntry` (already supported).

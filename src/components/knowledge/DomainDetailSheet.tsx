@@ -9,9 +9,12 @@ import { UrlSheet } from "@/components/knowledge/capture/UrlSheet";
 import { UploadSheet } from "@/components/knowledge/capture/UploadSheet";
 import { LinkedInSheet } from "@/components/knowledge/capture/LinkedInSheet";
 import { SpeakSheet } from "@/components/knowledge/capture/SpeakSheet";
+import { YouTubeSheet } from "@/components/knowledge/capture/YouTubeSheet";
+import { ResearchSheet } from "@/components/knowledge/capture/ResearchSheet";
 import { EntryCard } from "@/components/knowledge/EntryCard";
 import { EntryDetailSheet } from "@/components/knowledge/EntryDetailSheet";
 import { IngestionStatusStrip } from "@/components/knowledge/IngestionStatusStrip";
+import { DomainIngestZone } from "@/components/knowledge/DomainIngestZone";
 import type { KnowledgeEntry } from "@/components/knowledge/shared";
 import {
   listEntries,
@@ -70,6 +73,10 @@ export function DomainDetailSheet({ open, onOpenChange, domainId, domainName }: 
 
         <IngestionStatusStrip userId={userId} />
 
+        <div className="mt-3">
+          <DomainIngestZone domainId={domainId} domainName={domainName} />
+        </div>
+
         <div className="mt-3 space-y-2">
           {entries.length === 0 && (
             <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
@@ -119,6 +126,19 @@ export function DomainDetailSheet({ open, onOpenChange, domainId, domainName }: 
           onOpenChange={(v) => !v && setAction(null)}
           profileId={null}
           domainId={domainId}
+        />
+        <YouTubeSheet
+          open={action === "youtube"}
+          onOpenChange={(v) => !v && setAction(null)}
+          profileId={null}
+          domainId={domainId}
+        />
+        <ResearchSheet
+          open={action === "research"}
+          onOpenChange={(v) => !v && setAction(null)}
+          profileId={null}
+          domainId={domainId}
+          domainName={domainName}
         />
 
         <EntryDetailSheet entry={detail} onOpenChange={(v) => !v && setDetail(null)} />
