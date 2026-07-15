@@ -1,57 +1,38 @@
-## Two bugs, one root cause
+# Make "Default Knowledge Profile" Obvious
 
-Adopt on the Persona library is doing less than the user expects (it creates a copy but never selects it) and the UI makes it look like every row is firing at once. Fix both.
+## Problem
 
-### Bug 1 — "All Adopt buttons trigger"
+Setting a knowledge profile as the global default is currently buried:
+- The only affordance is a tiny ★ icon inside a sheet you have to open first
+- The DefaultsStrip pill "Set Knowledge" routes to `/settings/knowledge`, which shows no visible way to set a default
+- Creating your first (or only) profile does not auto-mark it as default
+- Nothing on the Settings index tells you which profile is default or lets you change it
 
-In `src/routes/_authenticated/settings.voice.tsx`, both `PersonaLibrary` (main list) and `NewVoiceSheet` (library tab) render:
+## Fix (3 changes, UI-only + one server tweak)
 
-```tsx
-disabled={adopt.isPending}
-```
+### 1. Auto-default first profile
+In `src/lib/knowledge/knowledge.functions.ts` → `createProfile`: after insert, if the user has no other `is_default = true` knowledge profile, mark the new row as default in the same handler. Same idea as the voice auto-default flow.
 
-`adopt.isPending` is a single mutation flag, so while one adopt is in flight **every** row's button greys out — the user reads that as "all of them just triggered."
+### 2. Prominent header control on the CV page
+In `src/routes/_authenticated/settings.knowledge.tsx`, next to the `ProfileSwitcherPill`, render a clear status pill for the *currently viewed* profile:
+- If it IS the default → static pill: "★ Default profile"
+- If it is NOT the default → button pill: "Set as default" (calls `setDefaultKnowledgeProfile`, invalidates `["knowledge","profiles"]`)
 
-Fix: only disable / relabel the row whose id matches the in-flight variables.
+This is what the user actually looks for on this page and matches how Voice/Domain rows work.
 
-```tsx
-const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
-// per row:
-disabled={busyId === s.id}
-// optional label swap: busyId === s.id ? "Adopting…" : "Adopt"
-```
+### 3. Discoverable star + inline default on Settings index
+- In `src/components/knowledge/ProfileSwitcherPill.tsx`: keep the ★, but add visible `title` copy "Set as default profile" (already partly there) and a text label under the star on hover-focus rows so it doesn't read as "favorite". Add `aria-pressed` state.
+- In `src/routes/_authenticated/settings.index.tsx` Knowledge row: the pill already shows `Default · <name>` when set. When NOT set but profiles exist, replace the "Not set" hint with a small "Set default" quick-picker (dropdown of profiles → calls `setDefaultKnowledgeProfile`) so the user never has to leave the settings index.
 
-Applied in both `PersonaLibrary` and `NewVoiceSheet`.
+## Files touched
 
-### Bug 2 — "Adopt doesn't set it as default"
+- `src/lib/knowledge/knowledge.functions.ts` — `createProfile` auto-defaults when none exists
+- `src/routes/_authenticated/settings.knowledge.tsx` — add header default-status/set-default pill
+- `src/components/knowledge/ProfileSwitcherPill.tsx` — clearer ★ affordance/label
+- `src/routes/_authenticated/settings.index.tsx` — inline "Set default" quick-picker on the Knowledge row
 
-`adoptSystemVoice` in `src/lib/voice/voice.functions.ts` inserts a new `voice_profiles` row and returns it, but never:
+## Out of scope
 
-- sets `is_default = true` on the new row (and unsets it on the user's other voice profiles), or
-- updates `profiles.active_voice_id`.
-
-So after Adopt the DefaultsStrip still shows "Pick a voice" (matches the red pill in the screenshot) and every downstream flow that resolves defaults sees nothing. Users hit Adopt expecting "start using this voice now."
-
-Fix (server-side, atomic): after the insert in `adoptSystemVoice`, in the same handler:
-
-1. `update voice_profiles set is_default = false where user_id = context.userId and persona_id is null`
-2. `update voice_profiles set is_default = true where id = row.id`
-3. `update profiles set active_voice_id = row.id where user_id = context.userId`
-4. Log an extra audit entry: `voice.adopted_and_defaulted`.
-
-This mirrors the existing `setDefaultVoiceProfile` behavior (which also flips `active_voice_id`) so the meaning of "default" stays consistent across Adopt and the explicit Star button.
-
-Return shape stays `{ id, name }` so the client keeps working; the caller already invalidates `voice-profiles` and `voice-active`.
-
-### Client cache invalidation touch-up
-
-`NewVoiceSheet.adopt.onSuccess` only invalidates `["voice-profiles"]`. Add `["voice-active"]` so the header pill / DefaultsStrip flip immediately without a page reload. `PersonaLibrary.adopt` already invalidates both via `onAdopted` → parent `invalidate()`, so no change there.
-
-### Files
-
-- `src/lib/voice/voice.functions.ts` — extend `adoptSystemVoice` handler (steps 1–4 above).
-- `src/routes/_authenticated/settings.voice.tsx` — per-row `busyId` logic in `PersonaLibrary` and `NewVoiceSheet`; add `voice-active` invalidation in the sheet.
-
-### Out of scope
-
-Redesign of the persona library, samples/copying strategy, and any change to `setDefaultVoiceProfile` (already correct).
+- Changing the underlying `is_default` schema or `setDefaultKnowledgeProfile` server logic (already correct)
+- Voice/Domain redesign (Voice already has adopt-as-default; Domain is a separate ticket if needed)
+- Onboarding wizard changes
