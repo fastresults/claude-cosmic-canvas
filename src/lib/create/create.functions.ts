@@ -411,13 +411,17 @@ const SuggestTitleInput = z.union([
 ]);
 
 function cleanSuggestedTitle(raw: string): string {
-  let t = raw.trim();
-  // Strip surrounding quotes / markdown bold / code fences.
+  let t = (raw ?? "").trim();
+  // Strip code fences.
   t = t.replace(/^```[a-z]*\s*|\s*```$/gi, "");
-  t = t.replace(/^["'`*_\s]+|["'`*_\s.!?,;:]+$/g, "");
-  // If model returned multiple lines, take the first non-empty one.
+  // Strip common preambles like "Title:" or "Here's a title:".
+  t = t.replace(/^(?:here(?:'s| is)?(?: a)?(?: suggested)?(?: draft)? title[:\-–]?\s*)/i, "");
+  t = t.replace(/^title[:\-–]\s*/i, "");
+  // Take the first non-empty line.
   const firstLine = t.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
   t = firstLine;
+  // Strip surrounding quotes / markdown / trailing punctuation.
+  t = t.replace(/^["'`*_\s]+|["'`*_.!?,;:\s]+$/g, "");
   // Collapse whitespace and cap to 5 words / 60 chars.
   t = t.replace(/\s+/g, " ").trim();
   const words = t.split(" ").filter(Boolean).slice(0, 5);
