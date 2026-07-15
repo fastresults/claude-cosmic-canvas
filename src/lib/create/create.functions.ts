@@ -87,7 +87,7 @@ export const saveCreateDraft = createServerFn({ method: "POST" })
     const payload = {
       user_id: context.userId,
       format_id: data.formatId,
-      title: data.title ?? null,
+      title: data.title,
       sections: (data.sections ?? []) as unknown as Json,
       brief_snapshot: (data.briefSnapshot ?? null) as Json | null,
       status: data.status,
