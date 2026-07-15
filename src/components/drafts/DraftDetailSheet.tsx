@@ -27,10 +27,14 @@ export function DraftDetailSheet({
   const [schedOpen, setSchedOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [suggestingTitle, setSuggestingTitle] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const suggestFn = useServerFn(suggestDraftTitle);
   useEffect(() => {
     if (editingTitle) titleInputRef.current?.focus();
   }, [editingTitle]);
+
 
 
   if (isLoading) {
