@@ -463,16 +463,17 @@ export const suggestDraftTitle = createServerFn({ method: "POST" })
     const { ORCHESTRATOR_MODEL } = await import("@/lib/orchestrator/config");
 
     const system = [
-      "You write concise draft titles.",
-      "Return ONLY the title text — no quotes, no markdown, no trailing punctuation, no preamble.",
-      "Rules: 5 words maximum, Title Case, capture the piece's core point, no clickbait, no emojis.",
+      "You are a senior copywriter naming a piece of content.",
+      "Return ONLY the title text — no quotes, no markdown, no preamble, no trailing punctuation.",
+      "Requirements: 3 to 7 words, Title Case, a complete grammatical phrase that reads cleanly to a general audience,",
+      "capture the piece's core point, no clickbait, no emojis, no colons, no ellipses, no cut-off fragments.",
     ].join(" ");
 
     const result = await callAnthropic({
       model: ORCHESTRATOR_MODEL,
-      maxTokens: 120,
+      maxTokens: 200,
       system,
-      prompt: `Draft content:\n\n${body}\n\nRespond with ONLY the title, nothing else.`,
+      prompt: `Draft content:\n\n${body}\n\nWrite ONE complete title of 3–7 words. Output only the title.`,
     });
 
     let title = cleanSuggestedTitle(result.text);
