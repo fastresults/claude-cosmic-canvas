@@ -158,6 +158,32 @@ function SettingsIndex() {
                       ))}
                     </select>
                   )}
+                  {showPill && s.slot === "domain" && missing && domains.length > 0 && (
+                    <select
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = e.target.value;
+                        if (id) setDomainDefault.mutate(id);
+                      }}
+                      defaultValue=""
+                      disabled={setDomainDefault.isPending}
+                      className="rounded-pill border border-accent/40 bg-surface-elev px-2 py-0.5 font-display text-[10px] tracking-wide text-accent"
+                    >
+                      <option value="" disabled>
+                        Pick default…
+                      </option>
+                      {domains.map((dm) => (
+                        <option key={dm.id} value={dm.id}>
+                          {dm.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{s.hint}</div>
               </div>
