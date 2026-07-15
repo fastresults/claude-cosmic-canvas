@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, User, Zap, Mic, Link2, Bell, BookOpen, Compass, Layers, ChevronRight, SunMoon } from "lucide-react";
+import { DefaultsCard } from "@/components/settings/DefaultsCard";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
@@ -36,6 +37,8 @@ function SettingsIndex() {
       <header className="mb-6">
         <h1 className="font-display text-3xl text-foreground">Settings</h1>
       </header>
+
+      <DefaultsCard />
 
       <div className="space-y-2">
         {SECTIONS.map((s) => (

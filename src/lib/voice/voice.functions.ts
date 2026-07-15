@@ -268,6 +268,12 @@ export const setDefaultVoiceProfile = createServerFn({ method: "POST" })
       .update({ is_default: true })
       .eq("id", data.id);
     if (error) throw error;
+    // Default is the global voice — also make it active so every AI surface
+    // (composer, workspaces, drafts, orchestrator) picks it up immediately.
+    await context.supabase
+      .from("profiles")
+      .update({ active_voice_id: data.id })
+      .eq("user_id", context.userId);
     await logAudit(context.supabase, context.userId, "voice.set_default", {
       voice_id: data.id,
     });

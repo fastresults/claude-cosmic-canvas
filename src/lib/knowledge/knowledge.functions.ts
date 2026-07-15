@@ -13,7 +13,7 @@ export const listProfiles = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("knowledge_profiles")
-      .select("id, name, kind, parent_profile_id, created_at")
+      .select("id, name, kind, parent_profile_id, is_default, created_at")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true });
     if (error) throw error;
@@ -21,13 +21,32 @@ export const listProfiles = createServerFn({ method: "GET" })
     if (!data || data.length === 0) {
       const { data: seeded, error: seedErr } = await context.supabase
         .from("knowledge_profiles")
-        .insert({ user_id: context.userId, name: "Personal", kind: "personal" })
-        .select("id, name, kind, parent_profile_id, created_at")
+        .insert({ user_id: context.userId, name: "Personal", kind: "personal", is_default: true })
+        .select("id, name, kind, parent_profile_id, is_default, created_at")
         .single();
       if (seedErr) throw seedErr;
       return [seeded];
     }
     return data;
+  });
+
+export const setDefaultKnowledgeProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    // Unset any existing default for this user, then set this one.
+    await context.supabase
+      .from("knowledge_profiles")
+      .update({ is_default: false })
+      .eq("user_id", context.userId)
+      .eq("is_default", true);
+    const { error } = await context.supabase
+      .from("knowledge_profiles")
+      .update({ is_default: true })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true };
   });
 
 const CreateProfileInput = z.object({

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, X, Compass, Layers, ArrowRight, ChevronRight } from "lucide-react";
+import { Plus, X, Compass, Layers, ArrowRight, ChevronRight, Star } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Pill } from "@/components/primitives/Pill";
@@ -11,6 +11,7 @@ import {
   listDomains,
   addDomain,
   deleteDomain,
+  setDefaultDomain,
 } from "@/lib/settings/settings.functions";
 import { countEntriesByDomain } from "@/lib/knowledge/knowledge.functions";
 
@@ -35,13 +36,14 @@ const SUGGESTIONS = [
   "Travel",
 ];
 
-type Domain = { id: string; name: string; created_at?: string };
+type Domain = { id: string; name: string; is_default?: boolean; created_at?: string };
 
 function DomainsSettings() {
   const qc = useQueryClient();
   const listFn = useServerFn(listDomains);
   const addFn = useServerFn(addDomain);
   const delFn = useServerFn(deleteDomain);
+  const setDefaultFn = useServerFn(setDefaultDomain);
   const countsFn = useServerFn(countEntriesByDomain);
 
   const { data: domains = [] } = useQuery({
@@ -72,6 +74,11 @@ function DomainsSettings() {
 
   const remove = useMutation({
     mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "domains"] }),
+  });
+
+  const setDefault = useMutation({
+    mutationFn: (id: string) => setDefaultFn({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["settings", "domains"] }),
   });
 
@@ -170,12 +177,30 @@ function DomainsSettings() {
                     className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-elev"
                   >
                     <Compass className="h-4 w-4 text-accent" />
-                    <span className="flex-1 text-sm text-foreground">{d.name}</span>
+                    <span className="flex-1 truncate text-sm text-foreground">
+                      {d.name}
+                      {d.is_default && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent align-middle">
+                          <Star className="h-2.5 w-2.5" /> default
+                        </span>
+                      )}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       {count === 0 ? "Add sources" : `${count} source${count === 1 ? "" : "s"}`}
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </button>
+                  {!d.is_default && (
+                    <button
+                      type="button"
+                      onClick={() => setDefault.mutate(d.id)}
+                      aria-label={`Set ${d.name} as default`}
+                      title="Set as default domain"
+                      className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-accent"
+                    >
+                      <Star className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => remove.mutate(d.id)}
