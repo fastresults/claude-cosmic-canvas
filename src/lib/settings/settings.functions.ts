@@ -165,7 +165,7 @@ export const listDomains = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("domains")
-      .select("id, name, created_at")
+      .select("id, name, is_default, created_at")
       .order("created_at", { ascending: true });
     if (error) throw error;
     return data ?? [];
@@ -191,6 +191,24 @@ export const deleteDomain = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("domains").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const setDefaultDomain = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await context.supabase
+      .from("domains")
+      .update({ is_default: false })
+      .eq("user_id", context.userId)
+      .eq("is_default", true);
+    const { error } = await context.supabase
+      .from("domains")
+      .update({ is_default: true })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
     if (error) throw error;
     return { ok: true };
   });
