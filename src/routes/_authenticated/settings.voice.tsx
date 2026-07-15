@@ -94,6 +94,7 @@ function VoiceList() {
   });
   const setDefault = useMutation({
     mutationFn: (id: string) => setDefaultFn({ data: { id } }),
+    // Setting default also makes it active on the server — refresh both.
     onSuccess: invalidate,
   });
   const dup = useMutation({
