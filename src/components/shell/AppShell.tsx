@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
+import { DefaultsStrip } from "@/components/settings/DefaultsStrip";
 import { ComposerBar } from "./ComposerBar";
 import {
   WorkingDraftProvider,
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen flex-col bg-background text-foreground">
         <TopBar />
         <main className="flex-1 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-14">
+          <DefaultsStrip />
           {children}
         </main>
         <ShellComposer />
