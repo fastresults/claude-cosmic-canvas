@@ -39,7 +39,7 @@ function compact(value: string, max = 1800) {
 }
 
 function draftText(draft: DraftRow) {
-  if (!Array.isArray(draft.sections)) return draft.title ?? "Untitled draft";
+  if (!Array.isArray(draft.sections)) return draft.title;
   const body = (draft.sections as Array<{ heading?: string | null; body?: string | null }>)
     .map((section) => [section.heading, section.body].filter(Boolean).join("\n"))
     .filter(Boolean)
@@ -73,7 +73,7 @@ function buildFinalPrompt(input: z.infer<typeof GenerateImageInput>, draft: Draf
     "Generate one image for this exact article. Stay faithful to the article; do not invent unrelated people, products, scenes, numbers, logos, or readable text.",
     `[IMAGE_ROLE] ${input.role}`,
     `[IMAGE_PURPOSE] ${rolePurpose(input.role)}`,
-    `[ARTICLE_TITLE] ${draft.title ?? "Untitled draft"}`,
+    `[ARTICLE_TITLE] ${draft.title}`,
     `[FORMAT] ${draft.format_id}${draft.platform ? ` for ${draft.platform}` : ""}`,
     `[DOMAIN] ${draft.domain ?? "general"}`,
     `[AUDIENCE] ${draft.audience ?? "general"}`,
