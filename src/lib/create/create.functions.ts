@@ -422,10 +422,11 @@ function cleanSuggestedTitle(raw: string): string {
   t = firstLine;
   // Strip surrounding quotes / markdown / trailing punctuation.
   t = t.replace(/^["'`*_\s]+|["'`*_.!?,;:\s]+$/g, "");
-  // Collapse whitespace and cap to 5 words / 60 chars.
+  // Collapse whitespace and cap to 7 whole words — never slice mid-word so
+  // the title always reads as a complete, grammatical phrase.
   t = t.replace(/\s+/g, " ").trim();
-  const words = t.split(" ").filter(Boolean).slice(0, 5);
-  t = words.join(" ").slice(0, 60);
+  const words = t.split(" ").filter(Boolean).slice(0, 7);
+  t = words.join(" ");
   return t;
 }
 
