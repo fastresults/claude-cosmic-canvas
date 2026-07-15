@@ -523,11 +523,12 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
                       </div>
                       <button
                         type="button"
-                        disabled={adopt.isPending}
+                        disabled={busyId === s.id}
                         onClick={() => adopt.mutate(s.id)}
                         className="h-11 shrink-0 rounded-md bg-accent px-3 text-xs font-medium text-accent-foreground disabled:opacity-50"
                       >
-                        Adopt
+                        {busyId === s.id ? "Adopting…" : "Adopt"}
+
                       </button>
                     </li>
                   ))}
