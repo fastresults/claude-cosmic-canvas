@@ -177,10 +177,20 @@ export const addDomain = createServerFn({ method: "POST" })
     z.object({ name: z.string().trim().min(1).max(40) }).parse(i),
   )
   .handler(async ({ data, context }) => {
+    const { data: existingDefault } = await context.supabase
+      .from("domains")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("is_default", true)
+      .maybeSingle();
     const { data: row, error } = await context.supabase
       .from("domains")
-      .insert({ user_id: context.userId, name: data.name.trim() })
-      .select("id, name")
+      .insert({
+        user_id: context.userId,
+        name: data.name.trim(),
+        is_default: !existingDefault,
+      })
+      .select("id, name, is_default")
       .single();
     if (error) throw error;
     return row;
