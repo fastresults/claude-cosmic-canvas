@@ -85,7 +85,7 @@ function FormatPage() {
   }, [draftId, getDraftFn]);
 
 
-  async function runGenerate() {
+  async function runGenerate(providedTitle?: string) {
     if (!seed.trim()) return;
     setBusy(true);
     setError(null);
@@ -99,13 +99,21 @@ function FormatPage() {
           draftId: currentDraftId ?? undefined,
           workspaceId: ctx.workspace_id ?? wsId ?? null,
           workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+          title: providedTitle,
         },
       });
       if ("fallback" in res && res.fallback) {
         setError(res.message);
+      } else if (res.pendingTitle) {
+        // Draft NOT saved yet — user must name it before we persist.
+        setSections(res.sections);
+        setTitle(null);
+        setPendingTitleInput(res.suggestedTitle ?? "");
+        setTitlePending(true);
       } else {
         setSections(res.sections);
-        setTitle(res.title);
+        setTitle(res.title ?? null);
+        setTitlePending(false);
         if (res.draftId) setCurrentDraftId(res.draftId);
         qc.invalidateQueries({ queryKey: ["create-drafts"] });
         qc.invalidateQueries({ queryKey: ["workspace", ctx.workspace_id] });
@@ -116,6 +124,22 @@ function FormatPage() {
       setBusy(false);
     }
   }
+
+  async function confirmTitle() {
+    const next = pendingTitleInput.trim();
+    if (!next) {
+      setError("Please name your draft to continue.");
+      return;
+    }
+    setSavingTitle(true);
+    setError(null);
+    try {
+      await runGenerate(next);
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
 
   // Voice Orb / Home CTA auto-start.
   useEffect(() => {
