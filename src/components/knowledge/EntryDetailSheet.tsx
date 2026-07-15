@@ -129,7 +129,7 @@ export function EntryDetailSheet({ entry, onOpenChange }: Props) {
           <div>
             <div className="mb-1 text-xs uppercase text-muted-foreground">Content</div>
             <div className="max-h-96 overflow-y-auto rounded-md border border-border bg-surface p-3">
-              <Markdown>{entry.content}</Markdown>
+              <Markdown>{entry.content ?? ""}</Markdown>
             </div>
           </div>
 
