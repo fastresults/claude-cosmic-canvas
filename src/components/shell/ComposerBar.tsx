@@ -230,9 +230,6 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
       style={{ bottom: "calc(3.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-1 px-3 py-2">
-        <div className="flex items-center gap-2 pl-1">
-          <ActiveVoiceBadge />
-        </div>
         <div className="flex items-center gap-2">
 
           <input
