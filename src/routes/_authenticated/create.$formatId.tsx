@@ -205,17 +205,41 @@ function FormatPage() {
           <p className="mt-1 text-xs text-muted-foreground">
             Give your draft a title so it's easy to find later. It won't save until you name it.
           </p>
-          <input
-            autoFocus
-            value={pendingTitleInput}
-            onChange={(e) => setPendingTitleInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); void confirmTitle(); }
-            }}
-            maxLength={120}
-            placeholder="e.g. Why remote-first is stalling"
-            className="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-          />
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              autoFocus
+              value={pendingTitleInput}
+              onChange={(e) => setPendingTitleInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); void confirmTitle(); }
+              }}
+              maxLength={120}
+              placeholder="e.g. Why remote-first is stalling"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                if (!sections.length || suggestingGate) return;
+                setSuggestingGate(true);
+                setError(null);
+                try {
+                  const res = await suggestFn({ data: { sections } });
+                  setPendingTitleInput(res.title);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Could not suggest a title");
+                } finally {
+                  setSuggestingGate(false);
+                }
+              }}
+              disabled={!sections.length || suggestingGate}
+              aria-label="Suggest a title from the content"
+              title="Suggest a title from the content"
+              className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border border-border bg-surface text-muted-foreground hover:text-primary disabled:opacity-40"
+            >
+              {suggestingGate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            </button>
+          </div>
           <div className="mt-3 flex justify-end gap-2">
             <button
               type="button"
@@ -238,10 +262,22 @@ function FormatPage() {
 
       {(hasDraft || busy) && (
         <div className="space-y-3">
-          {title && <h2 className="font-display text-xl text-foreground">{title}</h2>}
+          {currentDraftId && !titlePending && (
+            <DraftTitleHeader
+              title={title}
+              draftId={currentDraftId}
+              sections={sections}
+              onSave={async (next) => {
+                const res = await renameFn({ data: { id: currentDraftId, title: next } });
+                setTitle(res.title);
+                qc.invalidateQueries({ queryKey: ["create-drafts"] });
+              }}
+            />
+          )}
           <StreamCanvas sections={sections} busy={busy} />
         </div>
       )}
+
 
       {hasDraft && !titlePending && (
         <DecisionDock>
