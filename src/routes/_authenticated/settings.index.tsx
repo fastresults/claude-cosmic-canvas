@@ -62,6 +62,19 @@ function SettingsIndex() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
   });
 
+  const listDomainsFn = useServerFn(listDomains);
+  const setDefaultDomainFn = useServerFn(setDefaultDomain);
+  const { data: domains = [] } = useQuery({
+    queryKey: ["settings", "domains"],
+    queryFn: () =>
+      listDomainsFn() as Promise<{ id: string; name: string; is_default?: boolean }[]>,
+    staleTime: 30_000,
+  });
+  const setDomainDefault = useMutation({
+    mutationFn: (id: string) => setDefaultDomainFn({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings", "domains"] }),
+  });
+
   const valueFor = (slot?: DefaultSlot): string | null => {
     if (!slot) return null;
     if (slot === "voice") return d.voice?.name ?? null;
