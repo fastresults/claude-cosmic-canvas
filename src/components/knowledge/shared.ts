@@ -11,6 +11,8 @@ export const SOURCE_LABELS: Record<string, string> = {
   voice_memo: "Voice memo",
   linkedin: "LinkedIn",
   resume: "Résumé",
+  youtube: "YouTube",
+  research: "AI research",
 };
 
 export const KIND_LABELS: Record<string, string> = {
