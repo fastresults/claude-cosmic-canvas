@@ -4,6 +4,8 @@ import { Plus, Target } from "lucide-react";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { ProgressRing } from "@/components/workspaces/ProgressRing";
 import { MilestonePrepSheet } from "@/components/workspaces/MilestonePrepSheet";
+import { useUserDefaults } from "@/hooks/useUserDefaults";
+import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/workspaces/")({
   head: () => ({
