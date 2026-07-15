@@ -264,12 +264,11 @@ export const renameDraft = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       id: z.string().uuid(),
-      title: z.string().max(120).nullable(),
+      title: z.string().trim().min(1, "Please name your draft.").max(120),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const trimmed = data.title?.trim() ?? "";
-    const nextTitle = trimmed.length ? trimmed : null;
+    const nextTitle = data.title.trim();
     const { error } = await context.supabase
       .from("create_drafts")
       .update({ title: nextTitle })
@@ -278,6 +277,7 @@ export const renameDraft = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true, title: nextTitle };
   });
+
 
 
 // -------- Schedule -------------------------------------------------------
