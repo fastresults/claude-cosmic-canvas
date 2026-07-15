@@ -563,7 +563,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
       console.warn("[draft-image] concepts:fallback_missing_key", { draftId: data.draftId, role: data.role });
-      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
     }
 
     const system =
@@ -623,7 +623,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       clearTimeout(timeoutId);
       if (clean.length === 0) {
         console.warn("[draft-image] concepts:fallback_empty", { draftId: data.draftId, role: data.role });
-        return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+        return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
       }
       console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null, count: clean.length });
       return { fallback: false as const, summary: summary.slice(0, 500), concepts: clean };
@@ -635,7 +635,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         timedOut: controller.signal.aborted,
         message: e instanceof Error ? e.message.slice(0, 240) : "Unknown error",
       });
-      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title ?? "Untitled", data.role, summary, style) };
+      return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
     }
   });
 
