@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
+import { listDomains, setDefaultDomain } from "@/lib/settings/settings.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
@@ -59,6 +60,19 @@ function SettingsIndex() {
   const setKnowledgeDefault = useMutation({
     mutationFn: (id: string) => setDefaultKnowledgeFn({ data: { id } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
+  });
+
+  const listDomainsFn = useServerFn(listDomains);
+  const setDefaultDomainFn = useServerFn(setDefaultDomain);
+  const { data: domains = [] } = useQuery({
+    queryKey: ["settings", "domains"],
+    queryFn: () =>
+      listDomainsFn() as Promise<{ id: string; name: string; is_default?: boolean }[]>,
+    staleTime: 30_000,
+  });
+  const setDomainDefault = useMutation({
+    mutationFn: (id: string) => setDefaultDomainFn({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings", "domains"] }),
   });
 
   const valueFor = (slot?: DefaultSlot): string | null => {
@@ -140,6 +154,32 @@ function SettingsIndex() {
                       {knowledgeProfiles.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {showPill && s.slot === "domain" && missing && domains.length > 0 && (
+                    <select
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = e.target.value;
+                        if (id) setDomainDefault.mutate(id);
+                      }}
+                      defaultValue=""
+                      disabled={setDomainDefault.isPending}
+                      className="rounded-pill border border-accent/40 bg-surface-elev px-2 py-0.5 font-display text-[10px] tracking-wide text-accent"
+                    >
+                      <option value="" disabled>
+                        Pick default…
+                      </option>
+                      {domains.map((dm) => (
+                        <option key={dm.id} value={dm.id}>
+                          {dm.name}
                         </option>
                       ))}
                     </select>
