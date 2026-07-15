@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RotateCcw, Save, Archive } from "lucide-react";
+import { ArrowLeft, RotateCcw, Save, Archive, Sparkles, Loader2 } from "lucide-react";
 import { getFormat } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
 import { StreamCanvas } from "@/components/create/shared/StreamCanvas";
 import { DecisionDock } from "@/components/create/shared/DecisionDock";
+import { DraftTitleHeader } from "@/components/create/DraftTitleHeader";
 import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill";
 import { useWorkspaceUrlContext } from "@/hooks/useWorkspaceUrlContext";
 import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
@@ -16,7 +17,10 @@ import {
   generateCreateDraft,
   getCreateDraft,
   archiveCreateDraft,
+  suggestDraftTitle,
 } from "@/lib/create/create.functions";
+import { renameDraft } from "@/lib/drafts/drafts.functions";
+
 
 const search = z.object({
   draftId: z.string().uuid().optional(),
