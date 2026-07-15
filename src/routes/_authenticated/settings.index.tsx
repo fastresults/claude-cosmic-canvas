@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   LogOut,
   User,
@@ -16,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
+import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
@@ -45,6 +47,19 @@ function SettingsIndex() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const d = useUserDefaults();
+
+  const listProfilesFn = useServerFn(listProfiles);
+  const setDefaultKnowledgeFn = useServerFn(setDefaultKnowledgeProfile);
+  const { data: knowledgeProfiles = [] } = useQuery({
+    queryKey: ["knowledge", "profiles"],
+    queryFn: () =>
+      listProfilesFn() as Promise<{ id: string; name: string; is_default?: boolean }[]>,
+    staleTime: 30_000,
+  });
+  const setKnowledgeDefault = useMutation({
+    mutationFn: (id: string) => setDefaultKnowledgeFn({ data: { id } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
+  });
 
   const valueFor = (slot?: DefaultSlot): string | null => {
     if (!slot) return null;
@@ -102,6 +117,32 @@ function SettingsIndex() {
                         <>Default · {value}</>
                       )}
                     </span>
+                  )}
+                  {showPill && s.slot === "knowledge" && missing && knowledgeProfiles.length > 0 && (
+                    <select
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const id = e.target.value;
+                        if (id) setKnowledgeDefault.mutate(id);
+                      }}
+                      defaultValue=""
+                      disabled={setKnowledgeDefault.isPending}
+                      className="rounded-pill border border-accent/40 bg-surface-elev px-2 py-0.5 font-display text-[10px] tracking-wide text-accent"
+                    >
+                      <option value="" disabled>
+                        Pick default…
+                      </option>
+                      {knowledgeProfiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{s.hint}</div>

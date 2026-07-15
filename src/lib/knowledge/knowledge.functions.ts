@@ -59,6 +59,15 @@ export const createProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => CreateProfileInput.parse(i))
   .handler(async ({ data, context }) => {
+    // If the user has no default knowledge profile yet, this new one becomes it.
+    const { data: existingDefault } = await context.supabase
+      .from("knowledge_profiles")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("is_default", true)
+      .maybeSingle();
+    const shouldBeDefault = !existingDefault;
+
     const { data: row, error } = await context.supabase
       .from("knowledge_profiles")
       .insert({
@@ -66,8 +75,9 @@ export const createProfile = createServerFn({ method: "POST" })
         name: data.name,
         kind: data.kind,
         parent_profile_id: data.parent_profile_id ?? null,
+        is_default: shouldBeDefault,
       })
-      .select("id, name, kind, parent_profile_id, created_at")
+      .select("id, name, kind, parent_profile_id, is_default, created_at")
       .single();
     if (error) throw error;
     return row;

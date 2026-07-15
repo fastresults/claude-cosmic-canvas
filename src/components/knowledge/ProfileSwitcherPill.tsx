@@ -119,11 +119,14 @@ export function ProfileSwitcherPill({ activeId, onChange }: Props) {
                   <button
                     type="button"
                     onClick={() => setDefault.mutate(p.id)}
-                    className="rounded p-1.5 text-muted-foreground hover:text-accent"
-                    title="Set as default knowledge profile"
-                    aria-label="Set as default"
+                    disabled={setDefault.isPending}
+                    className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-surface px-2 py-1 text-[11px] font-display text-accent hover:bg-accent/10 disabled:opacity-50"
+                    title="Make this the global default knowledge profile"
+                    aria-pressed={false}
+                    aria-label="Set as default profile"
                   >
-                    <Star className="h-3.5 w-3.5" />
+                    <Star className="h-3 w-3" />
+                    Set default
                   </button>
                 )}
               </div>

@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
-import { listEntries, listProfiles } from "@/lib/knowledge/knowledge.functions";
+import { listEntries, listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
+import { Star } from "lucide-react";
 import { ProfileSwitcherPill } from "@/components/knowledge/ProfileSwitcherPill";
 import { CaptureFab, type CaptureAction } from "@/components/knowledge/CaptureFab";
 import { PasteSheet } from "@/components/knowledge/capture/PasteSheet";
@@ -75,10 +76,43 @@ function KnowledgeSettings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["knowledge", "entries"] }),
   });
 
+  const setDefaultFn = useServerFn(setDefaultKnowledgeProfile);
+  const setDefault = useMutation({
+    mutationFn: (id: string) => setDefaultFn({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
+  });
+
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? null;
+  const activeIsDefault =
+    (activeProfile as { is_default?: boolean } | null)?.is_default === true;
+
   return (
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <ProfileSwitcherPill activeId={activeProfileId} onChange={setActiveProfileId} />
+        <div className="flex items-center gap-2">
+          <ProfileSwitcherPill activeId={activeProfileId} onChange={setActiveProfileId} />
+          {activeProfile && (
+            activeIsDefault ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-accent/10 px-2.5 py-1 font-display text-[11px] tracking-wide text-accent"
+                title="This profile is your global default. All AI drafts pull from it."
+              >
+                <Star className="h-3 w-3 fill-accent" /> Default profile
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDefault.mutate(activeProfile.id)}
+                disabled={setDefault.isPending}
+                className="inline-flex items-center gap-1 rounded-pill border border-dashed border-accent/50 bg-surface-elev px-2.5 py-1 font-display text-[11px] tracking-wide text-accent hover:bg-accent/10 disabled:opacity-50"
+                title="Make this the global default profile for all AI generation"
+              >
+                <Star className="h-3 w-3" />
+                {setDefault.isPending ? "Setting…" : "Set as default"}
+              </button>
+            )
+          )}
+        </div>
         <IngestionStatusStrip userId={userId} />
       </div>
 
