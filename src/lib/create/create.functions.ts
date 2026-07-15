@@ -469,12 +469,17 @@ export const suggestDraftTitle = createServerFn({ method: "POST" })
 
     const result = await callAnthropic({
       model: ORCHESTRATOR_MODEL,
-      maxTokens: 40,
+      maxTokens: 120,
       system,
-      prompt: `Draft content:\n\n${body}\n\nTitle:`,
+      prompt: `Draft content:\n\n${body}\n\nRespond with ONLY the title, nothing else.`,
     });
 
-    const title = cleanSuggestedTitle(result.text);
+    let title = cleanSuggestedTitle(result.text);
+    if (!title.length) {
+      // Fallback: use first meaningful words of the content itself so the user
+      // always gets an editable suggestion rather than a hard error.
+      title = cleanSuggestedTitle(body);
+    }
     if (!title.length) throw new Error("Could not produce a title — please name it manually.");
     return { title };
   });
