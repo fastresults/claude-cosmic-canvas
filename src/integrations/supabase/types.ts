@@ -429,18 +429,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_default: boolean
           name: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_default?: boolean
           name: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_default?: boolean
           name?: string
           user_id?: string
         }
@@ -732,6 +735,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_default: boolean
           kind: string
           name: string
           parent_profile_id: string | null
@@ -741,6 +745,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_default?: boolean
           kind: string
           name: string
           parent_profile_id?: string | null
@@ -750,6 +755,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_default?: boolean
           kind?: string
           name?: string
           parent_profile_id?: string | null
