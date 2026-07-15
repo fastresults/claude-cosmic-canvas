@@ -397,3 +397,81 @@ function deriveTitle(body: string, seed: string): string {
   if (stripped.length > 0 && stripped.length <= 120) return stripped;
   return seed.slice(0, 80);
 }
+
+// ---------- AI title suggestion --------------------------------------------
+
+const SectionShape = z.object({
+  heading: z.string().nullable().optional(),
+  body: z.string().optional(),
+});
+
+const SuggestTitleInput = z.union([
+  z.object({ draftId: z.string().uuid() }),
+  z.object({ sections: z.array(SectionShape).min(1) }),
+]);
+
+function cleanSuggestedTitle(raw: string): string {
+  let t = raw.trim();
+  // Strip surrounding quotes / markdown bold / code fences.
+  t = t.replace(/^```[a-z]*\s*|\s*```$/gi, "");
+  t = t.replace(/^["'`*_\s]+|["'`*_\s.!?,;:]+$/g, "");
+  // If model returned multiple lines, take the first non-empty one.
+  const firstLine = t.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? "";
+  t = firstLine;
+  // Collapse whitespace and cap to 5 words / 60 chars.
+  t = t.replace(/\s+/g, " ").trim();
+  const words = t.split(" ").filter(Boolean).slice(0, 5);
+  t = words.join(" ").slice(0, 60);
+  return t;
+}
+
+export const suggestDraftTitle = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => SuggestTitleInput.parse(input))
+  .handler(async ({ data, context }) => {
+    let sections: Array<{ heading?: string | null; body?: string }> = [];
+    if ("draftId" in data) {
+      const { data: row, error } = await context.supabase
+        .from("create_drafts")
+        .select("sections")
+        .eq("id", data.draftId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!row) throw new Error("Draft not found");
+      sections = (Array.isArray(row.sections) ? row.sections : []) as typeof sections;
+    } else {
+      sections = data.sections as typeof sections;
+    }
+
+    const body = sections
+      .map((s) => [s.heading ?? "", s.body ?? ""].filter(Boolean).join("\n"))
+      .filter(Boolean)
+      .join("\n\n")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 2000);
+
+    if (!body.length) throw new Error("Nothing to summarize yet — generate content first.");
+
+    const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
+    const { ORCHESTRATOR_MODEL } = await import("@/lib/orchestrator/config");
+
+    const system = [
+      "You write concise draft titles.",
+      "Return ONLY the title text — no quotes, no markdown, no trailing punctuation, no preamble.",
+      "Rules: 5 words maximum, Title Case, capture the piece's core point, no clickbait, no emojis.",
+    ].join(" ");
+
+    const result = await callAnthropic({
+      model: ORCHESTRATOR_MODEL,
+      maxTokens: 40,
+      system,
+      prompt: `Draft content:\n\n${body}\n\nTitle:`,
+    });
+
+    const title = cleanSuggestedTitle(result.text);
+    if (!title.length) throw new Error("Could not produce a title — please name it manually.");
+    return { title };
+  });
+
