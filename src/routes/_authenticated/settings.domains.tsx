@@ -43,6 +43,7 @@ function DomainsSettings() {
   const listFn = useServerFn(listDomains);
   const addFn = useServerFn(addDomain);
   const delFn = useServerFn(deleteDomain);
+  const setDefaultFn = useServerFn(setDefaultDomain);
   const countsFn = useServerFn(countEntriesByDomain);
 
   const { data: domains = [] } = useQuery({
