@@ -384,7 +384,8 @@ function NewVoiceSheet({
               <button
                 key={s.id}
                 type="button"
-                disabled={adopt.isPending}
+                disabled={busyId === s.id}
+
                 onClick={() => adopt.mutate(s.id)}
                 className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left hover:bg-surface-elev"
               >
