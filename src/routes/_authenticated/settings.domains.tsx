@@ -36,7 +36,7 @@ const SUGGESTIONS = [
   "Travel",
 ];
 
-type Domain = { id: string; name: string; created_at?: string };
+type Domain = { id: string; name: string; is_default?: boolean; created_at?: string };
 
 function DomainsSettings() {
   const qc = useQueryClient();
