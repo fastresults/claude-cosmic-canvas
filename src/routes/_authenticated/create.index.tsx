@@ -8,6 +8,7 @@ import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill
 import { MilestonePrepSheet } from "@/components/workspaces/MilestonePrepSheet";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
+import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
 
 export const Route = createFileRoute("/_authenticated/create/")({
   head: () => ({
@@ -54,6 +55,7 @@ function CreateHub() {
   const showMilestones = category === "milestones";
 
   return (
+    <RequireDefaultsGate>
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-24 pt-6">
       <header className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
@@ -203,6 +205,7 @@ function CreateHub() {
 
       <MilestonePrepSheet open={sheetOpen} onOpenChange={setSheetOpen} />
     </div>
+    </RequireDefaultsGate>
   );
 }
 

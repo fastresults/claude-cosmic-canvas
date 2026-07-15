@@ -4,6 +4,8 @@ import { Plus, Target } from "lucide-react";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { ProgressRing } from "@/components/workspaces/ProgressRing";
 import { MilestonePrepSheet } from "@/components/workspaces/MilestonePrepSheet";
+import { useUserDefaults } from "@/hooks/useUserDefaults";
+import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/workspaces/")({
   head: () => ({
@@ -18,6 +20,13 @@ export const Route = createFileRoute("/_authenticated/workspaces/")({
 function WorkspacesList() {
   const { data: workspaces = [], isLoading } = useWorkspaces();
   const [open, setOpen] = useState(false);
+  const defaults = useUserDefaults();
+  const canCreate = defaults.ready;
+
+  function handleNew() {
+    if (!canCreate) return;
+    setOpen(true);
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-32 pt-6">
@@ -43,12 +52,21 @@ function WorkspacesList() {
           <p className="mt-1 text-sm text-muted-foreground">
             Say what you're preparing for. Eve plans the arc.
           </p>
-          <button
-            onClick={() => setOpen(true)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> New milestone
-          </button>
+          {canCreate ? (
+            <button
+              onClick={handleNew}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" /> New milestone
+            </button>
+          ) : (
+            <Link
+              to="/settings"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive"
+            >
+              <AlertCircle className="h-4 w-4" /> Finish setup to create
+            </Link>
+          )}
         </div>
       )}
 
@@ -89,13 +107,24 @@ function WorkspacesList() {
       </div>
 
       {/* FAB */}
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="New milestone"
-        className="fixed bottom-24 right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {canCreate ? (
+        <button
+          onClick={handleNew}
+          aria-label="New milestone"
+          className="fixed bottom-24 right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      ) : (
+        <Link
+          to="/settings"
+          aria-label="Finish setup"
+          title="Set your defaults first"
+          className="fixed bottom-24 right-5 z-30 grid h-14 w-14 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive shadow-lg"
+        >
+          <AlertCircle className="h-6 w-6" />
+        </Link>
+      )}
 
       <MilestonePrepSheet open={open} onOpenChange={setOpen} />
     </div>
