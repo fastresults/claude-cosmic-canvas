@@ -4,7 +4,17 @@
  */
 import type { CreateFormat } from "@/config/createFormats";
 
-export function formatRules(f: CreateFormat): string {
+export function formatRules(f: CreateFormat, opts?: { channels?: string[] }): string {
+  // Social Post is channel-native — delegate to channel-aware rules.
+  if (f.id === "post-content") {
+    // Lazy import to avoid a client-only channel-specs pull into consumers
+    // that don't need it. Safe because this file is imported server-side.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { socialPostRules, normalizeSocialChannels } = require("./channel-rules");
+    const channels = normalizeSocialChannels(opts?.channels ?? []);
+    return socialPostRules(channels.length ? channels : ["linkedin"]);
+  }
+
   const base = f.defaultLength > 0 ? `Target length: ~${f.defaultLength} words.` : "";
   const structure = STRUCTURES[f.id] ?? DEFAULT_STRUCTURES[f.category] ?? "Well-structured paragraphs with clear headers where useful.";
   const tone = TONE[f.category] ?? "Confident, concrete, no filler.";
@@ -18,6 +28,7 @@ export function formatRules(f: CreateFormat): string {
     .filter(Boolean)
     .join("\n");
 }
+
 
 const STRUCTURES: Record<string, string> = {
   "press-release": "Dateline; punchy headline; subhead; lead paragraph; body with 2-3 quotes; boilerplate; contact block.",
