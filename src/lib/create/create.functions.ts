@@ -16,10 +16,13 @@ const GenerateInput = z.object({
   briefOverrides: z.record(z.string(), z.unknown()).optional(),
   workspaceId: z.string().uuid().nullable().optional(),
   workspaceItemId: z.string().uuid().nullable().optional(),
+  // Channel selection for channel-native formats (Social Post). Ignored for others.
+  channels: z.array(z.string()).max(6).optional(),
   // User-provided draft name. Required to persist a NEW draft; ignored on updates
   // (rename goes through `renameDraft`).
   title: z.string().trim().min(1).max(120).optional(),
 });
+
 
 const SaveInput = z.object({
   draftId: z.string().uuid().optional(),
