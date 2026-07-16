@@ -46,7 +46,7 @@ export const backfillResumeEntry = createServerFn({ method: "POST" })
     const structured = StructuredProfileSchema.parse(parsed);
 
     // 2. Beautify inline (don't RPC into a sibling server fn)
-    const { formatResumeFallback } = await import("./beautify.functions");
+
     const beautifySystem = [
       "You are a résumé formatter. Return ONLY GitHub-flavored Markdown — no preamble, no code fences.",
       "Sections in order (omit any with no data): # Name, italic headline line, About paragraph, ## Experience (### Title — Company + italic date range + summary), ## Education (bullets), ## Skills (comma list), ## Achievements (bullets), ## Contact (bullets pulled from raw source).",
