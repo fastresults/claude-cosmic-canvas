@@ -35,6 +35,7 @@ function rank(nodes: GraphNode[], q: string): Ranked[] {
 
 export function BrainSearch({ nodes, onPick }: Props) {
   const [open, setOpen] = useState(false);
+  useVoiceScopeOwner("brain-search", open);
   const [q, setQ] = useState("");
   const [recording, setRecording] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
