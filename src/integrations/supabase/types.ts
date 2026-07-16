@@ -425,6 +425,79 @@ export type Database = {
           },
         ]
       }
+      default_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          domain_id: string | null
+          emoji: string | null
+          id: string
+          is_default: boolean
+          is_favorite: boolean
+          knowledge_profile_id: string | null
+          last_used_at: string | null
+          name: string
+          updated_at: string
+          use_count: number
+          user_id: string
+          voice_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          domain_id?: string | null
+          emoji?: string | null
+          id?: string
+          is_default?: boolean
+          is_favorite?: boolean
+          knowledge_profile_id?: string | null
+          last_used_at?: string | null
+          name: string
+          updated_at?: string
+          use_count?: number
+          user_id: string
+          voice_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          domain_id?: string | null
+          emoji?: string | null
+          id?: string
+          is_default?: boolean
+          is_favorite?: boolean
+          knowledge_profile_id?: string | null
+          last_used_at?: string | null
+          name?: string
+          updated_at?: string
+          use_count?: number
+          user_id?: string
+          voice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "default_profiles_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "default_profiles_knowledge_profile_id_fkey"
+            columns: ["knowledge_profile_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "default_profiles_voice_id_fkey"
+            columns: ["voice_id"]
+            isOneToOne: false
+            referencedRelation: "voice_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domains: {
         Row: {
           created_at: string
