@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { hapticStart, hapticEnd, hapticCancel, hapticTap } from "@/lib/platform/haptics";
+import { useVoiceScopeOwner } from "@/lib/voice/voice-scope";
 import { NODE_COLOR, TYPE_LABEL } from "./three/palette";
 import type { GraphNode } from "./three/useBrainGraph";
 
