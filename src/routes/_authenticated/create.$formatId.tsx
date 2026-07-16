@@ -58,7 +58,7 @@ type Section = { heading: string | null; body: string };
 
 function FormatPage() {
   const { formatId } = Route.useParams();
-  const { draftId, seed: seedFromUrl, autoStart, wsId, wsItemId } = Route.useSearch();
+  const { draftId, seed: seedFromUrl, autoStart, wsId, wsItemId, channel: channelFromUrl, channels: channelsFromUrl } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const format = getFormat(formatId)!;
@@ -86,6 +86,89 @@ function FormatPage() {
   const [titlePending, setTitlePending] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
   const [suggestingGate, setSuggestingGate] = useState(false);
+
+  // --- Channel state (only meaningful for post-content / requiresChannel formats) ---
+  const requiresChannel = !!format.requiresChannel;
+  const parseChannelList = (raw: string | undefined): Channel[] => {
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s): s is Channel => isSocialChannel(s));
+  };
+  const initialChannels = useMemo<Channel[]>(() => {
+    if (!requiresChannel) return [];
+    const fromMulti = parseChannelList(channelsFromUrl);
+    if (fromMulti.length > 0) return fromMulti;
+    if (channelFromUrl && isSocialChannel(channelFromUrl)) return [channelFromUrl];
+    const aliasCh = FORMAT_ALIAS_CHANNEL[formatId];
+    if (aliasCh && isSocialChannel(aliasCh)) return [aliasCh];
+    return [];
+  }, [requiresChannel, channelFromUrl, channelsFromUrl, formatId]);
+
+  const [channels, setChannels] = useState<Channel[]>(initialChannels);
+  const [multiChannel, setMultiChannel] = useState<boolean>(
+    parseChannelList(channelsFromUrl).length > 1,
+  );
+  const [lockedByWorkspace, setLockedByWorkspace] = useState(false);
+
+  // Hydrate default channel: workspace item first, then user profile's last-used, else LinkedIn.
+  useEffect(() => {
+    if (!requiresChannel) return;
+    if (channels.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      // 1) workspace item channels lock
+      if (wsItemId) {
+        const { data: item } = await supabase
+          .from("workspace_items")
+          .select("channels")
+          .eq("id", wsItemId)
+          .maybeSingle();
+        const socialFromItem = (item?.channels ?? []).filter((c): c is Channel => isSocialChannel(c));
+        if (socialFromItem.length > 0 && !cancelled) {
+          setChannels([socialFromItem[0]]);
+          setLockedByWorkspace(true);
+          setMultiChannel(false);
+          return;
+        }
+      }
+      // 2) user profile last-used
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("last_social_channel")
+        .maybeSingle();
+      const last = prof?.last_social_channel;
+      if (!cancelled) {
+        if (last && isSocialChannel(last)) setChannels([last]);
+        else setChannels(["linkedin"]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requiresChannel, wsItemId, channels.length]);
+
+  // Sync channel state to URL for shareability / refresh persistence.
+  useEffect(() => {
+    if (!requiresChannel) return;
+    const params: Record<string, string | undefined> = {};
+    if (multiChannel && channels.length > 1) {
+      params.channels = channels.join(",");
+      params.channel = undefined;
+    } else if (channels.length === 1) {
+      params.channel = channels[0];
+      params.channels = undefined;
+    }
+    void navigate({
+      to: "/create/$formatId",
+      params: { formatId },
+      search: (prev) => ({ ...prev, ...params }),
+      replace: true,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channels, multiChannel, requiresChannel]);
+
 
 
   // Hydrate existing draft if resuming.
