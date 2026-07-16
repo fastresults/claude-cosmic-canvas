@@ -168,7 +168,7 @@ export function ResumeConfirmSheet({
             onClick={() => save.mutate()}
             className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
           >
-            {save.isPending ? "Saving…" : "Confirm & save"}
+            {save.isPending ? (status ?? "Saving…") : "Confirm & save"}
           </button>
         </div>
       </div>
