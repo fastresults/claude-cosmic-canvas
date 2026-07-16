@@ -247,10 +247,16 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
         : `[VOICE]\nWrite as ${profile?.display_name ?? "the user"}; match their cadence.`,
     );
     blocks.push(`[KNOWLEDGE]\n(No matching reference material was pre-fetched for this call.)`);
-    blocks.push(`[PRESET]\n${JSON.stringify(data.briefOverrides ?? {})}`);
+    // Merge channel selection into the persisted brief snapshot for regenerate/rename flows.
+    const { normalizeSocialChannels } = await import("./channel-rules");
+    const channels = format.id === "post-content" ? normalizeSocialChannels(data.channels ?? []) : [];
+    const briefSnapshot: Record<string, unknown> = { ...(data.briefOverrides ?? {}) };
+    if (channels.length) briefSnapshot.channels = channels;
+    blocks.push(`[PRESET]\n${JSON.stringify(briefSnapshot)}`);
     if (workspaceBlock) blocks.push(workspaceBlock);
-    blocks.push(`[FORMAT_RULES]\n${formatRules(format)}`);
+    blocks.push(`[FORMAT_RULES]\n${formatRules(format, { channels })}`);
     blocks.push(`[TASK]\n${data.seed}`);
+
 
     console.log(
       "[create.generate] injection order:",
@@ -280,7 +286,13 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
       return { fallback: true as const, message, draftId: null };
     }
 
-    const sections = splitSections(bodyText, format.id);
+    let sections: Array<{ heading: string | null; body: string }>;
+    if (format.id === "post-content" && channels.length > 0) {
+      const { splitChannelSections } = await import("./channel-rules");
+      sections = splitChannelSections(bodyText, channels);
+    } else {
+      sections = splitSections(bodyText, format.id);
+    }
     const suggestedTitle = deriveTitle(bodyText, data.seed);
 
     // Naming gate: never persist a new draft without a user-provided title.
@@ -301,13 +313,14 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
       user_id: context.userId,
       format_id: format.id,
       sections: sections as unknown as Json,
-      brief_snapshot: (data.briefOverrides ?? null) as Json | null,
+      brief_snapshot: (Object.keys(briefSnapshot).length ? briefSnapshot : null) as Json | null,
       preset_id: data.presetId ?? null,
       voice_id: data.voiceId ?? null,
       status: "draft" as const,
       workspace_id: data.workspaceId ?? null,
       workspace_item_id: data.workspaceItemId ?? null,
     };
+
 
     let draftId = data.draftId ?? null;
     let finalTitle: string;
