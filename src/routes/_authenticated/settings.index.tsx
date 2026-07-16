@@ -37,6 +37,7 @@ const SECTIONS: Section[] = [
   { to: "/settings/voice", icon: Mic, label: "Voice & Style", hint: "Personas, samples, directives", slot: "voice" },
   { to: "/settings/knowledge", icon: BookOpen, label: "Curriculum Vitae", hint: "LinkedIn, résumé, bios, notes", slot: "knowledge" },
   { to: "/settings/domains", icon: Compass, label: "Domains", hint: "Passions and areas of expertise", slot: "domain" },
+  { to: "/settings/default-profiles", icon: Zap, label: "Profiles", hint: "One-click bundles of voice + knowledge + domain" },
   { to: "/settings/presets", icon: Layers, label: "Presets", hint: "Reusable content lenses (voice + domains + audience + refs)" },
   { to: "/settings/distribution", icon: Link2, label: "Distribution", hint: "Channels, email sender, calendar" },
   { to: "/settings/notifications", icon: Bell, label: "Notifications", hint: "Inbox rules, snoozes" },
