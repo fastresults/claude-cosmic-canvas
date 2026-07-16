@@ -3,6 +3,7 @@ import { EveSheet } from "@/components/primitives/EveSheet";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ingestEntry } from "@/lib/knowledge/knowledge.functions";
+import { beautifyResumeMarkdown } from "@/lib/knowledge/beautify.functions";
 import type { StructuredProfile } from "@/lib/knowledge/extract.functions";
 import { Trash2 } from "lucide-react";
 
@@ -33,37 +34,19 @@ export function ResumeConfirmSheet({
 }: Props) {
   const qc = useQueryClient();
   const ingestFn = useServerFn(ingestEntry);
+  const beautifyFn = useServerFn(beautifyResumeMarkdown);
   const [profile, setProfile] = useState<StructuredProfile>(initial);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: () => {
-      // Serialize structured data into content for grounding
-      const content = [
-        profile.full_name && `# ${profile.full_name}`,
-        profile.headline && `_${profile.headline}_`,
-        profile.about,
-        profile.roles.length &&
-          `## Experience\n${profile.roles
-            .map(
-              (r) =>
-                `- **${r.title}** at ${r.company} (${r.start ?? "?"} – ${r.end ?? "present"})${
-                  r.summary ? `\n  ${r.summary}` : ""
-                }`,
-            )
-            .join("\n")}`,
-        profile.education.length &&
-          `## Education\n${profile.education
-            .map((e) => `- ${e.degree} ${e.field} — ${e.school} (${e.start ?? "?"} – ${e.end ?? "?"})`)
-            .join("\n")}`,
-        profile.skills.length && `## Skills\n${profile.skills.join(", ")}`,
-        profile.achievements.length &&
-          `## Achievements\n${profile.achievements.map((a) => `- ${a}`).join("\n")}`,
-        `\n---\n${markdown.slice(0, 20000)}`,
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+    mutationFn: async () => {
+      setStatus("Formatting résumé…");
+      const { markdown: content, model } = await beautifyFn({
+        data: { structured: profile, rawMarkdown: markdown, fileName: title },
+      });
 
+      setStatus("Saving…");
       return ingestFn({
         data: {
           profile_id: profileId,
@@ -74,16 +57,25 @@ export function ResumeConfirmSheet({
           source_url: sourceUrl,
           tags: profile.skills.slice(0, 6),
           kind: sourceType,
-          meta: { structured: profile },
+          meta: {
+            structured: profile,
+            formatted_by: model ? "ai" : "fallback",
+            formatter_model: model,
+          },
         },
       });
     },
     onSuccess: () => {
+      setStatus(null);
       qc.invalidateQueries({ queryKey: ["knowledge", "entries"] });
       onSaved();
     },
-    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+    onError: (e) => {
+      setStatus(null);
+      setError(e instanceof Error ? e.message : String(e));
+    },
   });
+
 
   return (
     <EveSheet open={open} onOpenChange={onOpenChange} title="Confirm what we found">
