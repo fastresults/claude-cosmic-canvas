@@ -43,13 +43,32 @@ export const backfillResumeEntry = createServerFn({ method: "POST" })
     }
     const structured = StructuredProfileSchema.parse(parsed);
 
-    // 2. Beautify — call the underlying handler directly by re-using its logic
-    const { markdown, model } = await beautifyResumeMarkdown({
-      data: { structured, rawMarkdown: entry.content ?? "", fileName: entry.title },
-    }).catch(() => ({
-      markdown: formatResumeFallback(structured, entry.content ?? ""),
-      model: null as string | null,
-    }));
+    // 2. Beautify inline (don't RPC into a sibling server fn)
+    const { formatResumeFallback } = await import("./beautify.functions");
+    const beautifySystem = [
+      "You are a résumé formatter. Return ONLY GitHub-flavored Markdown — no preamble, no code fences.",
+      "Sections in order (omit any with no data): # Name, italic headline line, About paragraph, ## Experience (### Title — Company + italic date range + summary), ## Education (bullets), ## Skills (comma list), ## Achievements (bullets), ## Contact (bullets pulled from raw source).",
+      "Never invent facts. Prefer structured JSON; use raw text only to fill gaps. Use en-dashes for date ranges.",
+    ].join("\n");
+    let markdown = "";
+    let model: string | null = null;
+    try {
+      const b = await callAnthropic({
+        model: ORCHESTRATOR_MODEL,
+        maxTokens: MAX_TOKENS,
+        system: beautifySystem,
+        prompt: `STRUCTURED JSON:\n${JSON.stringify(structured, null, 2)}\n\n---RAW SOURCE---\n${(entry.content ?? "").slice(0, 40000)}\n\nReturn the beautified Markdown now.`,
+      });
+      const md = b.text.trim().replace(/^```(?:markdown|md)?\s*|\s*```$/g, "").trim();
+      if (md.length >= 20) {
+        markdown = md;
+        model = ORCHESTRATOR_MODEL;
+      }
+    } catch {
+      /* fall through to fallback */
+    }
+    if (!markdown) markdown = formatResumeFallback(structured, entry.content ?? "");
+
 
     // 3. Update the entry
     const existingMeta = (entry.meta && typeof entry.meta === "object" ? entry.meta : {}) as Record<string, unknown>;
