@@ -1,75 +1,67 @@
 ## Problem
 
-When the user presses the mic button (SeedInput on `/create/*`, BrainSearch, and any other HoldToSpeakButton usage), there's no clear signal recording is happening. The button just darkens slightly — no pulse, no waveform, no timer, no haptic beyond the initial tap, no dismissible "recording" state. On mobile this reads as "nothing happened."
+Three mic buttons render on the same screen (`/create/post-content`) with no signal of priority:
 
-## Goal
+1. **ComposerBar mic** — always-on global bar pinned above the tab bar.
+2. **Textarea built-in mic** — `src/components/ui/textarea.tsx` renders its own dictation button whenever `voiceInput` is not explicitly disabled (default is `true`).
+3. **SeedInput's HoldToSpeakButton** — the intended primary mic for the create flow.
 
-Give every voice-capture affordance in the app the same unmistakable recording feedback: visual pulse + live level/timer + haptic on start, stop, and cancel. One shared primitive, applied everywhere mic input exists.
+All three do the same job. Users can't tell which one to press, and pressing the wrong one drops audio into the wrong target (composer vs. seed vs. textarea).
 
-## Scope (files to touch)
+## Rule (global)
 
-- `src/components/primitives/HoldToSpeakButton.tsx` — upgrade to the canonical recording button.
-- `src/components/create/shared/SeedInput.tsx` — wire the new states + show a "Recording" strip above the composer while active.
-- `src/components/brain/BrainSearch.tsx` — replace inline mic with the shared primitive, keep hold-to-talk behavior.
-- `src/hooks/useVoiceDictation.ts` — expose live audio level (0–1) via an AnalyserNode so any consumer can render a waveform/pulse. Add haptic hooks.
-- `src/components/primitives/RecordingIndicator.tsx` *(new)* — small reusable pill with pulsing dot, mm:ss timer, live level bar, and Cancel button. Used by SeedInput and any future voice surface.
-- `src/styles.css` — add a `@keyframes mic-pulse` + `.amber-glow-pulse` utility (token-based, no hardcoded colors) so the button ring pulses in sync with audio.
+> On any given screen, exactly one mic is the primary voice target — the one bound to the input the user is about to fill. Every other mic on that screen is hidden.
 
-## Behavior spec
+Priority, highest first:
+1. A mic attached to the currently-focused text input (e.g. SeedInput's HoldToSpeakButton while its textarea is focused/visible).
+2. A mic explicitly declared as the screen's "voice target" via a scope provider.
+3. The ComposerBar's global mic — fallback only when no scoped mic exists on screen.
 
-**Idle → Press**
-- Instant haptic tap (`navigator.vibrate(8)`).
-- Button scales to 1.05, switches to `bg-accent` with pulsing amber ring (2 concentric rings expanding + fading, 1.2s loop).
-- Mic icon swaps to a filled "recording" glyph.
+Textarea's built-in mic is demoted: never renders when its surrounding form declares its own voice target.
 
-**While recording**
-- RecordingIndicator appears anchored to the input:
-  - Pulsing red/amber dot (uses `--accent` token).
-  - Live timer `0:03` updating every second (already tracked in `useVoiceDictation.elapsed`).
-  - Thin horizontal level meter driven by AnalyserNode RMS (new in hook).
-  - "Cancel" ghost button — releases without sending audio for transcription.
-- Button itself keeps the pulsing ring; ring amplitude reacts to live level (subtle, capped) so the user sees their voice is being picked up.
-- Screen reader: `aria-live="polite"` announces "Recording started", timer updates silently.
+## Design
 
-**Release / stop**
-- Haptic double-tap (`[10, 40, 10]`).
-- Button collapses back; RecordingIndicator morphs into a "Transcribing…" shimmer state (existing `status === "transcribing"`).
-- On success: indicator fades out, text lands in the textarea (unchanged).
-- On error: indicator turns into an inline error chip with Retry.
+**New: `VoiceScope` context** (`src/lib/voice/voice-scope.tsx`)
+- `VoiceScopeProvider` at the app shell wraps everything and exposes `{ activeOwners: Set<string>, register(id), unregister(id) }`.
+- `useVoiceScopeOwner(id)` — hook a mic surface calls on mount to register itself; unregisters on unmount.
+- `useHasScopedMic()` — returns `true` when any scoped owner is registered. ComposerBar reads this.
 
-**Cancel / pointer-cancel / mic denied**
-- Haptic single short buzz.
-- Stop recorder, discard buffer (do NOT call transcribe).
-- If denied: show existing MicPermissionSheet path; button reverts to disabled with tooltip.
+**ComposerBar** (`src/components/shell/ComposerBar.tsx`)
+- If `useHasScopedMic()` is true, hide the mic button entirely and shift the composer into text-only mode (the send/submit affordance stays; the seed line remains for quick typed prompts). No layout jump — the mic slot collapses.
 
-**Tap vs hold**
-- Keep hold-to-talk as primary (existing pointer capture).
-- Add a min-hold threshold of 250ms: releases under that are treated as a tap → toggle "sticky recording" mode (tap again to stop). This fixes accidental instant releases on mobile that currently yield empty blobs.
+**SeedInput** (`src/components/create/shared/SeedInput.tsx`)
+- Call `useVoiceScopeOwner("seed-input")` so ComposerBar hides its mic while the create screen is mounted.
+- Pass `voiceInput={false}` to the internal `<Textarea>` to kill the redundant textarea mic.
 
-## Technical notes
+**Textarea primitive** (`src/components/ui/textarea.tsx`)
+- Keep the `voiceInput` prop for backward compatibility, but flip the default to **`false`**. Voice input is now opt-in per usage, not opt-out. This kills the ghost third mic across every screen (SeedInput, DefaultProfiles sheet, capture sheets, etc.) without needing to touch each call site.
+- Audit for any explicit `voiceInput={true}` — currently none in the codebase; nothing regresses.
 
-- `useVoiceDictation` gets an optional `AnalyserNode` branch:
-  ```
-  const audioCtx = new AudioContext();
-  const src = audioCtx.createMediaStreamSource(stream);
-  const analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 512;
-  src.connect(analyser);
-  // rAF loop → compute RMS → setLevel(0..1)
-  ```
-  Exposes `level: number` alongside `status`, `elapsed`.
-- Haptics helper `src/lib/platform/haptics.ts` *(new, tiny)* — wraps `navigator.vibrate` with feature detect + no-op on iOS Safari (which ignores it) so callers don't sprinkle guards.
-- All colors via tokens: `--accent`, `--accent-foreground`, `--destructive` for cancel. No hex.
-- Respect `prefers-reduced-motion`: pulse animation collapses to a static ring; level meter still renders (informational, not decorative).
-- No changes to server functions, transcription contract, or draft flow.
+**BrainSearch** (`src/components/brain/BrainSearch.tsx`)
+- Also register `useVoiceScopeOwner("brain-search")` while the search bar is open, so ComposerBar's mic hides while a scoped mic is present in the overlay.
 
-## Out of scope
+**Knowledge SpeakSheet**
+- Register `useVoiceScopeOwner("speak-sheet")` while the sheet is open. When open, the sheet's mic is the only one on screen (sheet already covers the composer, but this makes the rule uniform).
 
-- Real-time streaming transcription (deltas rendered as you speak) — separate plan.
-- Waveform history visualization — the level meter is enough for feedback.
-- Redesign of the mic button's resting shape.
+## Files touched
+
+- **New:** `src/lib/voice/voice-scope.tsx` (context + hooks, ~50 lines).
+- **Edited:**
+  - `src/components/shell/AppShell.tsx` — wrap children in `VoiceScopeProvider`.
+  - `src/components/shell/ComposerBar.tsx` — hide mic when scoped owner present.
+  - `src/components/ui/textarea.tsx` — default `voiceInput` to `false`.
+  - `src/components/create/shared/SeedInput.tsx` — register scope owner; pass `voiceInput={false}` (explicit for clarity).
+  - `src/components/brain/BrainSearch.tsx` — register scope owner while open.
+  - `src/components/knowledge/capture/SpeakSheet.tsx` — register scope owner while open.
+
+## Not doing
+
+- Not removing ComposerBar's mic outright — it's still the fallback on screens like the home/thread view where no scoped mic exists.
+- Not refactoring `useVoiceDictation` or the shared `HoldToSpeakButton` — those already work; this plan is purely about which mic is visible.
+- Not adding UI to explain the rule; the correct behavior is that the user only ever sees one mic, so no explanation is needed.
 
 ## Verification
 
-- Playwright script: navigate `/create/post-content`, press-and-hold the mic button for 2s, screenshot mid-record → assert pulsing ring + timer visible, then release → assert transcribing state → assert final text in textarea.
-- Manual: repeat on BrainSearch. Confirm haptic on a real device (can't verify in sandbox — call it out).
+- Playwright: load `/create/post-content` on mobile viewport → assert exactly one `<button aria-label*="speak"|"record">` in the visible viewport (the SeedInput mic). ComposerBar's mic button must not be in the DOM.
+- Navigate to `/` (home, no scoped mic) → assert ComposerBar's mic *is* rendered.
+- Open BrainSearch → assert ComposerBar mic hides while the search is open, reappears on close.

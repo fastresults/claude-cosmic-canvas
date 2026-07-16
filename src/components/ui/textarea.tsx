@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 import { useVoiceDictation } from "@/hooks/useVoiceDictation";
 
 export interface TextareaProps extends React.ComponentProps<"textarea"> {
-  /** Set to false to disable the built-in voice dictation button. Default: true */
+  /** Set to true to enable the built-in voice dictation button. Default: false — opt-in only, so surrounding forms with their own mic don't get a ghost second one. */
   voiceInput?: boolean;
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, voiceInput = true, disabled, readOnly, onChange, ...props }, forwardedRef) => {
+  ({ className, voiceInput = false, disabled, readOnly, onChange, ...props }, forwardedRef) => {
     const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
     const setRefs = React.useCallback(
       (node: HTMLTextAreaElement | null) => {
