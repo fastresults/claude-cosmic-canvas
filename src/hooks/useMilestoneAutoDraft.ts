@@ -1,21 +1,14 @@
 /**
- * Client-side orchestrator for a milestone: walks pending items and drafts
- * each via the existing generateCreateDraft server fn, then schedules the
- * result into the queue. Concurrency = 1 to be gentle on the gateway.
- *
- * Runs automatically once per workspace load when items are still pending.
+ * Kicks off the Fable 5 orchestrator for a milestone workspace once per
+ * load. The orchestrator decides tool order (draft, then schedule) via the
+ * tool loop; this hook polls `getWorkspaceProgress` so the ring/UI reflects
+ * server-truth as items land.
  */
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { generateCreateDraft } from "@/lib/create/create.functions";
-import {
-  scheduleWorkspaceItemInQueue,
-  getWorkspaceProgress,
-} from "@/lib/workspaces/pipeline.functions";
-import { normalizeCreateFormatId } from "@/config/createFormats";
-import { CHANNEL_SPECS } from "@/lib/workspaces/channelSpecs";
-import type { Channel } from "@/lib/workspaces/strategy";
+import { orchestrateMilestone } from "@/lib/workspaces/orchestrateMilestone.functions";
+import { getWorkspaceProgress } from "@/lib/workspaces/pipeline.functions";
 
 type Item = {
   id: string;
@@ -28,27 +21,9 @@ type Item = {
   status?: string;
 };
 
-function seedFor(item: Item): string {
-  const primary = (item.channels?.[0] ?? "") as Channel;
-  const spec = CHANNEL_SPECS[primary];
-  const channelLine = spec
-    ? `Write native to ${spec.label}. Structure: ${spec.structure}. Ideal length ${spec.ideal_chars[0]}–${spec.ideal_chars[1]} chars, hard max ${spec.max_chars}. Hook: ${spec.hook_style}. CTA: ${spec.cta_style}. Hashtags: ${spec.hashtag_policy}. Tone: ${spec.tone_hint}.`
-    : "Write in the user's voice; no channel constraints supplied.";
-  return [
-    item.title,
-    item.description ?? "",
-    "",
-    channelLine,
-    "This piece is part of a coordinated milestone arc — refer to sibling pieces already in the workspace context without duplicating them. Elevate the user's authority and personal brand.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-}
-
 export function useMilestoneAutoDraft(workspaceId: string, items: Item[]) {
   const qc = useQueryClient();
-  const generate = useServerFn(generateCreateDraft);
-  const schedule = useServerFn(scheduleWorkspaceItemInQueue);
+  const run = useServerFn(orchestrateMilestone);
   const progressFn = useServerFn(getWorkspaceProgress);
 
   const [running, setRunning] = useState(false);
@@ -62,51 +37,57 @@ export function useMilestoneAutoDraft(workspaceId: string, items: Item[]) {
     if (pending.length === 0) return;
     started.current = true;
     setRunning(true);
-    (async () => {
-      let drafted = items.length - pending.length;
-      const total = items.length;
-      let scheduled = items.filter((i) => i.scheduled_date).length;
-      setProgress({ drafted, total, scheduled });
-      for (const it of pending) {
-        try {
-          const res = await generate({
-            data: {
-              formatId: normalizeCreateFormatId(it.content_type),
-              seed: seedFor(it),
-              workspaceId,
-              workspaceItemId: it.id,
-            },
-          });
-          if ((res as { fallback?: boolean }).fallback) {
-            setFailed((p) => ({ ...p, [it.id]: (res as { message?: string }).message ?? "generation failed" }));
-          } else {
-            drafted += 1;
-            if (it.scheduled_date) {
-              try {
-                await schedule({ data: { workspace_item_id: it.id } });
-                scheduled += 1;
-              } catch (err) {
-                setFailed((p) => ({ ...p, [it.id]: err instanceof Error ? err.message : "schedule failed" }));
-              }
-            }
-          }
-        } catch (err) {
-          setFailed((p) => ({ ...p, [it.id]: err instanceof Error ? err.message : "generation failed" }));
-        }
-        setProgress({ drafted, total, scheduled });
-        qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
-      }
-      // Final reconcile via server truth.
+    setProgress({
+      drafted: items.length - pending.length,
+      total: items.length,
+      scheduled: items.filter((i) => i.scheduled_date).length,
+    });
+
+    let cancelled = false;
+    const poll = setInterval(async () => {
       try {
         const snap = await progressFn({ data: { id: workspaceId } });
+        if (cancelled) return;
         setProgress({ drafted: snap.drafted, total: snap.total, scheduled: snap.scheduled });
+        qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
       } catch {
-        /* ignore */
+        /* ignore transient */
       }
-      setRunning(false);
-      qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
-      qc.invalidateQueries({ queryKey: ["release-queue"] });
+    }, 3000);
+
+    (async () => {
+      try {
+        const res = await run({ data: { workspaceId } });
+        if (cancelled) return;
+        if ("needsVoice" in res && res.needsVoice) {
+          setFailed({ __voice__: "No active voice — set one to enable drafting." });
+        } else if ("progress" in res && res.progress) {
+          setProgress(res.progress);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setFailed({ __run__: err instanceof Error ? err.message : "orchestrator failed" });
+        }
+      } finally {
+        clearInterval(poll);
+        if (!cancelled) {
+          try {
+            const snap = await progressFn({ data: { id: workspaceId } });
+            setProgress({ drafted: snap.drafted, total: snap.total, scheduled: snap.scheduled });
+          } catch {
+            /* ignore */
+          }
+          setRunning(false);
+          qc.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+          qc.invalidateQueries({ queryKey: ["release-queue"] });
+        }
+      }
     })();
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId, items.length]);
 
