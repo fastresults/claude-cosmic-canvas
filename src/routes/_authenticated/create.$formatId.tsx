@@ -186,6 +186,10 @@ function FormatPage() {
 
   async function runGenerate(providedTitle?: string) {
     if (!seed.trim()) return;
+    if (requiresChannel && channels.length === 0) {
+      setError("Pick at least one channel to continue.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -198,9 +202,11 @@ function FormatPage() {
           draftId: currentDraftId ?? undefined,
           workspaceId: ctx.workspace_id ?? wsId ?? null,
           workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+          channels: requiresChannel ? channels : undefined,
           title: providedTitle,
         },
       });
+
       if ("fallback" in res && res.fallback) {
         setError(res.message);
       } else if (res.pendingTitle) {
