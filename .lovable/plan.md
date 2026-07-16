@@ -1,83 +1,75 @@
-# Channel-aware Social Posts
+## Problem
 
-## The problem
+When the user presses the mic button (SeedInput on `/create/*`, BrainSearch, and any other HoldToSpeakButton usage), there's no clear signal recording is happening. The button just darkens slightly — no pulse, no waveform, no timer, no haptic beyond the initial tap, no dismissible "recording" state. On mobile this reads as "nothing happened."
 
-Today `post-content` (Social Post) is one generic format described as "LinkedIn / X post." The prompt has no channel awareness — the same 220-word draft gets produced whether the user wants a tight X post (≤280 chars) or a LinkedIn narrative (900–1,400 chars). We already have rich per-channel rules in `src/lib/workspaces/channelSpecs.ts` (LinkedIn, X, Instagram, TikTok, Blog, Email, YouTube, Podcast, Press, Event, Community) — they're used by the workspace pipeline but never by `/create`.
+## Goal
 
-## What we're building
+Give every voice-capture affordance in the app the same unmistakable recording feedback: visual pulse + live level/timer + haptic on start, stop, and cancel. One shared primitive, applied everywhere mic input exists.
 
-Keep **Social Post** as one tile in the /create hub. On the Social Post page, add a **required Channel selector** above the seed input. Users can pick **one channel** (default flow) or toggle **multiple channels** (one adapted post per channel, generated in one click). Generation routes through the existing `CHANNEL_SPECS` so length, hook, CTA, hashtags, links, and tone match the channel natively.
+## Scope (files to touch)
 
-## UX flow
+- `src/components/primitives/HoldToSpeakButton.tsx` — upgrade to the canonical recording button.
+- `src/components/create/shared/SeedInput.tsx` — wire the new states + show a "Recording" strip above the composer while active.
+- `src/components/brain/BrainSearch.tsx` — replace inline mic with the shared primitive, keep hold-to-talk behavior.
+- `src/hooks/useVoiceDictation.ts` — expose live audio level (0–1) via an AnalyserNode so any consumer can render a waveform/pulse. Add haptic hooks.
+- `src/components/primitives/RecordingIndicator.tsx` *(new)* — small reusable pill with pulsing dot, mm:ss timer, live level bar, and Cancel button. Used by SeedInput and any future voice surface.
+- `src/styles.css` — add a `@keyframes mic-pulse` + `.amber-glow-pulse` utility (token-based, no hardcoded colors) so the button ring pulses in sync with audio.
 
-**Single channel (default):**
-1. Open Social Post → Channel chips row shows: LinkedIn · X · Instagram · TikTok · Threads · Facebook. First chip preselected from user's last-used channel (falls back to LinkedIn).
-2. Header subtitle updates live: "Social Post · LinkedIn" and length hint "~900–1,400 chars."
-3. Seed → Generate → single draft with channel-native structure. Draft title auto-prefixes with channel, e.g. "LinkedIn — Why remote-first is stalling."
+## Behavior spec
 
-**Multi-channel (one seed, many posts):**
-1. User taps "Adapt for more" pill → chips become multi-select.
-2. Generate produces N sections (one per channel) in the same draft, each with a channel heading and its own body sized to that channel's spec. Rendered in `StreamCanvas` as separate cards with copy-per-channel buttons.
-3. Optional "Split into separate drafts" action on the Decision Dock creates one draft per channel from the multi-output result.
+**Idle → Press**
+- Instant haptic tap (`navigator.vibrate(8)`).
+- Button scales to 1.05, switches to `bg-accent` with pulsing amber ring (2 concentric rings expanding + fading, 1.2s loop).
+- Mic icon swaps to a filled "recording" glyph.
 
-**Workspace integration:**
-- When arriving from a workspace item that already has a `channel` field, that channel is preselected and locked to a single-channel run (workspace items own one channel each). A subtle "Set by workspace" note appears next to the picker.
-- Multi-channel mode is disabled inside a workspace flow to keep 1 item = 1 draft.
+**While recording**
+- RecordingIndicator appears anchored to the input:
+  - Pulsing red/amber dot (uses `--accent` token).
+  - Live timer `0:03` updating every second (already tracked in `useVoiceDictation.elapsed`).
+  - Thin horizontal level meter driven by AnalyserNode RMS (new in hook).
+  - "Cancel" ghost button — releases without sending audio for transcription.
+- Button itself keeps the pulsing ring; ring amplitude reacts to live level (subtle, capped) so the user sees their voice is being picked up.
+- Screen reader: `aria-live="polite"` announces "Recording started", timer updates silently.
 
-**Defaults / memory:**
-- New `last_social_channel` on the profile (or a lightweight `user_prefs` row) remembers the last single-channel choice per user.
-- Distribution settings page (`settings.distribution.tsx`) already lists preferred channels — the picker respects that ordering and hides channels the user disabled.
+**Release / stop**
+- Haptic double-tap (`[10, 40, 10]`).
+- Button collapses back; RecordingIndicator morphs into a "Transcribing…" shimmer state (existing `status === "transcribing"`).
+- On success: indicator fades out, text lands in the textarea (unchanged).
+- On error: indicator turns into an inline error chip with Retry.
 
-## Workflow matrix — where this plugs in
+**Cancel / pointer-cancel / mic denied**
+- Haptic single short buzz.
+- Stop recorder, discard buffer (do NOT call transcribe).
+- If denied: show existing MicPermissionSheet path; button reverts to disabled with tooltip.
 
-| Entry point | Behavior |
-|---|---|
-| /create hub → Social Post tile | Channel picker required; single or multi-channel |
-| Home Orb / voice intent "post about X" | Picker shown with LinkedIn preselected; user can change before generating |
-| Workspace item (channel set) | Picker preselected + locked; single-channel only |
-| Workspace item (no channel) | Picker required; single-channel; selection written back to the item |
-| Regenerate on existing draft | Channel(s) preserved from the draft's brief_snapshot |
-| Presets/Profiles | If a preset carries a `default_channel`, it hydrates the picker; user can still override |
-| Distribution settings toggle off X | X hidden from the picker everywhere |
+**Tap vs hold**
+- Keep hold-to-talk as primary (existing pointer capture).
+- Add a min-hold threshold of 250ms: releases under that are treated as a tap → toggle "sticky recording" mode (tap again to stop). This fixes accidental instant releases on mobile that currently yield empty blobs.
 
-## Naming / tile copy
+## Technical notes
 
-- Tile stays "Social Post," description changes to "One seed, native to each channel."
-- Format-page subhead is dynamic: "Post for {Channel}" or "Post for {N} channels."
+- `useVoiceDictation` gets an optional `AnalyserNode` branch:
+  ```
+  const audioCtx = new AudioContext();
+  const src = audioCtx.createMediaStreamSource(stream);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 512;
+  src.connect(analyser);
+  // rAF loop → compute RMS → setLevel(0..1)
+  ```
+  Exposes `level: number` alongside `status`, `elapsed`.
+- Haptics helper `src/lib/platform/haptics.ts` *(new, tiny)* — wraps `navigator.vibrate` with feature detect + no-op on iOS Safari (which ignores it) so callers don't sprinkle guards.
+- All colors via tokens: `--accent`, `--accent-foreground`, `--destructive` for cancel. No hex.
+- Respect `prefers-reduced-motion`: pulse animation collapses to a static ring; level meter still renders (informational, not decorative).
+- No changes to server functions, transcription contract, or draft flow.
 
-## Technical details
+## Out of scope
 
-**Format registry (`src/config/createFormats.ts`):**
-- Add optional `requiresChannel?: boolean` and `supportedChannels?: Channel[]` to `CreateFormat`.
-- Mark `post-content` with `requiresChannel: true`, `supportedChannels: ["linkedin","x","instagram","tiktok","threads","facebook"]`.
-- Add `threads` and `facebook` to `Channel` + `CHANNEL_SPECS` in `src/lib/workspaces/channelSpecs.ts` (Threads mirrors X with 500-char cap; Facebook mirrors LinkedIn with lighter tone).
+- Real-time streaming transcription (deltas rendered as you speak) — separate plan.
+- Waveform history visualization — the level meter is enough for feedback.
+- Redesign of the mic button's resting shape.
 
-**Format page (`src/routes/_authenticated/create.$formatId.tsx`):**
-- New `<ChannelPicker>` component (mobile-first chip row + "Adapt for more" toggle).
-- Reads workspace item's channel via existing `useWorkspaceContext` and locks when present.
-- Persists selection in URL search param `channel=linkedin` (or `channels=linkedin,x`) so the state survives refresh and share-links.
-- Adds `channels: string[]` to `GenerateInput`; blocks Generate until at least one is chosen.
+## Verification
 
-**Generation (`src/lib/create/create.functions.ts` + `format-rules.ts`):**
-- `GenerateInput` accepts `channels: z.array(z.enum([...])).min(1).max(6)`.
-- New `channelAwareFormatRules(format, channels)` (in a new `src/lib/create/channel-rules.ts`) that:
-  - For 1 channel: embeds that channel's spec block from `channelSpecBlock([channel])` and instructs "Output ONLY the post body for {Channel}."
-  - For N channels: embeds all specs and instructs "Output one post per channel, each preceded by `## {ChannelLabel}` and separated by `---CHANNEL---`."
-- `splitSections` gets a new branch for `post-content` with multi-channel output: split on `---CHANNEL---`, use the `##` heading as `section.heading`.
-- `brief_snapshot` stores `{ channels: [...] }` so regenerate/rename flows keep context.
-- Title suggestion prompt is nudged with the primary channel so the auto-suggested name reads native (e.g. LinkedIn titles allow longer phrases; X titles stay punchy).
-
-**Draft rendering:**
-- `StreamCanvas` already renders sections with headings — multi-channel drafts naturally get one card per channel. Add per-section copy button in `src/components/create/shared/StreamCanvas.tsx` (nice-to-have; ships if trivial).
-
-**Data:**
-- No new tables. Add nullable `last_social_channel text` column to `profiles` in a migration; write on every successful single-channel generate.
-- Extend `create_drafts.brief_snapshot` shape (JSON, no schema change) to include `channels`.
-
-**Aliases:** existing `FORMAT_ID_ALIASES` (`linkedin-post`, `x-post`, `tweet`) all still resolve to `post-content`; when arriving via those aliases, preselect the matching channel and skip the picker step (jump straight to seed).
-
-## Out of scope for this pass
-
-- Auto-scheduling/publishing per channel (Distribution surface handles that separately).
-- Image sizing per channel (media formats are their own tiles).
-- Reels/Shorts video scripts — `youtube-script` and future tiktok-script tile cover those.
+- Playwright script: navigate `/create/post-content`, press-and-hold the mic button for 2s, screenshot mid-record → assert pulsing ring + timer visible, then release → assert transcribing state → assert final text in textarea.
+- Manual: repeat on BrainSearch. Confirm haptic on a real device (can't verify in sandbox — call it out).

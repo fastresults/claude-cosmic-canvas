@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X, Mic } from "lucide-react";
+import { Search, X, Mic, Square } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+import { useAudioLevel } from "@/hooks/useAudioLevel";
+import { hapticStart, hapticEnd, hapticCancel, hapticTap } from "@/lib/platform/haptics";
 import { NODE_COLOR, TYPE_LABEL } from "./three/palette";
 import type { GraphNode } from "./three/useBrainGraph";
 
@@ -36,10 +38,15 @@ export function BrainSearch({ nodes, onPick }: Props) {
   const [recording, setRecording] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [micAvailable, setMicAvailable] = useState(true);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const cancelledRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
   const transcribeFn = useServerFn(aiTranscribe);
+  const level = useAudioLevel(recording ? stream : null);
 
   const results = useMemo(() => rank(nodes, q), [nodes, q]);
 
@@ -65,13 +72,22 @@ export function BrainSearch({ nodes, onPick }: Props) {
 
   async function startRec() {
     setStatus(null);
+    cancelledRef.current = false;
+    hapticStart();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(s);
+      const rec = new MediaRecorder(s, { mimeType: "audio/webm" });
       chunksRef.current = [];
       rec.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
       rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        s.getTracks().forEach((t) => t.stop());
+        setStream(null);
+        if (timerRef.current) {
+          window.clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        if (cancelledRef.current) return;
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         if (blob.size < 800) {
           setStatus("Try holding a bit longer");
@@ -97,6 +113,8 @@ export function BrainSearch({ nodes, onPick }: Props) {
       };
       rec.start();
       mediaRef.current = rec;
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => setElapsed((n) => n + 1), 1000);
       setRecording(true);
     } catch {
       setMicAvailable(false);
@@ -105,6 +123,16 @@ export function BrainSearch({ nodes, onPick }: Props) {
   }
 
   function stopRec() {
+    cancelledRef.current = false;
+    hapticEnd();
+    mediaRef.current?.stop();
+    mediaRef.current = null;
+    setRecording(false);
+  }
+
+  function cancelRec() {
+    cancelledRef.current = true;
+    hapticCancel();
     mediaRef.current?.stop();
     mediaRef.current = null;
     setRecording(false);
@@ -137,11 +165,17 @@ export function BrainSearch({ nodes, onPick }: Props) {
         {micAvailable && (
           <button
             type="button"
-            aria-label={recording ? "Recording" : "Hold to speak"}
+            aria-label={recording ? "Stop recording" : "Hold to speak"}
+            aria-pressed={recording}
             onPointerDown={(e) => {
               e.preventDefault();
               e.currentTarget.setPointerCapture(e.pointerId);
-              void startRec();
+              if (recording) {
+                stopRec();
+              } else {
+                hapticTap();
+                void startRec();
+              }
             }}
             onPointerUp={(e) => {
               e.preventDefault();
@@ -150,17 +184,33 @@ export function BrainSearch({ nodes, onPick }: Props) {
               } catch {
                 /* ignore */
               }
-              stopRec();
             }}
-            onPointerCancel={() => stopRec()}
+            onPointerCancel={() => cancelRec()}
             onContextMenu={(e) => e.preventDefault()}
-            className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full touch-none select-none transition-all ${
+            style={
               recording
-                ? "bg-accent text-accent-foreground amber-glow"
+                ? {
+                    boxShadow: `0 0 0 2px oklch(0.82 0.14 82 / ${(0.35 + level * 0.5).toFixed(2)}), 0 0 ${Math.round(6 + level * 20)}px oklch(0.82 0.14 82 / 0.6)`,
+                  }
+                : undefined
+            }
+            className={`relative grid h-7 w-7 flex-shrink-0 place-items-center rounded-full touch-none select-none transition-all ${
+              recording
+                ? "bg-accent text-accent-foreground scale-110"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Mic className="h-3.5 w-3.5" />
+            {recording && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-full bg-accent/50 animate-ping"
+              />
+            )}
+            {recording ? (
+              <Square className="relative h-3 w-3 fill-current" />
+            ) : (
+              <Mic className="relative h-3.5 w-3.5" />
+            )}
           </button>
         )}
         <button
@@ -176,6 +226,33 @@ export function BrainSearch({ nodes, onPick }: Props) {
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {recording && (
+        <div className="mt-2 flex items-center gap-2 rounded-full border border-accent/30 bg-black/70 px-3 py-1.5 backdrop-blur-md animate-fade-in">
+          <span className="relative grid h-2.5 w-2.5 place-items-center">
+            <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-70" />
+            <span className="relative h-2 w-2 rounded-full bg-accent" />
+          </span>
+          <span className="tabular-nums text-[11px] text-white/70 w-8">
+            {`${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, "0")}`}
+          </span>
+          <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] duration-75"
+              style={{ width: `${Math.round(Math.max(0.04, level) * 100)}%` }}
+            />
+          </span>
+          <button
+            type="button"
+            onClick={cancelRec}
+            aria-label="Cancel recording"
+            className="grid h-6 w-6 place-items-center rounded-full text-white/60 hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
 
       {(status || (q.trim() && results.length === 0) || results.length > 0) && (
         <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md">
