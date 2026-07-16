@@ -172,9 +172,7 @@ export const applyDefaultProfile = createServerFn({ method: "POST" })
         last_used_at: new Date().toISOString(),
       })
       .eq("id", data.id);
-    // Increment use_count properly (separate call because we can't use SQL exprs in the update above).
-    await context.supabase.rpc("noop_bump_profile_use_count" as never).catch(() => {});
-    // Fallback: read-then-write increment.
+    // Read-then-write increment (Supabase JS lacks a SQL-expression update).
     const { data: cur } = await context.supabase
       .from("default_profiles")
       .select("use_count")
