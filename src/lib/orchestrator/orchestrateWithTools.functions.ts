@@ -63,8 +63,11 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
       maxOutputTokens: MAX_TOKENS,
     });
 
-    const toolCalls = (result.steps ?? []).flatMap((s) =>
-      (s.toolCalls ?? []).map((c) => ({ tool: c.toolName, input: c.input })),
+    const toolCalls: Array<{ tool: string; input: string }> = (result.steps ?? []).flatMap((s) =>
+      (s.toolCalls ?? []).map((c) => ({
+        tool: c.toolName,
+        input: JSON.stringify(c.input ?? null),
+      })),
     );
 
     await supabase.from("audit_log").insert({
