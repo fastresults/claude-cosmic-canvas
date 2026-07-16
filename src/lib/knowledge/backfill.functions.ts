@@ -22,7 +22,9 @@ export const backfillResumeEntry = createServerFn({ method: "POST" })
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
     const { StructuredProfileSchema } = await import("./extract.functions");
-    const { beautifyResumeMarkdown, formatResumeFallback } = await import("./beautify.functions");
+    const { beautifyResumeMarkdown: _unused, formatResumeFallback } = await import("./beautify.functions");
+    void _unused;
+
 
     // 1. Extract structured
     const extractSystem = `You are a résumé parser. Return ONLY valid JSON: {"full_name":string,"headline":string,"about":string,"roles":[{"title":string,"company":string,"start":string|null,"end":string|null,"summary":string}],"education":[{"school":string,"degree":string,"field":string,"start":string|null,"end":string|null}],"skills":[string],"achievements":[string]}. Never invent facts.`;
