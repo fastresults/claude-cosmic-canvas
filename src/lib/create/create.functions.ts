@@ -163,31 +163,7 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
   });
 
 
-function splitSections(body: string, formatId: string): Array<{ heading: string | null; body: string }> {
-  const sep = formatId === "email-sequence" ? /---EMAIL---/i
-    : formatId === "newsletter-sequence" ? /---ISSUE---/i
-    : null;
-  if (sep) {
-    return body
-      .split(sep)
-      .map((s, i) => ({ heading: `Part ${i + 1}`, body: s.trim() }))
-      .filter((s) => s.body.length > 0);
-  }
-  // Split on markdown H2/H1 headers.
-  const parts = body.split(/^\s*#{1,2}\s+/m).map((p) => p.trim()).filter(Boolean);
-  if (parts.length <= 1) return [{ heading: null, body: body.trim() }];
-  return parts.map((p) => {
-    const [firstLine, ...rest] = p.split("\n");
-    return { heading: firstLine.trim(), body: rest.join("\n").trim() };
-  });
-}
 
-function deriveTitle(body: string, seed: string): string {
-  const firstLine = body.split("\n").find((l) => l.trim().length > 0)?.trim() ?? "";
-  const stripped = firstLine.replace(/^#+\s*/, "").replace(/^["'*]+|["'*]+$/g, "");
-  if (stripped.length > 0 && stripped.length <= 120) return stripped;
-  return seed.slice(0, 80);
-}
 
 // ---------- AI title suggestion --------------------------------------------
 
