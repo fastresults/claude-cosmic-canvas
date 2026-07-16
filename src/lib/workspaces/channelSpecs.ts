@@ -150,7 +150,32 @@ export const CHANNEL_SPECS: Record<Channel, ChannelSpec> = {
     link_policy: "bio link only",
     tone_hint: "fast, informal, visual",
   },
+  threads: {
+    channel: "threads",
+    label: "Threads",
+    max_chars: 500,
+    ideal_chars: [200, 450],
+    structure: "one short beat · optional reply-line",
+    hook_style: "casual observation, no announcement voice",
+    cta_style: "invite a reply",
+    hashtag_policy: "0 hashtags",
+    link_policy: "avoid links",
+    tone_hint: "conversational, low-key, first-person",
+  },
+  facebook: {
+    channel: "facebook",
+    label: "Facebook",
+    max_chars: 5000,
+    ideal_chars: [300, 700],
+    structure: "warm opener · 2–4 short paragraphs · single question or CTA",
+    hook_style: "personal moment or clear stakes",
+    cta_style: "invite comments or shares",
+    hashtag_policy: "0–2 hashtags",
+    link_policy: "one link at end is fine",
+    tone_hint: "friendly, community-first, plain-spoken",
+  },
 };
+
 
 export function channelSpecBlock(channels: string[]): string {
   const valid = channels.filter((c): c is Channel => c in CHANNEL_SPECS);
