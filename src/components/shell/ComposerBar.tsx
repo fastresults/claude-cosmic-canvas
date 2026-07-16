@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowUp, Settings2 } from "lucide-react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
 import { MicPermissionSheet } from "@/components/shell/MicPermissionSheet";
+import { useHasScopedMic } from "@/lib/voice/voice-scope";
 
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 
@@ -248,7 +249,7 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
             >
               <ArrowUp className="h-4 w-4" />
             </button>
-          ) : (
+          ) : hasScopedMic ? null : (
             <HoldToSpeakButton
               active={requestingMic || listening}
               disabled={busy}
