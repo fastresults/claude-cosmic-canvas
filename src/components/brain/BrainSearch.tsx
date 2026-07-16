@@ -165,11 +165,17 @@ export function BrainSearch({ nodes, onPick }: Props) {
         {micAvailable && (
           <button
             type="button"
-            aria-label={recording ? "Recording" : "Hold to speak"}
+            aria-label={recording ? "Stop recording" : "Hold to speak"}
+            aria-pressed={recording}
             onPointerDown={(e) => {
               e.preventDefault();
               e.currentTarget.setPointerCapture(e.pointerId);
-              void startRec();
+              if (recording) {
+                stopRec();
+              } else {
+                hapticTap();
+                void startRec();
+              }
             }}
             onPointerUp={(e) => {
               e.preventDefault();
@@ -178,17 +184,33 @@ export function BrainSearch({ nodes, onPick }: Props) {
               } catch {
                 /* ignore */
               }
-              stopRec();
             }}
-            onPointerCancel={() => stopRec()}
+            onPointerCancel={() => cancelRec()}
             onContextMenu={(e) => e.preventDefault()}
-            className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full touch-none select-none transition-all ${
+            style={
               recording
-                ? "bg-accent text-accent-foreground amber-glow"
+                ? {
+                    boxShadow: `0 0 0 2px oklch(0.82 0.14 82 / ${(0.35 + level * 0.5).toFixed(2)}), 0 0 ${Math.round(6 + level * 20)}px oklch(0.82 0.14 82 / 0.6)`,
+                  }
+                : undefined
+            }
+            className={`relative grid h-7 w-7 flex-shrink-0 place-items-center rounded-full touch-none select-none transition-all ${
+              recording
+                ? "bg-accent text-accent-foreground scale-110"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Mic className="h-3.5 w-3.5" />
+            {recording && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-full bg-accent/50 animate-ping"
+              />
+            )}
+            {recording ? (
+              <Square className="relative h-3 w-3 fill-current" />
+            ) : (
+              <Mic className="relative h-3.5 w-3.5" />
+            )}
           </button>
         )}
         <button
