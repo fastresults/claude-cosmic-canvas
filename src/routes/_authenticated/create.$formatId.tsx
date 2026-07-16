@@ -163,7 +163,7 @@ function FormatPage() {
     void navigate({
       to: "/create/$formatId",
       params: { formatId },
-      search: (prev) => ({ ...prev, ...params }),
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...params }),
       replace: true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
