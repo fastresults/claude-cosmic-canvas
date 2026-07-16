@@ -227,6 +227,33 @@ export function BrainSearch({ nodes, onPick }: Props) {
         </button>
       </div>
 
+      {recording && (
+        <div className="mt-2 flex items-center gap-2 rounded-full border border-accent/30 bg-black/70 px-3 py-1.5 backdrop-blur-md animate-fade-in">
+          <span className="relative grid h-2.5 w-2.5 place-items-center">
+            <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-70" />
+            <span className="relative h-2 w-2 rounded-full bg-accent" />
+          </span>
+          <span className="tabular-nums text-[11px] text-white/70 w-8">
+            {`${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, "0")}`}
+          </span>
+          <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] duration-75"
+              style={{ width: `${Math.round(Math.max(0.04, level) * 100)}%` }}
+            />
+          </span>
+          <button
+            type="button"
+            onClick={cancelRec}
+            aria-label="Cancel recording"
+            className="grid h-6 w-6 place-items-center rounded-full text-white/60 hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+
       {(status || (q.trim() && results.length === 0) || results.length > 0) && (
         <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md">
           {status && (
