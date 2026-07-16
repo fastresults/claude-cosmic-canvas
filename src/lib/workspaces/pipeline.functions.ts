@@ -23,58 +23,13 @@ export const scheduleWorkspaceItemInQueue = createServerFn({ method: "POST" })
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: item, error: iErr } = await context.supabase
-      .from("workspace_items")
-      .select("id, scheduled_date, channels, content_generation_id, workspace_id")
-      .eq("id", data.workspace_item_id)
-      .maybeSingle();
-    if (iErr) throw iErr;
-    if (!item) throw new Error("Item not found");
-    if (!item.content_generation_id) {
-      return { ok: false, reason: "no_draft" as const };
-    }
-    const when = data.scheduled_at ?? item.scheduled_date ?? null;
-    if (!when) return { ok: false, reason: "no_date" as const };
-
-    // Slot at 9am local if only date given.
-    const slot = /T\d{2}:\d{2}/.test(when) ? when : new Date(`${when.slice(0, 10)}T09:00:00`).toISOString();
-    const platform = (item.channels?.[0] as string | undefined) ?? null;
-
-    // Upsert-ish: if a scheduled_content row already exists for this draft, update it.
-    const { data: existing } = await context.supabase
-      .from("scheduled_content")
-      .select("id")
-      .eq("draft_id", item.content_generation_id)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-
-    if (existing) {
-      await context.supabase
-        .from("scheduled_content")
-        .update({ scheduled_at: slot, platform, status: "scheduled" })
-        .eq("id", existing.id);
-    } else {
-      const { error: sErr } = await context.supabase.from("scheduled_content").insert({
-        user_id: context.userId,
-        draft_id: item.content_generation_id,
-        scheduled_at: slot,
-        platform,
-        status: "scheduled",
-      });
-      if (sErr) throw sErr;
-    }
-
-    await context.supabase
-      .from("workspace_items")
-      .update({ scheduled_date: slot, release_status: "scheduled" })
-      .eq("id", data.workspace_item_id);
-
-    await context.supabase
-      .from("create_drafts")
-      .update({ scheduled_date: slot, platform, status: "ready" })
-      .eq("id", item.content_generation_id);
-
-    return { ok: true, scheduled_at: slot, platform } as const;
+    const { runScheduleWorkspaceItem } = await import("./pipeline.server");
+    const res = await runScheduleWorkspaceItem(data, {
+      supabase: context.supabase,
+      userId: context.userId,
+    });
+    if (!res.ok && res.reason === "not_found") throw new Error("Item not found");
+    return res;
   });
 
 /** Progress snapshot for a workspace — used by the auto-draft loop UI. */
