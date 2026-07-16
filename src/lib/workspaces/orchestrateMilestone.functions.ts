@@ -46,7 +46,7 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
       return { needsVoice: false as const, ranTools: 0, message: "Nothing to do." };
     }
 
-    const { loadOrchestratorContext, composeOrchestratorSystem } = await import("./system.server");
+    const { loadOrchestratorContext, composeOrchestratorSystem } = await import("@/lib/orchestrator/system.server");
     const loaded = await loadOrchestratorContext(supabase, userId, {
       voiceId: data.voiceOverrideId ?? null,
       intent: ws.title,
