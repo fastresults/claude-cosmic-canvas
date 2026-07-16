@@ -376,7 +376,16 @@ export const generateCreateDraft = createServerFn({ method: "POST" })
           .update({ status: "ready", content_generation_id: draftId })
           .eq("id", data.workspaceItemId);
       }
+
+      // Remember the last-used single social channel for the picker default.
+      if (format.id === "post-content" && channels.length === 1) {
+        await context.supabase
+          .from("profiles")
+          .update({ last_social_channel: channels[0] })
+          .eq("user_id", context.userId);
+      }
     }
+
 
     return {
       fallback: false as const,
