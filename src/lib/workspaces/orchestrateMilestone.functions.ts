@@ -38,9 +38,8 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
     if (itErr) throw itErr;
     const rows = items ?? [];
     const pending = rows.filter((r) => !r.content_generation_id);
-    const draftedNeedingSchedule = rows.filter(
-      (r) => r.content_generation_id && r.scheduled_date && (r as { release_status?: string }),
-    );
+
+
 
     if (pending.length === 0 && rows.every((r) => !r.scheduled_date || r.content_generation_id)) {
       return { needsVoice: false as const, ranTools: 0, message: "Nothing to do." };
