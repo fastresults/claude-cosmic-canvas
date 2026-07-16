@@ -276,8 +276,33 @@ function FormatPage() {
 
       <header>
         <h1 className="font-display text-2xl text-foreground">{format.label}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{format.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {requiresChannel && channels.length > 0
+            ? channels.length === 1
+              ? `Post for ${channels[0][0].toUpperCase() + channels[0].slice(1)}`
+              : `Post for ${channels.length} channels`
+            : format.description}
+        </p>
       </header>
+
+      {requiresChannel && (
+        <ChannelPicker
+          value={channels}
+          onChange={(next) => {
+            setChannels(next);
+            if (next.length <= 1 && multiChannel) setMultiChannel(false);
+          }}
+          multi={multiChannel}
+          onToggleMulti={() => {
+            const next = !multiChannel;
+            setMultiChannel(next);
+            if (!next && channels.length > 1) setChannels([channels[0]]);
+          }}
+          locked={lockedByWorkspace}
+          lockedReason={lockedByWorkspace ? "Set by workspace" : undefined}
+          available={SOCIAL_CHANNELS}
+        />
+      )}
 
       <SeedInput
         value={seed}
@@ -290,6 +315,7 @@ function FormatPage() {
             : `What should this ${format.label.toLowerCase()} be about?`
         }
       />
+
 
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
