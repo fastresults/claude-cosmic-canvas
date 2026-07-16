@@ -1,18 +1,22 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RotateCcw, Save, Archive, Sparkles, Loader2 } from "lucide-react";
-import { getFormat } from "@/config/createFormats";
+import { getFormat, FORMAT_ALIAS_CHANNEL } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
 import { StreamCanvas } from "@/components/create/shared/StreamCanvas";
 import { DecisionDock } from "@/components/create/shared/DecisionDock";
 import { DraftTitleHeader } from "@/components/create/DraftTitleHeader";
+import { ChannelPicker } from "@/components/create/shared/ChannelPicker";
 import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill";
 import { useWorkspaceUrlContext } from "@/hooks/useWorkspaceUrlContext";
 import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
 import { useWorkspaceContext, readWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
+import { supabase } from "@/integrations/supabase/client";
+import { SOCIAL_CHANNELS, isSocialChannel } from "@/lib/create/channel-rules";
+import type { Channel } from "@/lib/workspaces/strategy";
 import {
   generateCreateDraft,
   getCreateDraft,
@@ -28,7 +32,10 @@ const search = z.object({
   autoStart: z.coerce.boolean().optional(),
   wsId: z.string().uuid().optional(),
   wsItemId: z.string().uuid().optional(),
+  channel: z.string().optional(),
+  channels: z.string().optional(), // comma-separated
 });
+
 
 export const Route = createFileRoute("/_authenticated/create/$formatId")({
   validateSearch: (raw) => search.parse(raw),
