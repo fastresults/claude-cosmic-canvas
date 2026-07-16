@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X, Mic } from "lucide-react";
+import { Search, X, Mic, Square } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
+import { useAudioLevel } from "@/hooks/useAudioLevel";
+import { hapticStart, hapticEnd, hapticCancel, hapticTap } from "@/lib/platform/haptics";
 import { NODE_COLOR, TYPE_LABEL } from "./three/palette";
 import type { GraphNode } from "./three/useBrainGraph";
 
