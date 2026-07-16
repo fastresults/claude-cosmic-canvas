@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { ingestEntry } from "@/lib/knowledge/knowledge.functions";
+import { useVoiceScopeOwner } from "@/lib/voice/voice-scope";
 
 type Props = {
   open: boolean;
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export function SpeakSheet({ open, onOpenChange, profileId, domainId }: Props) {
+export function SpeakSheet({ open, onOpenChange, profileId, domainId }: Props) {
+  useVoiceScopeOwner("speak-sheet", open);
   const qc = useQueryClient();
   const transcribeFn = useServerFn(aiTranscribe);
   const ingestFn = useServerFn(ingestEntry);
