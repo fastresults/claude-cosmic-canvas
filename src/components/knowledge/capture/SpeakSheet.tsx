@@ -15,7 +15,6 @@ type Props = {
 };
 
 export function SpeakSheet({ open, onOpenChange, profileId, domainId }: Props) {
-export function SpeakSheet({ open, onOpenChange, profileId, domainId }: Props) {
   useVoiceScopeOwner("speak-sheet", open);
   const qc = useQueryClient();
   const transcribeFn = useServerFn(aiTranscribe);
