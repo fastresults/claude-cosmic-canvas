@@ -133,7 +133,7 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
       {showIndicator && (
         <div className="mt-2 flex justify-start">
           <RecordingIndicator
-            status={status === "idle" ? "recording" : status}
+            status={status}
             elapsed={elapsed}
             level={level}
             errorMessage={error}
