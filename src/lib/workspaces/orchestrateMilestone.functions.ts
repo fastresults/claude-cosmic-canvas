@@ -154,6 +154,3 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
     };
   });
 
-// Silences unused-var warning while keeping the type near where it's read.
-void draftedNeedingScheduleType;
-type draftedNeedingScheduleType = never;
