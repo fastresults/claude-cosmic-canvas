@@ -1,72 +1,83 @@
-# One-click defaults swap
+# Channel-aware Social Posts
 
-## What exists today (and why the current answer is "no")
+## The problem
 
-There are already two related concepts, but neither does what you're asking for:
+Today `post-content` (Social Post) is one generic format described as "LinkedIn / X post." The prompt has no channel awareness — the same 220-word draft gets produced whether the user wants a tight X post (≤280 chars) or a LinkedIn narrative (900–1,400 chars). We already have rich per-channel rules in `src/lib/workspaces/channelSpecs.ts` (LinkedIn, X, Instagram, TikTok, Blog, Email, YouTube, Podcast, Press, Event, Community) — they're used by the workspace pipeline but never by `/create`.
 
-1. **Defaults strip** (the "DEFAULTS" chips in your screenshot) — three independent chips (Voice / Knowledge / Domain) rendered by `DefaultsStrip.tsx`. Each is a separate `is_default = true` row on its own table. There is no single control that swaps all three at once.
-2. **Presets** (`/settings/presets`) — reusable *content lenses*. A preset bundles **domains + audiences + brief_config + factor_weights + reference docs**, but it does **not** store a Voice or a Knowledge Profile. So today's "preset" ≠ "one-click voice + knowledge + domain".
+## What we're building
 
-So the feature you want is genuinely missing. And yes — since we already have Presets, we need a second, clearly-labeled concept for the three-defaults bundle.
+Keep **Social Post** as one tile in the /create hub. On the Social Post page, add a **required Channel selector** above the seed input. Users can pick **one channel** (default flow) or toggle **multiple channels** (one adapted post per channel, generated in one click). Generation routes through the existing `CHANNEL_SPECS` so length, hook, CTA, hashtags, links, and tone match the channel natively.
 
-## Naming (the "two forms of presets" question)
+## UX flow
 
-To avoid overloading the word "preset", I'd introduce:
+**Single channel (default):**
+1. Open Social Post → Channel chips row shows: LinkedIn · X · Instagram · TikTok · Threads · Facebook. First chip preselected from user's last-used channel (falls back to LinkedIn).
+2. Header subtitle updates live: "Social Post · LinkedIn" and length hint "~900–1,400 chars."
+3. Seed → Generate → single draft with channel-native structure. Draft title auto-prefixes with channel, e.g. "LinkedIn — Why remote-first is stalling."
 
-- **Profile** — a one-click bundle of the three global defaults: Voice + Knowledge + Domain. Answers "who am I being right now?"
-- **Preset** (existing, unchanged) — a content lens: domains + audiences + brief config + factor weights + reference docs. Answers "what angle am I writing from right now?"
+**Multi-channel (one seed, many posts):**
+1. User taps "Adapt for more" pill → chips become multi-select.
+2. Generate produces N sections (one per channel) in the same draft, each with a channel heading and its own body sized to that channel's spec. Rendered in `StreamCanvas` as separate cards with copy-per-channel buttons.
+3. Optional "Split into separate drafts" action on the Decision Dock creates one draft per channel from the multi-output result.
 
-Alternate labels if "Profile" collides with account/profile terminology: **Persona**, **Mode**, **Stack**, or **Setup**. My recommendation is **Profile** (or **Persona** if we want it to feel more voice-driven).
+**Workspace integration:**
+- When arriving from a workspace item that already has a `channel` field, that channel is preselected and locked to a single-channel run (workspace items own one channel each). A subtle "Set by workspace" note appears next to the picker.
+- Multi-channel mode is disabled inside a workspace flow to keep 1 item = 1 draft.
 
-## Plan
+**Defaults / memory:**
+- New `last_social_channel` on the profile (or a lightweight `user_prefs` row) remembers the last single-channel choice per user.
+- Distribution settings page (`settings.distribution.tsx`) already lists preferred channels — the picker respects that ordering and hides channels the user disabled.
 
-### 1. Data
+## Workflow matrix — where this plugs in
 
-New table `default_profiles`:
+| Entry point | Behavior |
+|---|---|
+| /create hub → Social Post tile | Channel picker required; single or multi-channel |
+| Home Orb / voice intent "post about X" | Picker shown with LinkedIn preselected; user can change before generating |
+| Workspace item (channel set) | Picker preselected + locked; single-channel only |
+| Workspace item (no channel) | Picker required; single-channel; selection written back to the item |
+| Regenerate on existing draft | Channel(s) preserved from the draft's brief_snapshot |
+| Presets/Profiles | If a preset carries a `default_channel`, it hydrates the picker; user can still override |
+| Distribution settings toggle off X | X hidden from the picker everywhere |
 
-- `id`, `user_id`, `name`, `description`, `emoji` or `icon`
-- `voice_id` → `voices.id` (nullable)
-- `knowledge_profile_id` → `knowledge_profiles.id` (nullable)
-- `domain_id` → `domains.id` (nullable)
-- `is_default boolean` (only one per user)
-- `is_favorite`, `use_count`, `last_used_at`, timestamps
+## Naming / tile copy
 
-Standard RLS + GRANTs to `authenticated`. Partial unique index on `(user_id) WHERE is_default`.
+- Tile stays "Social Post," description changes to "One seed, native to each channel."
+- Format-page subhead is dynamic: "Post for {Channel}" or "Post for {N} channels."
 
-### 2. Server functions (`src/lib/profiles/profiles.functions.ts`)
+## Technical details
 
-`listProfiles`, `createProfile`, `updateProfile`, `deleteProfile`, `setDefaultProfile`, `favoriteProfile`, and — the key one — **`applyProfile({ id })`**:
+**Format registry (`src/config/createFormats.ts`):**
+- Add optional `requiresChannel?: boolean` and `supportedChannels?: Channel[]` to `CreateFormat`.
+- Mark `post-content` with `requiresChannel: true`, `supportedChannels: ["linkedin","x","instagram","tiktok","threads","facebook"]`.
+- Add `threads` and `facebook` to `Channel` + `CHANNEL_SPECS` in `src/lib/workspaces/channelSpecs.ts` (Threads mirrors X with 500-char cap; Facebook mirrors LinkedIn with lighter tone).
 
-- Loads the profile
-- In one transaction, flips `is_default` on the referenced Voice, Knowledge Profile, and Domain rows (clearing the previous defaults for each slot)
-- Bumps `use_count` / `last_used_at`
-- Invalidates the `useUserDefaults` query on the client
+**Format page (`src/routes/_authenticated/create.$formatId.tsx`):**
+- New `<ChannelPicker>` component (mobile-first chip row + "Adapt for more" toggle).
+- Reads workspace item's channel via existing `useWorkspaceContext` and locks when present.
+- Persists selection in URL search param `channel=linkedin` (or `channels=linkedin,x`) so the state survives refresh and share-links.
+- Adds `channels: string[]` to `GenerateInput`; blocks Generate until at least one is chosen.
 
-### 3. UI
+**Generation (`src/lib/create/create.functions.ts` + `format-rules.ts`):**
+- `GenerateInput` accepts `channels: z.array(z.enum([...])).min(1).max(6)`.
+- New `channelAwareFormatRules(format, channels)` (in a new `src/lib/create/channel-rules.ts`) that:
+  - For 1 channel: embeds that channel's spec block from `channelSpecBlock([channel])` and instructs "Output ONLY the post body for {Channel}."
+  - For N channels: embeds all specs and instructs "Output one post per channel, each preceded by `## {ChannelLabel}` and separated by `---CHANNEL---`."
+- `splitSections` gets a new branch for `post-content` with multi-channel output: split on `---CHANNEL---`, use the `##` heading as `section.heading`.
+- `brief_snapshot` stores `{ channels: [...] }` so regenerate/rename flows keep context.
+- Title suggestion prompt is nudged with the primary channel so the auto-suggested name reads native (e.g. LinkedIn titles allow longer phrases; X titles stay punchy).
 
-**a. New chip in `DefaultsStrip.tsx`** — a leading "Profile" pill (before the three slot chips) showing the currently-applied profile name, e.g. `● Barack Obama Mode`. Clicking opens a popover listing the user's profiles; one click = `applyProfile` = all three slot chips update in place. A "Manage profiles" link at the bottom.
+**Draft rendering:**
+- `StreamCanvas` already renders sections with headings — multi-channel drafts naturally get one card per channel. Add per-section copy button in `src/components/create/shared/StreamCanvas.tsx` (nice-to-have; ships if trivial).
 
-**b. New settings page `/settings/profiles`** — mirrors `settings.presets.tsx`:
-- Grid of profiles with name + the three referenced slots shown as sub-chips
-- Star to favorite, check to set default, delete
-- "New profile" sheet with three dropdowns (Voice / Knowledge / Domain) sourced from existing hooks
-- "Save as profile" quick action seeded from whatever is currently active in `useUserDefaults`
+**Data:**
+- No new tables. Add nullable `last_social_channel text` column to `profiles` in a migration; write on every successful single-channel generate.
+- Extend `create_drafts.brief_snapshot` shape (JSON, no schema change) to include `channels`.
 
-**c. Sidebar/settings nav** — add "Profiles" entry next to "Presets".
+**Aliases:** existing `FORMAT_ID_ALIASES` (`linkedin-post`, `x-post`, `tweet`) all still resolve to `post-content`; when arriving via those aliases, preselect the matching channel and skip the picker step (jump straight to seed).
 
-### 4. Terminology guardrails
+## Out of scope for this pass
 
-- Keep **Presets** copy focused on content lenses ("lens", "angle", "reference material")
-- Keep **Profiles** copy focused on identity ("who you're being", "voice + knowledge + domain in one click")
-- Tooltip on each so users understand the difference at a glance
-
-## Technical notes
-
-- No changes to `voices`, `knowledge_profiles`, `domains` schemas — `applyProfile` just toggles their existing `is_default` columns.
-- `useUserDefaults` stays the single source of truth for downstream surfaces (create, milestones, gate). Nothing else needs to change.
-- `useActivePreset` (URL `?preset=`) is untouched; a matching `useActiveProfile` can follow the same pattern if we later want per-draft profile overrides.
-- Migration includes CREATE TABLE + GRANTs + RLS + policies in one file, per project rules.
-
-## Open question
-
-Do you want the label **Profile**, **Persona**, **Mode**, or something else? I'll default to **Profile** unless you say otherwise.
+- Auto-scheduling/publishing per channel (Distribution surface handles that separately).
+- Image sizing per channel (media formats are their own tiles).
+- Reels/Shorts video scripts — `youtube-script` and future tiktok-script tile cover those.

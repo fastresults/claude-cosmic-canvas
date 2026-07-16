@@ -1,18 +1,22 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, RotateCcw, Save, Archive, Sparkles, Loader2 } from "lucide-react";
-import { getFormat } from "@/config/createFormats";
+import { getFormat, FORMAT_ALIAS_CHANNEL } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
 import { StreamCanvas } from "@/components/create/shared/StreamCanvas";
 import { DecisionDock } from "@/components/create/shared/DecisionDock";
 import { DraftTitleHeader } from "@/components/create/DraftTitleHeader";
+import { ChannelPicker } from "@/components/create/shared/ChannelPicker";
 import { ActiveWorkspacePill } from "@/components/workspaces/ActiveWorkspacePill";
 import { useWorkspaceUrlContext } from "@/hooks/useWorkspaceUrlContext";
 import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
 import { useWorkspaceContext, readWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
+import { supabase } from "@/integrations/supabase/client";
+import { SOCIAL_CHANNELS, isSocialChannel } from "@/lib/create/channel-rules";
+import type { Channel } from "@/lib/workspaces/strategy";
 import {
   generateCreateDraft,
   getCreateDraft,
@@ -28,7 +32,10 @@ const search = z.object({
   autoStart: z.coerce.boolean().optional(),
   wsId: z.string().uuid().optional(),
   wsItemId: z.string().uuid().optional(),
+  channel: z.string().optional(),
+  channels: z.string().optional(), // comma-separated
 });
+
 
 export const Route = createFileRoute("/_authenticated/create/$formatId")({
   validateSearch: (raw) => search.parse(raw),
@@ -51,7 +58,7 @@ type Section = { heading: string | null; body: string };
 
 function FormatPage() {
   const { formatId } = Route.useParams();
-  const { draftId, seed: seedFromUrl, autoStart, wsId, wsItemId } = Route.useSearch();
+  const { draftId, seed: seedFromUrl, autoStart, wsId, wsItemId, channel: channelFromUrl, channels: channelsFromUrl } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const format = getFormat(formatId)!;
@@ -80,6 +87,89 @@ function FormatPage() {
   const [savingTitle, setSavingTitle] = useState(false);
   const [suggestingGate, setSuggestingGate] = useState(false);
 
+  // --- Channel state (only meaningful for post-content / requiresChannel formats) ---
+  const requiresChannel = !!format.requiresChannel;
+  const parseChannelList = (raw: string | undefined): Channel[] => {
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s): s is Channel => isSocialChannel(s));
+  };
+  const initialChannels = useMemo<Channel[]>(() => {
+    if (!requiresChannel) return [];
+    const fromMulti = parseChannelList(channelsFromUrl);
+    if (fromMulti.length > 0) return fromMulti;
+    if (channelFromUrl && isSocialChannel(channelFromUrl)) return [channelFromUrl];
+    const aliasCh = FORMAT_ALIAS_CHANNEL[formatId];
+    if (aliasCh && isSocialChannel(aliasCh)) return [aliasCh];
+    return [];
+  }, [requiresChannel, channelFromUrl, channelsFromUrl, formatId]);
+
+  const [channels, setChannels] = useState<Channel[]>(initialChannels);
+  const [multiChannel, setMultiChannel] = useState<boolean>(
+    parseChannelList(channelsFromUrl).length > 1,
+  );
+  const [lockedByWorkspace, setLockedByWorkspace] = useState(false);
+
+  // Hydrate default channel: workspace item first, then user profile's last-used, else LinkedIn.
+  useEffect(() => {
+    if (!requiresChannel) return;
+    if (channels.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      // 1) workspace item channels lock
+      if (wsItemId) {
+        const { data: item } = await supabase
+          .from("workspace_items")
+          .select("channels")
+          .eq("id", wsItemId)
+          .maybeSingle();
+        const socialFromItem = (item?.channels ?? []).filter((c): c is Channel => isSocialChannel(c));
+        if (socialFromItem.length > 0 && !cancelled) {
+          setChannels([socialFromItem[0]]);
+          setLockedByWorkspace(true);
+          setMultiChannel(false);
+          return;
+        }
+      }
+      // 2) user profile last-used
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("last_social_channel")
+        .maybeSingle();
+      const last = prof?.last_social_channel;
+      if (!cancelled) {
+        if (last && isSocialChannel(last)) setChannels([last]);
+        else setChannels(["linkedin"]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [requiresChannel, wsItemId, channels.length]);
+
+  // Sync channel state to URL for shareability / refresh persistence.
+  useEffect(() => {
+    if (!requiresChannel) return;
+    const params: Record<string, string | undefined> = {};
+    if (multiChannel && channels.length > 1) {
+      params.channels = channels.join(",");
+      params.channel = undefined;
+    } else if (channels.length === 1) {
+      params.channel = channels[0];
+      params.channels = undefined;
+    }
+    void navigate({
+      to: "/create/$formatId",
+      params: { formatId },
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...params }),
+      replace: true,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channels, multiChannel, requiresChannel]);
+
+
 
   // Hydrate existing draft if resuming.
   useEffect(() => {
@@ -96,6 +186,10 @@ function FormatPage() {
 
   async function runGenerate(providedTitle?: string) {
     if (!seed.trim()) return;
+    if (requiresChannel && channels.length === 0) {
+      setError("Pick at least one channel to continue.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -108,9 +202,11 @@ function FormatPage() {
           draftId: currentDraftId ?? undefined,
           workspaceId: ctx.workspace_id ?? wsId ?? null,
           workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+          channels: requiresChannel ? channels : undefined,
           title: providedTitle,
         },
       });
+
       if ("fallback" in res && res.fallback) {
         setError(res.message);
       } else if (res.pendingTitle) {
@@ -180,8 +276,33 @@ function FormatPage() {
 
       <header>
         <h1 className="font-display text-2xl text-foreground">{format.label}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{format.description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {requiresChannel && channels.length > 0
+            ? channels.length === 1
+              ? `Post for ${channels[0][0].toUpperCase() + channels[0].slice(1)}`
+              : `Post for ${channels.length} channels`
+            : format.description}
+        </p>
       </header>
+
+      {requiresChannel && (
+        <ChannelPicker
+          value={channels}
+          onChange={(next) => {
+            setChannels(next);
+            if (next.length <= 1 && multiChannel) setMultiChannel(false);
+          }}
+          multi={multiChannel}
+          onToggleMulti={() => {
+            const next = !multiChannel;
+            setMultiChannel(next);
+            if (!next && channels.length > 1) setChannels([channels[0]]);
+          }}
+          locked={lockedByWorkspace}
+          lockedReason={lockedByWorkspace ? "Set by workspace" : undefined}
+          available={SOCIAL_CHANNELS}
+        />
+      )}
 
       <SeedInput
         value={seed}
@@ -194,6 +315,7 @@ function FormatPage() {
             : `What should this ${format.label.toLowerCase()} be about?`
         }
       />
+
 
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">

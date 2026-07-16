@@ -12,6 +12,8 @@ export const CHANNELS = [
   "community",
   "instagram",
   "tiktok",
+  "threads",
+  "facebook",
 ] as const;
 export type Channel = (typeof CHANNELS)[number];
 
@@ -27,7 +29,10 @@ export const CHANNEL_LABELS: Record<Channel, string> = {
   community: "Community",
   instagram: "Instagram",
   tiktok: "TikTok",
+  threads: "Threads",
+  facebook: "Facebook",
 };
+
 
 export type ChannelRole = "anchor" | "amplifier" | "proof" | "community";
 

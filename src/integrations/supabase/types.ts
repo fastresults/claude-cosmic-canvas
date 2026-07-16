@@ -1135,6 +1135,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          last_social_channel: string | null
           onboarded_at: string | null
           persona_active_id: string | null
           streak_count: number
@@ -1146,6 +1147,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          last_social_channel?: string | null
           onboarded_at?: string | null
           persona_active_id?: string | null
           streak_count?: number
@@ -1157,6 +1159,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          last_social_channel?: string | null
           onboarded_at?: string | null
           persona_active_id?: string | null
           streak_count?: number
