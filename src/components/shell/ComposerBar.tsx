@@ -47,6 +47,7 @@ type ComposerBarProps = {
 };
 
 export function ComposerBar({ onGenerate, busy: externalBusy = false }: ComposerBarProps) {
+  const hasScopedMic = useHasScopedMic();
   const [value, setValue] = useState("");
   const [listening, setListening] = useState(false);
   const [requestingMic, setRequestingMic] = useState(false);
