@@ -24,7 +24,10 @@ export type CreateFormat = {
   defaultLength: number; // words
   mediaKinds: CreateMediaKind[];
   mobileFlow: MobileFlow;
+  requiresChannel?: boolean;
+  supportedChannels?: string[];
 };
+
 
 /** Ordered by category, then label. */
 export const CREATE_FORMATS: CreateFormat[] = [
@@ -64,7 +67,7 @@ export const CREATE_FORMATS: CreateFormat[] = [
   { id: "conflict-resolution", label: "Conflict Reply", description: "Hard reply, kept human.", category: "short-form", defaultLength: 250, mediaKinds: [], mobileFlow: "voice-first" },
   { id: "youtube-script", label: "YouTube Script", description: "Hook + arc + CTA.", category: "short-form", defaultLength: 800, mediaKinds: ["cover"], mobileFlow: "seed-first" },
   { id: "article-from-notes", label: "Article from Notes", description: "Notes → publishable article.", category: "short-form", defaultLength: 900, mediaKinds: [], mobileFlow: "seed-first" },
-  { id: "post-content", label: "Social Post", description: "LinkedIn / X post.", category: "short-form", defaultLength: 220, mediaKinds: ["image"], mobileFlow: "voice-first" },
+  { id: "post-content", label: "Social Post", description: "One seed, native to each channel.", category: "short-form", defaultLength: 220, mediaKinds: ["image"], mobileFlow: "voice-first", requiresChannel: true, supportedChannels: ["linkedin","x","instagram","tiktok","threads","facebook"] },
 
   // Campaign / research
   { id: "campaign-builder", label: "Campaign Builder", description: "Multi-asset campaign brief.", category: "campaign", defaultLength: 1500, mediaKinds: ["cover"], mobileFlow: "wizard" },
@@ -99,6 +102,14 @@ const FORMAT_ID_ALIASES: Record<string, string> = {
   "x-post": "post-content",
   post: "post-content",
 };
+
+/** Some aliases imply a preferred channel; used to preselect the picker. */
+export const FORMAT_ALIAS_CHANNEL: Record<string, string> = {
+  tweet: "x",
+  "x-post": "x",
+  "linkedin-post": "linkedin",
+};
+
 
 export function normalizeCreateFormatId(id: string): string {
   return FORMAT_ID_ALIASES[id] ?? id;
