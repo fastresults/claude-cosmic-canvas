@@ -1,67 +1,147 @@
-## Problem
 
-Three mic buttons render on the same screen (`/create/post-content`) with no signal of priority:
+# Claude Fable 5 as scaffolded app orchestrator
 
-1. **ComposerBar mic** — always-on global bar pinned above the tab bar.
-2. **Textarea built-in mic** — `src/components/ui/textarea.tsx` renders its own dictation button whenever `voiceInput` is not explicitly disabled (default is `true`).
-3. **SeedInput's HoldToSpeakButton** — the intended primary mic for the create flow.
+## Goal
 
-All three do the same job. Users can't tell which one to press, and pressing the wrong one drops audio into the wrong target (composer vs. seed vs. textarea).
+Promote the existing `src/lib/orchestrator/` from a single-shot Anthropic call into a **tool-using agent** powered by `claude-fable-5` through the Lovable AI Gateway. The agent becomes the brain behind every AI-heavy surface (Create, Milestones, Brain, Knowledge) and a new global **Eve Copilot** attached to the ComposerBar — one loop, many tools, one voice-gated identity.
 
-## Rule (global)
+## Why this fits what's already built
 
-> On any given screen, exactly one mic is the primary voice target — the one bound to the input the user is about to fill. Every other mic on that screen is hidden.
+- `src/lib/orchestrator/config.ts` already pins `ORCHESTRATOR_MODEL = "claude-fable-5"`.
+- `orchestrate.functions.ts` already resolves the active voice, loads directives, composes a style block, and blocks generation when no voice exists (`needsVoice: true`). That gate stays — it becomes the agent's system-prompt preamble.
+- `MILESTONE_ACTOR_SYSTEM` (Eve persona) and `resolveMilestoneContext` (voice + knowledge + domain + audience) are exactly the context the orchestrator should inject on every call.
+- The app already has server functions for Create drafting, channel rules, image generation, drafts, brain search, knowledge ingest, workspaces/milestones — perfect tool candidates.
 
-Priority, highest first:
-1. A mic attached to the currently-focused text input (e.g. SeedInput's HoldToSpeakButton while its textarea is focused/visible).
-2. A mic explicitly declared as the screen's "voice target" via a scope provider.
-3. The ComposerBar's global mic — fallback only when no scoped mic exists on screen.
+## Architecture
 
-Textarea's built-in mic is demoted: never renders when its surrounding form declares its own voice target.
+```text
+                ┌───────────────────────────────┐
+   Client UI ─▶ │  /api/orchestrator/chat       │  (TanStack server route, streaming)
+   (Eve         │  streamText + tools + Fable 5 │
+    Copilot,    └──────────────┬────────────────┘
+    Create,                    │
+    Milestone,                 ▼
+    Brain)          ┌──────────────────────┐
+                    │  Orchestrator Core   │
+                    │  - Actor system      │
+                    │  - Voice gate        │
+                    │  - Context resolver  │
+                    │  - Tool registry     │
+                    └──────────┬───────────┘
+                               │ tool calls
+              ┌────────────────┼────────────────────┐
+              ▼                ▼                    ▼
+        Create tools     Brain tools         Knowledge/Workspace tools
+        (draft, channel  (search, expand,    (ingest, milestone.plan,
+         adapt, image)    provenance)         milestone.draft_item)
+```
 
-## Design
+Every tool is a thin wrapper over an **existing** server function — no business logic moves into the orchestrator.
 
-**New: `VoiceScope` context** (`src/lib/voice/voice-scope.tsx`)
-- `VoiceScopeProvider` at the app shell wraps everything and exposes `{ activeOwners: Set<string>, register(id), unregister(id) }`.
-- `useVoiceScopeOwner(id)` — hook a mic surface calls on mount to register itself; unregisters on unmount.
-- `useHasScopedMic()` — returns `true` when any scoped owner is registered. ComposerBar reads this.
+## Steps
 
-**ComposerBar** (`src/components/shell/ComposerBar.tsx`)
-- If `useHasScopedMic()` is true, hide the mic button entirely and shift the composer into text-only mode (the send/submit affordance stays; the seed line remains for quick typed prompts). No layout jump — the mic slot collapses.
+### 1. Provider + runtime swap (foundation)
+- Add `src/lib/orchestrator/gateway.server.ts` reusing the pattern already in `src/lib/ai/gateway.server.ts` (`createLovableAiGatewayProvider`) so the orchestrator goes through Lovable AI Gateway instead of `api.anthropic.com`.
+- Replace `callAnthropic` internals in `anthropic.server.ts` with AI SDK `streamText` / `generateText` bound to `gateway("anthropic/claude-fable-5")` (verify exact gateway id; fall back to configured model string).
+- Keep `ORCHESTRATOR_MODEL` and `MAX_TOKENS` in `config.ts` as single source of truth; add `REASONING_EFFORT` and `TOOL_STEP_LIMIT = stepCountIs(50)`.
+- Retire `ANTHROPIC_API_KEY` dependency (LOVABLE_API_KEY only).
 
-**SeedInput** (`src/components/create/shared/SeedInput.tsx`)
-- Call `useVoiceScopeOwner("seed-input")` so ComposerBar hides its mic while the create screen is mounted.
-- Pass `voiceInput={false}` to the internal `<Textarea>` to kill the redundant textarea mic.
+### 2. Actor + context composition
+- New `src/lib/orchestrator/system.server.ts` that composes, in order:
+  1. `MILESTONE_ACTOR_SYSTEM` (Eve persona).
+  2. Voice style block from `formatStyleContext(voice, directives)` (existing).
+  3. `contextBlock(ctx)` from `resolveMilestoneContext` (user, domain, audience, knowledge snippets).
+  4. Surface-specific instructions (Create vs Milestone vs Copilot) passed by the caller.
+- The voice gate stays: if no voice → return `{ needsVoice: true }` before any model call.
 
-**Textarea primitive** (`src/components/ui/textarea.tsx`)
-- Keep the `voiceInput` prop for backward compatibility, but flip the default to **`false`**. Voice input is now opt-in per usage, not opt-out. This kills the ghost third mic across every screen (SeedInput, DefaultProfiles sheet, capture sheets, etc.) without needing to touch each call site.
-- Audit for any explicit `voiceInput={true}` — currently none in the codebase; nothing regresses.
+### 3. Tool registry
+Create `src/lib/orchestrator/tools/` — one file per tool, each exporting an AI SDK `tool({ description, inputSchema, execute })` that calls an existing server function. Initial set:
 
-**BrainSearch** (`src/components/brain/BrainSearch.tsx`)
-- Also register `useVoiceScopeOwner("brain-search")` while the search bar is open, so ComposerBar's mic hides while a scoped mic is present in the overlay.
+| Tool | Wraps | Purpose |
+|---|---|---|
+| `create.draft_for_format` | `create.functions.ts` | Draft content for one format |
+| `create.adapt_for_channel` | `channel-rules.ts` + drafts fn | Rewrite a draft per channel (X/LinkedIn/IG) |
+| `create.generate_image` | `aiImage` in `ai.functions.ts` | Cover/companion image |
+| `brain.search` | brain/knowledge search fn | Semantic recall over user's Brain |
+| `brain.expand_node` | brain edges fn | Traverse provenance |
+| `knowledge.ingest_url` | `knowledge.functions.ts` | Add a URL to the active knowledge profile |
+| `milestone.plan` | `workspaces/pipeline.functions.ts` | Phase/channel plan for a milestone |
+| `milestone.draft_item` | pipeline drafter | Draft one queue item |
+| `drafts.schedule` | `drafts.functions.ts` | Move a draft into the queue |
+| `nav.go` | client callback | Navigate the app (Copilot only) |
 
-**Knowledge SpeakSheet**
-- Register `useVoiceScopeOwner("speak-sheet")` while the sheet is open. When open, the sheet's mic is the only one on screen (sheet already covers the composer, but this makes the rule uniform).
+Rules:
+- Every tool that mutates or spends credits sets `needsApproval` where user-visible.
+- Tools receive `context.supabase` + `context.userId` from `requireSupabaseAuth`; no service-role.
+- Tool result shapes are compact JSON — never raw HTML/base64 back to the model.
 
-## Files touched
+### 4. Streaming route (Copilot backbone)
+- New `src/routes/api/orchestrator/chat.ts` (TanStack server route) using `streamText` + tool registry + `stopWhen: stepCountIs(50)`, gated by `requireSupabaseAuth`-equivalent bearer check.
+- Response via `toUIMessageStreamResponse({ originalMessages, onFinish })`.
+- `onFinish` persists messages to a new `orchestrator_threads` / `orchestrator_messages` table (see §6).
 
-- **New:** `src/lib/voice/voice-scope.tsx` (context + hooks, ~50 lines).
-- **Edited:**
-  - `src/components/shell/AppShell.tsx` — wrap children in `VoiceScopeProvider`.
-  - `src/components/shell/ComposerBar.tsx` — hide mic when scoped owner present.
-  - `src/components/ui/textarea.tsx` — default `voiceInput` to `false`.
-  - `src/components/create/shared/SeedInput.tsx` — register scope owner; pass `voiceInput={false}` (explicit for clarity).
-  - `src/components/brain/BrainSearch.tsx` — register scope owner while open.
-  - `src/components/knowledge/capture/SpeakSheet.tsx` — register scope owner while open.
+### 5. Non-streaming orchestrate (existing callers)
+- Keep `orchestrate` server fn API-compatible for current callers, but internally delegate to the same core (`generateText` variant, no tools by default, `surface: "generic"`).
+- Add `orchestrateWithTools` variant for Milestone pipeline steps that need tool use without streaming.
 
-## Not doing
+### 6. Global Eve Copilot surface
+- Wire ComposerBar (respecting the existing `useHasScopedMic()` rule) to open a copilot sheet that renders the streaming chat.
+- Client uses `useChat({ id: threadId, transport: DefaultChatTransport({ api: "/api/orchestrator/chat" }) })`.
+- Render `message.parts` including tool calls/results via existing `Markdown.tsx` and small tool-activity chips.
+- Threaded storage in DB (per chat-agent-ui-contract): tables `orchestrator_threads(id, user_id, title, updated_at)` and `orchestrator_messages(id uuid, thread_id, role, parts jsonb, created_at)` with RLS scoped to `auth.uid()` and required GRANTs.
+- New route `src/routes/_authenticated/copilot.$threadId.tsx` for shareable thread URLs; ComposerBar opens the most recent or creates one.
 
-- Not removing ComposerBar's mic outright — it's still the fallback on screens like the home/thread view where no scoped mic exists.
-- Not refactoring `useVoiceDictation` or the shared `HoldToSpeakButton` — those already work; this plan is purely about which mic is visible.
-- Not adding UI to explain the rule; the correct behavior is that the user only ever sees one mic, so no explanation is needed.
+### 7. Surface integrations (reuse the core)
+- **Create** (`create.$formatId.tsx`): the "Generate" action becomes `orchestrateWithTools({ surface: "create", formatId, channelId })`. The agent decides whether to call `create.draft_for_format`, `create.adapt_for_channel`, `create.generate_image`.
+- **Milestones**: `useMilestoneAutoDraft` calls `orchestrateWithTools({ surface: "milestone", milestoneId })` — Fable 5 plans phases, then loops `milestone.draft_item` per queue row.
+- **Brain**: `AskEveBar` posts to the streaming route with `surface: "brain"` — the agent uses `brain.search` + `brain.expand_node` before answering.
+- **Knowledge**: `SpeakSheet` / `PasteSheet` post transcripts to orchestrator with `surface: "knowledge"` and let the agent decide ingest path.
+
+### 8. Provenance & audit
+- Every tool call records a Brain provenance edge via existing `recordGeneration` (already used in `aiThink`/`aiImage`).
+- Every orchestrator run writes an `audit_log` row (`generation.orchestrated`) with `{ surface, thread_id, tool_calls: [...], voice_id }`.
+
+### 9. Safety rails
+- `TOOL_STEP_LIMIT = stepCountIs(50)`; per-tool timeouts inside `execute`.
+- Cost cap: short-circuit the loop when cumulative usage exceeds a per-thread budget (config).
+- No tool can escalate to `supabaseAdmin`; all data access flows through `context.supabase` under RLS.
+
+### 10. Rollout
+1. Ship §1 + §2 behind current `orchestrate` — no behavior change, just gateway swap. Validate with an existing Milestone run.
+2. Add §3 registry + §5 `orchestrateWithTools`, migrate Milestone pipeline first (highest leverage, already tool-shaped).
+3. Ship §4 + §6 Copilot as an opt-in surface on Home.
+4. Migrate Create and Brain surfaces (§7).
+5. Deprecate direct `callAnthropic` usage; delete `ANTHROPIC_API_KEY` from secrets.
+
+## Files created
+
+- `src/lib/orchestrator/gateway.server.ts`
+- `src/lib/orchestrator/system.server.ts`
+- `src/lib/orchestrator/tools/index.ts` + one file per tool listed in §3
+- `src/lib/orchestrator/orchestrateWithTools.functions.ts`
+- `src/routes/api/orchestrator/chat.ts`
+- `src/routes/_authenticated/copilot.$threadId.tsx`
+- `src/components/copilot/CopilotSheet.tsx`, `ToolActivityChip.tsx`
+- `supabase/migrations/<ts>_orchestrator_threads.sql` (tables + RLS + GRANTs)
+
+## Files edited
+
+- `src/lib/orchestrator/anthropic.server.ts` → gateway-backed
+- `src/lib/orchestrator/config.ts` → add step limit / reasoning effort
+- `src/lib/orchestrator/orchestrate.functions.ts` → delegate to shared core
+- `src/components/shell/ComposerBar.tsx` → open Copilot sheet
+- `src/hooks/useMilestoneAutoDraft.ts` → call `orchestrateWithTools`
+- `src/routes/_authenticated/create.$formatId.tsx` → route Generate through orchestrator
+- `src/components/brain/views/AskEveBar.tsx` → stream via `/api/orchestrator/chat`
+
+## Open questions to resolve during build
+
+- Exact gateway model id for Claude Fable 5 (`anthropic/claude-fable-5` vs a Lovable-mapped alias) — verify via a probe call before wiring surfaces.
+- Whether to persist tool-call parts or only text parts in `orchestrator_messages` (recommend: full `parts` JSON for replay fidelity).
 
 ## Verification
 
-- Playwright: load `/create/post-content` on mobile viewport → assert exactly one `<button aria-label*="speak"|"record">` in the visible viewport (the SeedInput mic). ComposerBar's mic button must not be in the DOM.
-- Navigate to `/` (home, no scoped mic) → assert ComposerBar's mic *is* rendered.
-- Open BrainSearch → assert ComposerBar mic hides while the search is open, reappears on close.
+- Milestone run end-to-end: plan → draft 3 items → all rows show `generation.orchestrated` audit + provenance edges.
+- Copilot: create thread, ask "draft a LinkedIn post about X", confirm tool calls (`create.draft_for_format` → `create.adapt_for_channel: linkedin`), reload thread URL restores messages.
+- Voice gate: with no voice, every surface returns `needsVoice: true` — no silent fallback.
+- `tsgo` + Playwright screenshot of Copilot sheet.
