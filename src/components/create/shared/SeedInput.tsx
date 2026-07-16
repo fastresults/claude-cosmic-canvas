@@ -1,5 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { HoldToSpeakButton } from "@/components/primitives/HoldToSpeakButton";
+import { RecordingIndicator } from "@/components/primitives/RecordingIndicator";
+import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Paperclip, Link as LinkIcon } from "lucide-react";
@@ -13,44 +15,91 @@ type Props = {
   busy?: boolean;
 };
 
+type RecStatus = "idle" | "recording" | "transcribing" | "error";
+
 /** Seed input: paste · URL · upload · voice. Native pickers on mobile. */
 export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or paste what you want…", busy }: Props) {
   const transcribe = useServerFn(aiTranscribe);
-  const [recording, setRecording] = useState(false);
+  const [status, setStatus] = useState<RecStatus>("idle");
+  const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const chunks = useRef<Blob[]>([]);
   const recorder = useRef<MediaRecorder | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const cancelledRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const level = useAudioLevel(status === "recording" ? stream : null);
+
+  function cleanup() {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    stream?.getTracks().forEach((t) => t.stop());
+    setStream(null);
+    recorder.current = null;
+  }
+
   async function start() {
+    setError(null);
+    cancelledRef.current = false;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(s);
+      const mr = new MediaRecorder(s);
       chunks.current = [];
       mr.ondataavailable = (e) => e.data.size > 0 && chunks.current.push(e.data);
       mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        const wasCancelled = cancelledRef.current;
+        cleanup();
+        if (wasCancelled) {
+          setStatus("idle");
+          return;
+        }
         const blob = new Blob(chunks.current, { type: "audio/webm" });
-        const buf = await blob.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        if (blob.size < 800) {
+          setStatus("idle");
+          return;
+        }
+        setStatus("transcribing");
         try {
+          const buf = await blob.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i += 0x8000)
+            bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+          const b64 = btoa(bin);
           const res = await transcribe({ data: { audioBase64: b64, mimeType: "audio/webm" } });
           if (res.text) onChange(value ? `${value} ${res.text}` : res.text);
-        } catch {
-          /* ignore */
+          setStatus("idle");
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Transcription failed");
+          setStatus("error");
         }
       };
       mr.start();
       recorder.current = mr;
-      setRecording(true);
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => setElapsed((s) => s + 1), 1000);
+      setStatus("recording");
     } catch {
-      /* mic denied — user can type */
+      setError("Microphone access denied");
+      setStatus("error");
     }
   }
 
   function stop() {
-    recorder.current?.stop();
-    recorder.current = null;
-    setRecording(false);
+    cancelledRef.current = false;
+    const r = recorder.current;
+    if (r && r.state !== "inactive") r.stop();
+  }
+
+  function cancel() {
+    cancelledRef.current = true;
+    const r = recorder.current;
+    if (r && r.state !== "inactive") r.stop();
   }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -70,6 +119,8 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
     onSubmit();
   }
 
+  const showIndicator = status === "recording" || status === "transcribing" || status === "error";
+
   return (
     <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-3">
       <Textarea
@@ -79,6 +130,22 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
         rows={4}
         className="resize-none border-0 bg-transparent p-0 text-sm text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
       />
+      {showIndicator && (
+        <div className="mt-2 flex justify-start">
+          <RecordingIndicator
+            status={status === "idle" ? "recording" : status}
+            elapsed={elapsed}
+            level={level}
+            errorMessage={error}
+            onCancel={cancel}
+            onRetry={() => {
+              setError(null);
+              setStatus("idle");
+              void start();
+            }}
+          />
+        </div>
+      )}
       <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <button
@@ -103,7 +170,13 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <HoldToSpeakButton onStart={start} onEnd={stop} active={recording} />
+          <HoldToSpeakButton
+            onStart={start}
+            onEnd={stop}
+            onCancel={cancel}
+            active={status === "recording"}
+            level={level}
+          />
           <button
             type="submit"
             disabled={!value.trim() || busy}
