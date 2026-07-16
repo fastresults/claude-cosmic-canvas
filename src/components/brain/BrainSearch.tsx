@@ -38,10 +38,15 @@ export function BrainSearch({ nodes, onPick }: Props) {
   const [recording, setRecording] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [micAvailable, setMicAvailable] = useState(true);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const cancelledRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
   const transcribeFn = useServerFn(aiTranscribe);
+  const level = useAudioLevel(recording ? stream : null);
 
   const results = useMemo(() => rank(nodes, q), [nodes, q]);
 
@@ -67,13 +72,22 @@ export function BrainSearch({ nodes, onPick }: Props) {
 
   async function startRec() {
     setStatus(null);
+    cancelledRef.current = false;
+    hapticStart();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(s);
+      const rec = new MediaRecorder(s, { mimeType: "audio/webm" });
       chunksRef.current = [];
       rec.ondataavailable = (e) => e.data.size && chunksRef.current.push(e.data);
       rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        s.getTracks().forEach((t) => t.stop());
+        setStream(null);
+        if (timerRef.current) {
+          window.clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        if (cancelledRef.current) return;
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         if (blob.size < 800) {
           setStatus("Try holding a bit longer");
@@ -99,6 +113,8 @@ export function BrainSearch({ nodes, onPick }: Props) {
       };
       rec.start();
       mediaRef.current = rec;
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => setElapsed((n) => n + 1), 1000);
       setRecording(true);
     } catch {
       setMicAvailable(false);
@@ -107,6 +123,16 @@ export function BrainSearch({ nodes, onPick }: Props) {
   }
 
   function stopRec() {
+    cancelledRef.current = false;
+    hapticEnd();
+    mediaRef.current?.stop();
+    mediaRef.current = null;
+    setRecording(false);
+  }
+
+  function cancelRec() {
+    cancelledRef.current = true;
+    hapticCancel();
     mediaRef.current?.stop();
     mediaRef.current = null;
     setRecording(false);
