@@ -33,6 +33,7 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
 import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_authenticated/settings.domains'
 import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
+import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './routes/_authenticated/settings.default-profiles'
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings.appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
@@ -171,6 +172,12 @@ const AuthenticatedSettingsDistributionRoute =
     path: '/distribution',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsDefaultProfilesRoute =
+  AuthenticatedSettingsDefaultProfilesRouteImport.update({
+    id: '/default-profiles',
+    path: '/default-profiles',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 const AuthenticatedSettingsContentOpsRoute =
   AuthenticatedSettingsContentOpsRouteImport.update({
     id: '/content-ops',
@@ -238,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
@@ -268,6 +276,7 @@ export interface FileRoutesByTo {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
@@ -303,6 +312,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
+  '/_authenticated/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/_authenticated/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/_authenticated/settings/domains': typeof AuthenticatedSettingsDomainsRoute
   '/_authenticated/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/content-ops'
+    | '/settings/default-profiles'
     | '/settings/distribution'
     | '/settings/domains'
     | '/settings/knowledge'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/content-ops'
+    | '/settings/default-profiles'
     | '/settings/distribution'
     | '/settings/domains'
     | '/settings/knowledge'
@@ -402,6 +414,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/content-ops'
+    | '/_authenticated/settings/default-profiles'
     | '/_authenticated/settings/distribution'
     | '/_authenticated/settings/domains'
     | '/_authenticated/settings/knowledge'
@@ -596,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsDistributionRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/settings/default-profiles': {
+      id: '/_authenticated/settings/default-profiles'
+      path: '/default-profiles'
+      fullPath: '/settings/default-profiles'
+      preLoaderRoute: typeof AuthenticatedSettingsDefaultProfilesRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
     '/_authenticated/settings/content-ops': {
       id: '/_authenticated/settings/content-ops'
       path: '/content-ops'
@@ -702,6 +722,7 @@ interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
   AuthenticatedSettingsContentOpsRoute: typeof AuthenticatedSettingsContentOpsRoute
+  AuthenticatedSettingsDefaultProfilesRoute: typeof AuthenticatedSettingsDefaultProfilesRoute
   AuthenticatedSettingsDistributionRoute: typeof AuthenticatedSettingsDistributionRoute
   AuthenticatedSettingsDomainsRoute: typeof AuthenticatedSettingsDomainsRoute
   AuthenticatedSettingsKnowledgeRoute: typeof AuthenticatedSettingsKnowledgeRoute
@@ -715,6 +736,8 @@ const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
   AuthenticatedSettingsAppearanceRoute: AuthenticatedSettingsAppearanceRoute,
   AuthenticatedSettingsContentOpsRoute: AuthenticatedSettingsContentOpsRoute,
+  AuthenticatedSettingsDefaultProfilesRoute:
+    AuthenticatedSettingsDefaultProfilesRoute,
   AuthenticatedSettingsDistributionRoute:
     AuthenticatedSettingsDistributionRoute,
   AuthenticatedSettingsDomainsRoute: AuthenticatedSettingsDomainsRoute,
