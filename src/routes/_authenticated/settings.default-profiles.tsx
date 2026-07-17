@@ -102,6 +102,7 @@ function DefaultProfilesPage() {
                   <SlotChip icon={Mic} id={p.voice_id} kind="voice" />
                   <SlotChip icon={BookOpen} id={p.knowledge_profile_id} kind="knowledge" />
                   <SlotChip icon={Compass} id={p.domain_id} kind="domain" />
+                  <SlotChip icon={Users} id={p.audience_id ?? null} kind="audience" />
                 </div>
               </div>
 
