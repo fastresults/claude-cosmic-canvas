@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Billboard, Html } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
+
 import { NODE_COLOR } from "./palette";
 import type { GraphNode } from "./useBrainGraph";
 
