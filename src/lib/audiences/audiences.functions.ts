@@ -207,25 +207,33 @@ Prefer concrete titles, industries, and pains over generic phrasing. No filler.`
       "Produce: a short name (3-6 words), a one-sentence description, and a structured ICP.",
     ].filter(Boolean).join("\n");
 
-    // Small, unconstrained schema (per AI SDK rule: no bounds/enums/lengths).
+    // Loose schema — model omissions must not throw post-hoc validation.
     const OutSchema = z.object({
-      name: z.string(),
-      description: z.string(),
+      name: z.string().nullish(),
+      description: z.string().nullish(),
       icp: z.object({
-        persona: z.string(),
-        role_titles: z.array(z.string()),
-        industries: z.array(z.string()),
-        company_size: z.string(),
-        seniority: z.string(),
-        goals: z.array(z.string()),
-        pains: z.array(z.string()),
-        channels: z.array(z.string()),
-        tone_preference: z.string(),
-        objections: z.array(z.string()),
-        success_metrics: z.array(z.string()),
-      }),
+        persona: z.string().nullish(),
+        role_titles: z.array(z.string()).nullish(),
+        industries: z.array(z.string()).nullish(),
+        company_size: z.string().nullish(),
+        seniority: z.string().nullish(),
+        goals: z.array(z.string()).nullish(),
+        pains: z.array(z.string()).nullish(),
+        channels: z.array(z.string()).nullish(),
+        tone_preference: z.string().nullish(),
+        objections: z.array(z.string()).nullish(),
+        success_metrics: z.array(z.string()).nullish(),
+      }).nullish(),
     });
 
+    const { NoObjectGeneratedError } = await import("ai");
+    const safeJsonParse = (text: string | undefined): Record<string, unknown> | null => {
+      if (!text) return null;
+      const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+      try { return JSON.parse(cleaned); } catch { return null; }
+    };
+
+    let raw: Record<string, unknown> = {};
     try {
       const { output } = await generateText({
         model: gateway("google/gemini-3-flash-preview"),
@@ -233,18 +241,46 @@ Prefer concrete titles, industries, and pains over generic phrasing. No filler.`
         prompt,
         output: Output.object({ schema: OutSchema }),
       });
-      return {
-        name: String(output.name || "").slice(0, 120),
-        description: String(output.description || "").slice(0, 800),
-        icp: IcpSchema.parse(output.icp),
-        source_domain_id: data.domain_id ?? null,
-        source_knowledge_profile_id: profileId,
-      };
+      raw = (output ?? {}) as Record<string, unknown>;
     } catch (err) {
-      console.error("[audiences] suggest failed", err);
-      throw new Error("Could not generate an audience right now. Please try again.");
+      if (NoObjectGeneratedError.isInstance(err)) {
+        raw = safeJsonParse((err as { text?: string }).text) ?? {};
+      } else {
+        console.error("[audiences] suggest failed", err);
+        throw new Error("Could not generate an audience right now. Please try again.");
+      }
     }
+
+    const rawIcp = (raw.icp ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v : "");
+    const arr = (v: unknown) =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+
+    const name = str(raw.name).trim() || `${domainName || "General"} audience`;
+    const description = str(raw.description).trim();
+    const icp = IcpSchema.parse({
+      persona: str(rawIcp.persona),
+      role_titles: arr(rawIcp.role_titles),
+      industries: arr(rawIcp.industries),
+      company_size: str(rawIcp.company_size),
+      seniority: str(rawIcp.seniority),
+      goals: arr(rawIcp.goals),
+      pains: arr(rawIcp.pains),
+      channels: arr(rawIcp.channels),
+      tone_preference: str(rawIcp.tone_preference),
+      objections: arr(rawIcp.objections),
+      success_metrics: arr(rawIcp.success_metrics),
+    });
+
+    return {
+      name: name.slice(0, 120),
+      description: description.slice(0, 800),
+      icp,
+      source_domain_id: data.domain_id ?? null,
+      source_knowledge_profile_id: profileId,
+    };
   });
+
 
 // One-click: generate + save + set default.
 export const generateDefaultAudience = createServerFn({ method: "POST" })
