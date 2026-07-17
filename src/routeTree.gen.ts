@@ -36,6 +36,7 @@ import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
 import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './routes/_authenticated/settings.default-profiles'
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
+import { Route as AuthenticatedSettingsAudiencesRouteImport } from './routes/_authenticated/settings.audiences'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings.appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
@@ -190,6 +191,12 @@ const AuthenticatedSettingsContentOpsRoute =
     path: '/content-ops',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsAudiencesRoute =
+  AuthenticatedSettingsAudiencesRouteImport.update({
+    id: '/audiences',
+    path: '/audiences',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 const AuthenticatedSettingsAppearanceRoute =
   AuthenticatedSettingsAppearanceRouteImport.update({
     id: '/appearance',
@@ -251,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -283,6 +291,7 @@ export interface FileRoutesByTo {
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -320,6 +329,7 @@ export interface FileRoutesById {
   '/_authenticated/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/_authenticated/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
   '/_authenticated/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/_authenticated/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
     | '/create/$formatId'
     | '/settings/account'
     | '/settings/appearance'
+    | '/settings/audiences'
     | '/settings/content-ops'
     | '/settings/default-profiles'
     | '/settings/distribution'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/create/$formatId'
     | '/settings/account'
     | '/settings/appearance'
+    | '/settings/audiences'
     | '/settings/content-ops'
     | '/settings/default-profiles'
     | '/settings/distribution'
@@ -425,6 +437,7 @@ export interface FileRouteTypes {
     | '/_authenticated/create/$formatId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
+    | '/_authenticated/settings/audiences'
     | '/_authenticated/settings/content-ops'
     | '/_authenticated/settings/default-profiles'
     | '/_authenticated/settings/distribution'
@@ -642,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsContentOpsRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/settings/audiences': {
+      id: '/_authenticated/settings/audiences'
+      path: '/audiences'
+      fullPath: '/settings/audiences'
+      preLoaderRoute: typeof AuthenticatedSettingsAudiencesRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
     '/_authenticated/settings/appearance': {
       id: '/_authenticated/settings/appearance'
       path: '/appearance'
@@ -740,6 +760,7 @@ const AuthenticatedSettingsVoiceRouteWithChildren =
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
+  AuthenticatedSettingsAudiencesRoute: typeof AuthenticatedSettingsAudiencesRoute
   AuthenticatedSettingsContentOpsRoute: typeof AuthenticatedSettingsContentOpsRoute
   AuthenticatedSettingsDefaultProfilesRoute: typeof AuthenticatedSettingsDefaultProfilesRoute
   AuthenticatedSettingsDistributionRoute: typeof AuthenticatedSettingsDistributionRoute
@@ -754,6 +775,7 @@ interface AuthenticatedSettingsRouteChildren {
 const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
   AuthenticatedSettingsAppearanceRoute: AuthenticatedSettingsAppearanceRoute,
+  AuthenticatedSettingsAudiencesRoute: AuthenticatedSettingsAudiencesRoute,
   AuthenticatedSettingsContentOpsRoute: AuthenticatedSettingsContentOpsRoute,
   AuthenticatedSettingsDefaultProfilesRoute:
     AuthenticatedSettingsDefaultProfilesRoute,

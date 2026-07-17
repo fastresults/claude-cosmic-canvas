@@ -4,28 +4,31 @@
 // The leading "Profile" chip opens a one-click switcher that swaps all
 // three defaults at once (see Settings → Profiles).
 import { Link } from "@tanstack/react-router";
-import { Mic, BookOpen, Compass, AlertCircle, Zap, Loader2 } from "lucide-react";
+import { Mic, BookOpen, Compass, AlertCircle, Zap, Loader2, Users } from "lucide-react";
 import { useState } from "react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const ICONS = {
+const ICONS: Record<DefaultSlot, typeof Mic> = {
   voice: Mic,
   knowledge: BookOpen,
   domain: Compass,
-} as const;
+  audience: Users,
+};
 
 const LABELS: Record<DefaultSlot, string> = {
   voice: "Voice",
   knowledge: "Knowledge",
   domain: "Domain",
+  audience: "Audience",
 };
 
 const TO: Record<DefaultSlot, string> = {
   voice: "/settings/voice",
   knowledge: "/settings/knowledge",
   domain: "/settings/domains",
+  audience: "/settings/audiences",
 };
 
 export function DefaultsStrip() {
@@ -43,6 +46,7 @@ export function DefaultsStrip() {
     { slot: "voice", value: d.voice?.name ?? null },
     { slot: "knowledge", value: d.knowledge?.name ?? null },
     { slot: "domain", value: d.domain?.name ?? null },
+    { slot: "audience", value: d.audience?.name ?? null },
   ];
 
   return (

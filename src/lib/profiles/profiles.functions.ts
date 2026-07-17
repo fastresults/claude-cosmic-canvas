@@ -11,6 +11,7 @@ const ProfileInputSchema = z.object({
   voice_id: z.string().uuid().nullable().optional(),
   knowledge_profile_id: z.string().uuid().nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
+  audience_id: z.string().uuid().nullable().optional(),
 });
 
 export const listDefaultProfiles = createServerFn({ method: "GET" })
@@ -19,7 +20,7 @@ export const listDefaultProfiles = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("default_profiles")
       .select(
-        "id, name, description, emoji, voice_id, knowledge_profile_id, domain_id, is_default, is_favorite, use_count, last_used_at, created_at, updated_at",
+        "id, name, description, emoji, voice_id, knowledge_profile_id, domain_id, audience_id, is_default, is_favorite, use_count, last_used_at, created_at, updated_at",
       )
       .order("is_favorite", { ascending: false })
       .order("updated_at", { ascending: false });
@@ -117,7 +118,7 @@ export const applyDefaultProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: profile, error: pErr } = await context.supabase
       .from("default_profiles")
-      .select("id, voice_id, knowledge_profile_id, domain_id")
+      .select("id, voice_id, knowledge_profile_id, domain_id, audience_id")
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -157,6 +158,20 @@ export const applyDefaultProfile = createServerFn({ method: "POST" })
         .update({ is_default: true })
         .eq("id", profile.domain_id);
     }
+
+    // 3b. Audience default
+    if (profile.audience_id) {
+      await context.supabase
+        .from("audiences")
+        .update({ is_default: false })
+        .eq("user_id", context.userId)
+        .eq("is_default", true);
+      await context.supabase
+        .from("audiences")
+        .update({ is_default: true })
+        .eq("id", profile.audience_id);
+    }
+
 
     // 4. Bump usage + mark as the active profile.
     await context.supabase

@@ -7,6 +7,8 @@ import { GROUNDING_SYSTEM } from "@/lib/knowledge/grounded-prompt";
 export type PresetInjection = {
   domains: string[];
   audiences: string[];
+  /** Rich audience block from renderAudienceBlock(). When set, takes precedence over `audiences`. */
+  audienceBlock?: string | null;
   voice: string | null;
   briefConfig: Record<string, unknown>;
   factorWeights: Record<string, number>;
@@ -15,12 +17,17 @@ export type PresetInjection = {
 };
 
 /**
- * Non-negotiable ordering: [DOMAIN] → [VOICE] → [KNOWLEDGE] → [PRESET] → [TASK]
+ * Non-negotiable ordering: [DOMAIN] → [AUDIENCE] → [VOICE] → [KNOWLEDGE] → [PRESET] → [TASK]
  */
 export function buildPresetPrompt(i: PresetInjection) {
   const parts: string[] = [];
 
   if (i.domains.length) parts.push(`[DOMAIN]\n${i.domains.join(", ")}`);
+  if (i.audienceBlock && i.audienceBlock.trim().length > 0) {
+    parts.push(`[AUDIENCE]\n${i.audienceBlock.trim()}`);
+  } else if (i.audiences.length) {
+    parts.push(`[AUDIENCE]\n${i.audiences.join(", ")}`);
+  }
   if (i.voice) parts.push(`[VOICE]\n${i.voice}`);
 
   if (i.hits.length) {
@@ -33,7 +40,7 @@ export function buildPresetPrompt(i: PresetInjection) {
   }
 
   const presetLines: string[] = [];
-  if (i.audiences.length) presetLines.push(`Audience: ${i.audiences.join(", ")}`);
+  // Audience already emitted above as its own block; do not duplicate here.
   for (const [k, v] of Object.entries(i.briefConfig)) {
     if (v === null || v === undefined || v === "") continue;
     presetLines.push(`${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);

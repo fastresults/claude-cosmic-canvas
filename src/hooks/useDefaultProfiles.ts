@@ -19,6 +19,7 @@ type CreateInput = {
   voice_id?: string | null;
   knowledge_profile_id?: string | null;
   domain_id?: string | null;
+  audience_id?: string | null;
 };
 type UpdateInput = Partial<CreateInput> & { id: string };
 
@@ -43,6 +44,7 @@ export function useDefaultProfiles() {
     qc.invalidateQueries({ queryKey: ["voice-active"] });
     qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] });
     qc.invalidateQueries({ queryKey: ["settings", "domains"] });
+    qc.invalidateQueries({ queryKey: ["audiences"] });
   };
 
   return {
