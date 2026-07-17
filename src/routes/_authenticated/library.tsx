@@ -449,79 +449,112 @@ function Library() {
       )}
 
       <div className="space-y-4">
-        {grouped.map(([group, items]) => (
-          <section key={group}>
-            <div className="sticky top-14 z-10 -mx-4 mb-1.5 flex items-center gap-2 bg-background/95 px-4 py-1 text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
-              {sort === "score" ? <Star className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-              <span>{group}</span>
-              <span className="text-border">·</span>
-              <span>{items.length}</span>
-            </div>
-            <div className="space-y-1.5">
-              {items.map((d) => {
-                const isSelected = selected.has(d.id);
-                const score = (d.score as { total?: number; voiceMatch?: number }) ?? {};
-                return (
-                  <motion.article
-                    key={d.id}
-                    layout
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
+        {grouped.map(([group, items]) => {
+          const collapsible = scope === "milestone" && sort !== "score";
+          const forceOpen =
+            !collapsible ||
+            (q?.trim().length ?? 0) > 0 ||
+            activeChips.length > 0;
+          const isOpen = forceOpen || !!expandedGroups[group];
+          const panelId = `library-group-${group.replace(/\s+/g, "-")}`;
+          return (
+            <section key={group}>
+              {collapsible ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedGroups((p) => ({ ...p, [group]: !isOpen }))
+                  }
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  className="sticky top-14 z-10 -mx-4 mb-1.5 flex w-[calc(100%+2rem)] items-center gap-2 bg-background/95 px-4 py-1.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur hover:text-foreground"
+                >
+                  <ChevronRight
                     className={cn(
-                      "cursor-pointer rounded-md border bg-card px-3 py-2 transition-colors",
-                      isSelected
-                        ? "border-accent bg-accent/5"
-                        : "border-border hover:border-accent/40",
+                      "h-3 w-3 transition-transform",
+                      isOpen && "rotate-90",
                     )}
-                    onClick={() => toggleExpand(d.id)}
-                  >
-                    <div className="flex items-start gap-2">
-                      {selectionMode && (
-                        <div className="pt-0.5">
-                          {isSelected ? (
-                            <CheckSquare className="h-3.5 w-3.5 text-accent" />
-                          ) : (
-                            <Square className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                          <span className={cn("h-1.5 w-1.5 rounded-full", statusDot(d.status))} />
-                          <span className="text-foreground/80">{d.format}</span>
-                          <span className="text-border">·</span>
-                          <span>{d.status}</span>
-                          <span className="text-border">·</span>
-                          <span>{relTime(d.created_at)}</span>
-                          {score.total ? (
-                            <>
-                              <span className="text-border">·</span>
-                              <span className="text-accent">{score.total}</span>
-                            </>
-                          ) : null}
-                        </div>
-                        {d.title ? (
-                          <>
-                            <p className="mt-0.5 truncate text-sm font-medium text-foreground">{d.title}</p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {d.body.replace(/\s+/g, " ").slice(0, 140)}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="mt-0.5 truncate text-sm text-foreground/90">
-                            {d.body.replace(/\s+/g, " ").slice(0, 140)}
-                          </p>
+                  />
+                  <span className="text-foreground/90">{group}</span>
+                  <span className="text-border">·</span>
+                  <span>{items.length}</span>
+                </button>
+              ) : (
+                <div className="sticky top-14 z-10 -mx-4 mb-1.5 flex items-center gap-2 bg-background/95 px-4 py-1 text-[10px] uppercase tracking-wider text-muted-foreground backdrop-blur">
+                  {sort === "score" ? <Star className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                  <span>{group}</span>
+                  <span className="text-border">·</span>
+                  <span>{items.length}</span>
+                </div>
+              )}
+              {isOpen && (
+                <div id={panelId} className="space-y-1.5">
+                  {items.map((d) => {
+                    const isSelected = selected.has(d.id);
+                    const score = (d.score as { total?: number; voiceMatch?: number }) ?? {};
+                    return (
+                      <motion.article
+                        key={d.id}
+                        layout
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          "cursor-pointer rounded-md border bg-card px-3 py-2 transition-colors",
+                          isSelected
+                            ? "border-accent bg-accent/5"
+                            : "border-border hover:border-accent/40",
                         )}
-
-                      </div>
-                    </div>
-                  </motion.article>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+                        onClick={() => toggleExpand(d.id)}
+                      >
+                        <div className="flex items-start gap-2">
+                          {selectionMode && (
+                            <div className="pt-0.5">
+                              {isSelected ? (
+                                <CheckSquare className="h-3.5 w-3.5 text-accent" />
+                              ) : (
+                                <Square className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                              <span className={cn("h-1.5 w-1.5 rounded-full", statusDot(d.status))} />
+                              <span className="text-foreground/80">{d.format}</span>
+                              <span className="text-border">·</span>
+                              <span>{d.status}</span>
+                              <span className="text-border">·</span>
+                              <span>{relTime(d.created_at)}</span>
+                              {score.total ? (
+                                <>
+                                  <span className="text-border">·</span>
+                                  <span className="text-accent">{score.total}</span>
+                                </>
+                              ) : null}
+                            </div>
+                            {d.title ? (
+                              <>
+                                <p className="mt-0.5 truncate text-sm font-medium text-foreground">{d.title}</p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="mt-0.5 truncate text-sm text-foreground/90">
+                                {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
+
 
       {/* Infinite-scroll sentinel */}
       <div ref={sentinelRef} className="h-8" />
