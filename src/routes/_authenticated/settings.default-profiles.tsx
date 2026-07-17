@@ -12,6 +12,7 @@ import {
   Mic,
   BookOpen,
   Compass,
+  Users,
   Zap,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -21,6 +22,7 @@ import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
 import { listVoiceProfiles } from "@/lib/voice/voice.functions";
 import { listProfiles as listKnowledgeProfiles } from "@/lib/knowledge/knowledge.functions";
 import { listDomains } from "@/lib/settings/settings.functions";
+import { listAudiences } from "@/lib/audiences/audiences.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/default-profiles")({
   component: DefaultProfilesPage,
