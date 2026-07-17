@@ -123,31 +123,30 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
       </mesh>
 
       {showLabel && (
-        <Billboard follow position={[0, -baseRadius - 0.4, 0]}>
-          <Html
-            center
-            distanceFactor={12}
-            zIndexRange={[100, 0]}
-            style={{ pointerEvents: "none", zIndex: isHover ? 50 : 2 }}
+        <Html
+          position={[0, -baseRadius - 0.4, 0]}
+          center
+          zIndexRange={[100, 0]}
+          style={{ pointerEvents: "none", zIndex: isHover ? 50 : 2 }}
+        >
+          <div
+            className="rounded-md font-medium tracking-wide text-white whitespace-nowrap transition-all duration-200 ease-out origin-center"
+            style={{
+              opacity,
+              textShadow: "0 1px 3px rgba(0,0,0,0.95)",
+              transform: isHover ? "scale(1.15)" : "scale(1)",
+              padding: "3px 8px",
+              fontSize: isYou ? "13px" : "11px",
+              background: "rgba(0,0,0,0.75)",
+              border: `1px solid ${color}66`,
+              boxShadow: isHover ? `0 4px 20px ${color}55` : `0 2px 8px ${color}22`,
+            }}
           >
-            <div
-              className="rounded-md font-medium tracking-wide text-white whitespace-nowrap backdrop-blur-md transition-all duration-200 ease-out origin-center"
-              style={{
-                opacity,
-                textShadow: "0 1px 3px rgba(0,0,0,0.95)",
-                transform: isHover ? "scale(1.3)" : "scale(1)",
-                padding: "3px 8px",
-                fontSize: isYou ? "12px" : "11px",
-                background: "rgba(0,0,0,0.7)",
-                border: `1px solid ${color}66`,
-                boxShadow: isHover ? `0 4px 20px ${color}55` : `0 2px 8px ${color}22`,
-              }}
-            >
-              {node.label}
-            </div>
-          </Html>
-        </Billboard>
+            {node.label}
+          </div>
+        </Html>
       )}
+
     </group>
   );
 }
