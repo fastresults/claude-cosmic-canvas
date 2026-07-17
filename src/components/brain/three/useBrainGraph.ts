@@ -133,7 +133,7 @@ export function useBrainGraph() {
             next.push({
               id,
               nodeType: type,
-              label: TYPE_PRETTY[type] ?? type,
+              label: "",
               importance: 1,
             });
           }
