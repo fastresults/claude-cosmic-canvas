@@ -18,6 +18,7 @@ import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
 import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
@@ -85,6 +86,11 @@ const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/brain': typeof AuthenticatedBrainRoute
   '/create': typeof AuthenticatedCreateRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/queue': typeof AuthenticatedQueueRoute
   '/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -268,6 +275,7 @@ export interface FileRoutesByTo {
   '/arcs': typeof AuthenticatedArcsRoute
   '/brain': typeof AuthenticatedBrainRoute
   '/library': typeof AuthenticatedLibraryRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/queue': typeof AuthenticatedQueueRoute
   '/': typeof AuthenticatedIndexRoute
@@ -302,6 +310,7 @@ export interface FileRoutesById {
   '/_authenticated/brain': typeof AuthenticatedBrainRoute
   '/_authenticated/create': typeof AuthenticatedCreateRouteWithChildren
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
+  '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/queue': typeof AuthenticatedQueueRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/brain'
     | '/create'
     | '/library'
+    | '/media'
     | '/onboarding'
     | '/queue'
     | '/settings'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/arcs'
     | '/brain'
     | '/library'
+    | '/media'
     | '/onboarding'
     | '/queue'
     | '/'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/_authenticated/brain'
     | '/_authenticated/create'
     | '/_authenticated/library'
+    | '/_authenticated/media'
     | '/_authenticated/onboarding'
     | '/_authenticated/queue'
     | '/_authenticated/settings'
@@ -502,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/media': {
+      id: '/_authenticated/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AuthenticatedMediaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/library': {
@@ -775,6 +794,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBrainRoute: typeof AuthenticatedBrainRoute
   AuthenticatedCreateRoute: typeof AuthenticatedCreateRouteWithChildren
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
+  AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedQueueRoute: typeof AuthenticatedQueueRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
@@ -789,6 +809,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBrainRoute: AuthenticatedBrainRoute,
   AuthenticatedCreateRoute: AuthenticatedCreateRouteWithChildren,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
+  AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedQueueRoute: AuthenticatedQueueRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
