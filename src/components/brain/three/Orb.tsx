@@ -155,7 +155,7 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
               boxShadow: isHover ? `0 4px 20px ${color}55` : `0 2px 8px ${color}22`,
             }}
           >
-            {node.label}
+            {displayLabel}
           </div>
         </Html>
       )}
