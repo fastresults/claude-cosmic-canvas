@@ -54,14 +54,19 @@ function AudiencesSettings() {
     name: string;
     description: string;
     icp: Icp;
+    is_duplicate_warning?: boolean;
+    duplicate_of?: string | null;
   } | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [rejectedNames, setRejectedNames] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const create = useMutation({
     mutationFn: (v: { name: string; description?: string; icp?: Icp }) => createFn({ data: v }),
     onSuccess: () => {
-      setName(""); setDescription(""); setSuggestion(null); setError(null); invalidate();
+      setName(""); setDescription(""); setSuggestion(null); setManualOpen(false);
+      setRejectedNames([]); setError(null); invalidate();
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not add audience"),
   });
@@ -78,12 +83,20 @@ function AudiencesSettings() {
     onSuccess: invalidate,
   });
   const suggest = useMutation({
-    mutationFn: () => suggestFn({ data: {} }),
+    mutationFn: (avoid: string[]) => suggestFn({ data: { avoid_names: avoid } }),
     onSuccess: (r) => {
-      setSuggestion({ name: r.name, description: r.description, icp: r.icp });
-      setName(r.name); setDescription(r.description);
+      setSuggestion({
+        name: r.name,
+        description: r.description,
+        icp: r.icp,
+        is_duplicate_warning: r.is_duplicate_warning,
+        duplicate_of: r.duplicate_of,
+      });
+      setName(r.name);
+      setDescription(r.description);
+      setError(null);
     },
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "AI suggestion failed"),
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : "AI draft failed"),
   });
   const generateAndSave = useMutation({
     mutationFn: () => generateFn(),
@@ -91,11 +104,27 @@ function AudiencesSettings() {
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not generate"),
   });
 
+  const draftNext = () => suggest.mutate(rejectedNames);
+  const regenerate = () => {
+    const next = suggestion ? [...rejectedNames, suggestion.name] : rejectedNames;
+    setRejectedNames(next);
+    suggest.mutate(next);
+  };
+  const discard = () => {
+    if (suggestion) setRejectedNames((r) => [...r, suggestion.name]);
+    setSuggestion(null);
+    setName("");
+    setDescription("");
+  };
+
   const submit = () => {
     const n = name.trim();
     if (!n) return;
     create.mutate({ name: n, description: description.trim() || undefined, icp: suggestion?.icp });
   };
+
+  const hasDraft = !!suggestion;
+  const showFields = hasDraft || manualOpen;
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-4">
@@ -105,65 +134,107 @@ function AudiencesSettings() {
       />
 
       <section className="mt-4 rounded-lg border border-border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <label className="text-sm font-medium text-foreground">Add an audience</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => suggest.mutate()}
-              disabled={suggest.isPending}
-              className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-accent hover:bg-accent/15 disabled:opacity-50"
-            >
-              {suggest.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Suggest with AI
-            </button>
-            <button
-              type="button"
-              onClick={() => generateAndSave.mutate()}
-              disabled={generateAndSave.isPending}
-              className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-50"
-            >
-              {generateAndSave.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Generate & save
-            </button>
-          </div>
-        </div>
-        <input
-          value={name}
-          onChange={(e) => { setName(e.target.value); setError(null); }}
-          maxLength={120}
-          placeholder="e.g. Series-A founders in DevTools"
-          className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          maxLength={800}
-          placeholder="One sentence describing who they are and what they care about."
-          className="mt-2 w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        {suggestion && (
-          <div className="mt-2 rounded-md border border-accent/30 bg-accent/5 p-3 text-xs text-muted-foreground">
-            <div className="mb-1 font-medium text-accent">AI-drafted ICP attached</div>
-            {suggestion.icp.persona && <div><span className="text-foreground">Persona:</span> {suggestion.icp.persona}</div>}
-            {(suggestion.icp.pains ?? []).length > 0 && (
-              <div><span className="text-foreground">Pains:</span> {suggestion.icp.pains!.slice(0, 3).join("; ")}</div>
-            )}
-          </div>
-        )}
-        <div className="mt-2 flex justify-end">
           <button
             type="button"
-            onClick={submit}
-            disabled={!name.trim() || create.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+            onClick={draftNext}
+            disabled={suggest.isPending}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
           >
-            <Plus className="h-4 w-4" /> Add audience
+            {suggest.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {hasDraft ? "Draft another" : "Draft next audience with AI"}
           </button>
         </div>
+
+        <p className="mb-3 text-xs text-muted-foreground">
+          Eve reviews your domain, knowledge, and existing audiences, then proposes the next-largest ICP that doesn't overlap with what you already have.
+        </p>
+
+        {suggestion?.is_duplicate_warning && (
+          <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-500">
+            This may overlap with <span className="font-medium">{suggestion.duplicate_of}</span>. Regenerate or edit before saving.
+          </div>
+        )}
+
+        {showFields && (
+          <>
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); setError(null); }}
+              maxLength={120}
+              placeholder="e.g. Series-A founders in DevTools"
+              className="w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              maxLength={800}
+              placeholder="One sentence describing who they are and what they care about."
+              className="mt-2 w-full rounded-md border border-input bg-surface-elev px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            {suggestion && (
+              <div className="mt-2 rounded-md border border-accent/30 bg-accent/5 p-3 text-xs text-muted-foreground">
+                <div className="mb-1 font-medium text-accent">AI-drafted ICP attached</div>
+                {suggestion.icp.persona && <div><span className="text-foreground">Persona:</span> {suggestion.icp.persona}</div>}
+                {(suggestion.icp.role_titles ?? []).length > 0 && (
+                  <div><span className="text-foreground">Roles:</span> {suggestion.icp.role_titles!.slice(0, 4).join(", ")}</div>
+                )}
+                {(suggestion.icp.industries ?? []).length > 0 && (
+                  <div><span className="text-foreground">Industries:</span> {suggestion.icp.industries!.slice(0, 4).join(", ")}</div>
+                )}
+                {(suggestion.icp.pains ?? []).length > 0 && (
+                  <div><span className="text-foreground">Pains:</span> {suggestion.icp.pains!.slice(0, 3).join("; ")}</div>
+                )}
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+              {hasDraft && (
+                <>
+                  <button
+                    type="button"
+                    onClick={discard}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-surface-elev"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={regenerate}
+                    disabled={suggest.isPending}
+                    className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-xs text-accent hover:bg-accent/15 disabled:opacity-50"
+                  >
+                    {suggest.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    Regenerate
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!name.trim() || create.isPending}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" /> Save audience
+              </button>
+            </div>
+          </>
+        )}
+
+        {!showFields && (
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Add manually instead
+          </button>
+        )}
+
         {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       </section>
+
 
       <section className="mt-6">
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
