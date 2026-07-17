@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { Billboard, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { NODE_COLOR } from "./palette";
@@ -39,24 +39,7 @@ function getHalo() {
   return sharedHalo;
 }
 
-// Shared registry to cap concurrent peek labels across all orbs.
-const MAX_PEEKS = 4;
-const activePeeks = new Map<string, number>(); // id -> visibleSince ts
-
-function tryAcquirePeek(id: string, now: number): boolean {
-  if (activePeeks.has(id)) return true;
-  if (activePeeks.size >= MAX_PEEKS) return false;
-  activePeeks.set(id, now);
-  return true;
-}
-function releasePeek(id: string) {
-  activePeeks.delete(id);
-}
-
-const PEEK_FADE_IN = 250;
-const PEEK_HOLD = 3000;
-const PEEK_FADE_OUT = 400;
-const PEEK_COOLDOWN = 2000;
+const YELLOW_TYPES = new Set(["you", "persona", "voice_sample", "directive"]);
 
 export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: Props) {
   const group = useRef<THREE.Group>(null);
@@ -72,27 +55,13 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
   const colorObj = useMemo(() => new THREE.Color(color), [color]);
   const opacity = dim ? 0.25 : 1;
 
-  const isCore = isYou || node.importance >= 4;
-
-  // Peek label state (non-core only)
-  const [peekOpacity, setPeekOpacity] = useState(0);
-  const peekPhase = useRef<"idle" | "visible" | "cooldown">("idle");
-  const peekStart = useRef(0);
-  const cooldownUntil = useRef(0);
-
-  const { camera } = useThree();
-  const worldPos = useMemo(() => new THREE.Vector3(), []);
-  const camForward = useMemo(() => new THREE.Vector3(), []);
-  const toOrb = useMemo(() => new THREE.Vector3(), []);
-  const ndc = useMemo(() => new THREE.Vector3(), []);
+  const isYellow = YELLOW_TYPES.has(node.nodeType);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    // gentle bob
     if (group.current) {
       group.current.position.y = position[1] + Math.sin(t * 0.6 + position[0]) * 0.08;
     }
-    // pulse the sun
     if (isYou && core.current) {
       const s = 1 + Math.sin(t * 1.5) * 0.04;
       core.current.scale.setScalar(s);
@@ -103,51 +72,9 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
       const s = baseRadius * 6 * target * pulse;
       halo.current.scale.lerp(new THREE.Vector3(s, s, 1), 0.15);
     }
-
-    // Peek label logic — non-core only
-    if (!isCore && group.current) {
-      const now = performance.now();
-      group.current.getWorldPosition(worldPos);
-      camera.getWorldDirection(camForward);
-      toOrb.subVectors(worldPos, camera.position).normalize();
-      const facing = toOrb.dot(camForward); // 1 = dead ahead
-
-      ndc.copy(worldPos).project(camera);
-      const centerDist = Math.hypot(ndc.x, ndc.y); // 0 = center of screen
-      const inCone = facing > 0.85 && centerDist < 0.4 && ndc.z < 1;
-
-      if (peekPhase.current === "idle") {
-        if (inCone && now > cooldownUntil.current && tryAcquirePeek(node.id, now)) {
-          peekPhase.current = "visible";
-          peekStart.current = now;
-        }
-      }
-      if (peekPhase.current === "visible") {
-        const elapsed = now - peekStart.current;
-        let op: number;
-        if (elapsed < PEEK_FADE_IN) op = elapsed / PEEK_FADE_IN;
-        else if (elapsed < PEEK_FADE_IN + PEEK_HOLD) op = 1;
-        else if (elapsed < PEEK_FADE_IN + PEEK_HOLD + PEEK_FADE_OUT)
-          op = 1 - (elapsed - PEEK_FADE_IN - PEEK_HOLD) / PEEK_FADE_OUT;
-        else {
-          op = 0;
-          peekPhase.current = "cooldown";
-          cooldownUntil.current = now + PEEK_COOLDOWN;
-          releasePeek(node.id);
-        }
-        if (Math.abs(op - peekOpacity) > 0.02 || (op === 0 && peekOpacity !== 0)) {
-          setPeekOpacity(op);
-        }
-      }
-      if (peekPhase.current === "cooldown" && now > cooldownUntil.current) {
-        peekPhase.current = "idle";
-      }
-    }
   });
 
-  const showCoreLabel = isCore;
-  const showPeekLabel = !isCore && (peekOpacity > 0.01 || hoverRef.current || focused);
-  const peekVisualOpacity = hoverRef.current || focused ? 1 : peekOpacity;
+  const showLabel = isYellow || isHover || focused;
 
   return (
     <group ref={group} position={position}>
@@ -188,15 +115,14 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
         <meshBasicMaterial color={colorObj} transparent opacity={opacity} />
       </mesh>
 
-      {/* Specular highlight (small offset white sphere) */}
+      {/* Specular highlight */}
       <mesh position={[-baseRadius * 0.3, baseRadius * 0.3, baseRadius * 0.6]}>
         <sphereGeometry args={[baseRadius * 0.35, 16, 16]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={opacity * 0.55} depthWrite={false} />
       </mesh>
 
-      {/* Core (persistent) label */}
-      {showCoreLabel && (
-        <Billboard follow position={[0, -baseRadius - 0.45, 0]}>
+      {showLabel && (
+        <Billboard follow position={[0, -baseRadius - 0.4, 0]}>
           <Html
             center
             distanceFactor={12}
@@ -208,39 +134,12 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
               style={{
                 opacity,
                 textShadow: "0 1px 3px rgba(0,0,0,0.95)",
-                transform: isHover ? "scale(1.35)" : "scale(1)",
-                padding: "3px 9px",
-                fontSize: isYou ? "13px" : "12px",
+                transform: isHover ? "scale(1.3)" : "scale(1)",
+                padding: "3px 8px",
+                fontSize: isYou ? "12px" : "11px",
                 background: "rgba(0,0,0,0.7)",
                 border: `1px solid ${color}66`,
-                boxShadow: isHover ? `0 4px 20px ${color}55` : `0 2px 10px ${color}22`,
-              }}
-            >
-              {node.label}
-            </div>
-          </Html>
-        </Billboard>
-      )}
-
-      {/* Peek (transient) label for non-core orbs */}
-      {showPeekLabel && (
-        <Billboard follow position={[0, -baseRadius - 0.3, 0]}>
-          <Html
-            center
-            distanceFactor={12}
-            zIndexRange={[100, 0]}
-            style={{ pointerEvents: "none", zIndex: isHover ? 50 : 1 }}
-          >
-            <div
-              className="rounded-md text-white whitespace-nowrap origin-center"
-              style={{
-                opacity: opacity * peekVisualOpacity,
-                textShadow: "0 1px 2px rgba(0,0,0,0.95)",
-                transform: isHover ? "scale(2.2)" : "scale(1)",
-                padding: isHover ? "3px 8px" : "2px 6px",
-                fontSize: isHover ? "11px" : "9.5px",
-                background: "rgba(0,0,0,0.65)",
-                transition: "transform 200ms ease-out, padding 200ms ease-out",
+                boxShadow: isHover ? `0 4px 20px ${color}55` : `0 2px 8px ${color}22`,
               }}
             >
               {node.label}
