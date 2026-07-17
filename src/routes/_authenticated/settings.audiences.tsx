@@ -236,9 +236,9 @@ function AudiencesSettings() {
           <button
             type="button"
             onClick={() => setManualOpen(true)}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-surface-elev hover:text-foreground"
           >
-            Add manually instead
+            <Plus className="h-3 w-3" /> Add manually instead
           </button>
         )}
 
