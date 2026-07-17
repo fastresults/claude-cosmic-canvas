@@ -51,6 +51,13 @@ export async function runGenerateCreateDraft(
     return { fallback: true, message: `Unknown format: ${data.formatId}`, draftId: null };
   }
 
+  // Company Research uses a specialized Firecrawl + Perplexity + AI pipeline
+  // instead of the generic single-prompt draft generator.
+  if (format.id === "company-research") {
+    return runCompanyResearchAsDraft(data, ctx);
+  }
+
+
   const { formatRules } = await import("./format-rules");
   const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
   const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
