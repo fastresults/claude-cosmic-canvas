@@ -30,7 +30,7 @@ export function ImageAssociationSheet({
   draftId: string;
   role?: Role;
 }) {
-  const [tab, setTab] = useState<"generate" | "upload" | "library">("generate");
+  const [tab, setTab] = useState<"generate" | "upload" | "library" | "media">("generate");
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => onOpenChange(false)}>
