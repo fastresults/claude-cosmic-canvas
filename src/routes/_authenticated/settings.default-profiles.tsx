@@ -193,6 +193,7 @@ function CreateProfileSheet({
   const listVoicesFn = useServerFn(listVoiceProfiles);
   const listKnowledgeFn = useServerFn(listKnowledgeProfiles);
   const listDomainsFn = useServerFn(listDomains);
+  const listAudiencesFn = useServerFn(listAudiences);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voice-profiles-list"],
@@ -206,6 +207,10 @@ function CreateProfileSheet({
     queryKey: ["settings", "domains"],
     queryFn: () => listDomainsFn(),
   });
+  const { data: audiences = [] } = useQuery({
+    queryKey: ["audiences"],
+    queryFn: () => listAudiencesFn(),
+  });
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -213,6 +218,7 @@ function CreateProfileSheet({
   const [voiceId, setVoiceId] = useState<string>("");
   const [knowledgeId, setKnowledgeId] = useState<string>("");
   const [domainId, setDomainId] = useState<string>("");
+  const [audienceId, setAudienceId] = useState<string>("");
 
   function reset() {
     setName("");
@@ -221,11 +227,16 @@ function CreateProfileSheet({
     setVoiceId("");
     setKnowledgeId("");
     setDomainId("");
+    setAudienceId("");
   }
 
   const voiceList = useMemo(
     () => (voices as { id: string; name: string }[]) ?? [],
     [voices],
+  );
+  const audienceList = useMemo(
+    () => (audiences as { id: string; name: string }[]) ?? [],
+    [audiences],
   );
 
   async function save() {
@@ -237,6 +248,7 @@ function CreateProfileSheet({
       voice_id: voiceId || null,
       knowledge_profile_id: knowledgeId || null,
       domain_id: domainId || null,
+      audience_id: audienceId || null,
     });
     reset();
     onOpenChange(false);
