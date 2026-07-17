@@ -127,10 +127,26 @@ export async function loadOrchestratorContext(
     context = await resolveMilestoneContext(supabase, userId, opts.intent ?? "");
   }
 
+  // Always load the active audience so every surface can inject the ICP.
+  const { data: audienceRow } = await supabase
+    .from("audiences")
+    .select("name, description, icp")
+    .eq("user_id", userId)
+    .eq("is_default", true)
+    .maybeSingle();
+  const audience: AudienceForPrompt | null = audienceRow
+    ? {
+        name: (audienceRow as { name?: string | null }).name ?? null,
+        description: (audienceRow as { description?: string | null }).description ?? null,
+        icp: ((audienceRow as { icp?: unknown }).icp ?? null) as AudienceForPrompt["icp"],
+      }
+    : null;
+
   return {
     needsVoice: false as const,
     voice,
     directives: directives ?? [],
     context,
+    audience,
   };
 }
