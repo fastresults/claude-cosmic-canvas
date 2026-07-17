@@ -19,6 +19,7 @@ type CreateInput = {
   voice_id?: string | null;
   knowledge_profile_id?: string | null;
   domain_id?: string | null;
+  audience_id?: string | null;
 };
 type UpdateInput = Partial<CreateInput> & { id: string };
 
