@@ -35,6 +35,14 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { DraftDetailSheet } from "@/components/drafts/DraftDetailSheet";
 
 export const Route = createFileRoute("/_authenticated/library")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    scope:
+      search.scope === "milestone" || search.scope === "general"
+        ? (search.scope as "milestone" | "general")
+        : ("general" as const),
+    workspaceId:
+      typeof search.workspaceId === "string" ? search.workspaceId : undefined,
+  }),
   component: Library,
 });
 
@@ -48,6 +56,8 @@ type Draft = {
   image_url: string | null;
   created_at: string;
   campaign_id: string | null;
+  workspace_id: string | null;
+  workspace_title: string | null;
 };
 
 
