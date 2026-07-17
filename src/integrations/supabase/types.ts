@@ -62,23 +62,62 @@ export type Database = {
       audiences: {
         Row: {
           created_at: string
+          description: string | null
+          emoji: string | null
+          icp: Json
           id: string
+          is_ai_generated: boolean
+          is_default: boolean
           name: string
+          source_domain_id: string | null
+          source_knowledge_profile_id: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
+          emoji?: string | null
+          icp?: Json
           id?: string
+          is_ai_generated?: boolean
+          is_default?: boolean
           name: string
+          source_domain_id?: string | null
+          source_knowledge_profile_id?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          description?: string | null
+          emoji?: string | null
+          icp?: Json
           id?: string
+          is_ai_generated?: boolean
+          is_default?: boolean
           name?: string
+          source_domain_id?: string | null
+          source_knowledge_profile_id?: string | null
+          updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audiences_source_domain_id_fkey"
+            columns: ["source_domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audiences_source_knowledge_profile_id_fkey"
+            columns: ["source_knowledge_profile_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_log: {
         Row: {
@@ -210,6 +249,7 @@ export type Database = {
         Row: {
           archived: boolean
           audience: string | null
+          audience_id: string | null
           authenticity_score: number | null
           brief_snapshot: Json | null
           campaign_id: string | null
@@ -239,6 +279,7 @@ export type Database = {
         Insert: {
           archived?: boolean
           audience?: string | null
+          audience_id?: string | null
           authenticity_score?: number | null
           brief_snapshot?: Json | null
           campaign_id?: string | null
@@ -268,6 +309,7 @@ export type Database = {
         Update: {
           archived?: boolean
           audience?: string | null
+          audience_id?: string | null
           authenticity_score?: number | null
           brief_snapshot?: Json | null
           campaign_id?: string | null
@@ -295,6 +337,13 @@ export type Database = {
           workspace_item_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "create_drafts_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "create_drafts_campaign_id_fkey"
             columns: ["campaign_id"]
@@ -437,6 +486,7 @@ export type Database = {
       }
       default_profiles: {
         Row: {
+          audience_id: string | null
           created_at: string
           description: string | null
           domain_id: string | null
@@ -453,6 +503,7 @@ export type Database = {
           voice_id: string | null
         }
         Insert: {
+          audience_id?: string | null
           created_at?: string
           description?: string | null
           domain_id?: string | null
@@ -469,6 +520,7 @@ export type Database = {
           voice_id?: string | null
         }
         Update: {
+          audience_id?: string | null
           created_at?: string
           description?: string | null
           domain_id?: string | null
@@ -485,6 +537,13 @@ export type Database = {
           voice_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "default_profiles_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "default_profiles_domain_id_fkey"
             columns: ["domain_id"]
