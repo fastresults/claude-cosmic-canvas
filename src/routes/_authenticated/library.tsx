@@ -289,12 +289,44 @@ function Library() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-4 pb-40">
-      <header className="mb-4">
+      <header className="mb-3">
         <h1 className="font-display text-3xl text-foreground">Library</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {totalLoaded} loaded{query.hasNextPage ? "+" : ""} · every draft is a Brain node
         </p>
       </header>
+
+      {/* Scope tabs: General library vs Milestones */}
+      <div className="mb-3 inline-flex rounded-md border border-border bg-surface-elev p-0.5 text-xs">
+        <button
+          type="button"
+          onClick={() =>
+            navigate({ search: { scope: "general", workspaceId: undefined } })
+          }
+          className={cn(
+            "rounded px-3 py-1 transition-colors",
+            scope === "general"
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          General
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            navigate({ search: { scope: "milestone", workspaceId: undefined } })
+          }
+          className={cn(
+            "rounded px-3 py-1 transition-colors",
+            scope === "milestone"
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Milestones
+        </button>
+      </div>
 
       {/* Command bar */}
       <form
