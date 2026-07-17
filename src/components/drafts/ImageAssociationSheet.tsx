@@ -4,12 +4,16 @@
  * scoped to draftId + role.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check } from "lucide-react";
+import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check, FolderOpen } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { streamDraftImage } from "@/lib/drafts/streamImage";
 import type { StreamDraftImageMetadata } from "@/lib/drafts/streamImage";
 import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/useDraftImages";
+import { listMediaAssets, signMediaUrl } from "@/lib/media/media.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { ThumbPeek } from "@/components/primitives/ThumbPeek";
+
 
 
 type Role = "cover" | "social" | "inline";
