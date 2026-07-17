@@ -25,24 +25,12 @@ function truncate(s: string | null | undefined, n = 40) {
   return clean.length > n ? `${clean.slice(0, n - 1)}…` : clean;
 }
 
-const TYPE_PRETTY: Record<NodeType, string> = {
-  you: "You",
-  persona: "Persona",
-  voice_sample: "Voice",
-  directive: "Directive",
-  domain: "Domain",
-  audience: "Audience",
-  knowledge: "Knowledge",
-  entity: "Entity",
-  draft: "Content",
-  image: "Image",
-  campaign: "Campaign",
-  channel: "Channel",
-  scheduled: "Scheduled",
-  mcp_client: "MCP Client",
-  preset: "Preset",
-  document: "Document",
-};
+// NOTE: We intentionally do NOT expose a type-word fallback map for orb labels.
+// Per project rule, orbs must render the item's real title / filename / topic —
+// never a generic type word like "Draft", "Content", "Image", "Knowledge".
+// Nodes are seeded with an empty label and stay label-less until fetchLabel
+// resolves a descriptive value.
+
 
 async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
   switch (type) {
