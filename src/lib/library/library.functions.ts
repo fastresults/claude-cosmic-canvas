@@ -125,6 +125,19 @@ export const searchDrafts = createServerFn({ method: "POST" })
       }
     }
 
+    // Fetch workspace titles for any milestone-attached rows on this page.
+    const wsIds = Array.from(
+      new Set(page.map((r) => r.workspace_id).filter((x): x is string => !!x)),
+    );
+    const wsTitles: Record<string, string> = {};
+    if (wsIds.length) {
+      const { data: wss } = await supabase
+        .from("opportunity_workspaces")
+        .select("id, title")
+        .in("id", wsIds);
+      for (const w of wss ?? []) wsTitles[w.id] = w.title ?? "Milestone";
+    }
+
     // Adapt to legacy Library row shape used by the UI
     const items = page.map((r) => {
       const sections = Array.isArray(r.sections) ? r.sections : [];
@@ -138,10 +151,11 @@ export const searchDrafts = createServerFn({ method: "POST" })
         body: displayTitle ? bodyText : bodyText || r.title || "",
         score: r.quality_score != null ? { total: Number(r.quality_score) } : {},
         status: r.status ?? "draft",
-
         image_url: covers[r.id] ?? null,
         created_at: r.created_at,
         campaign_id: r.campaign_id,
+        workspace_id: r.workspace_id ?? null,
+        workspace_title: r.workspace_id ? wsTitles[r.workspace_id] ?? null : null,
       };
     });
 
