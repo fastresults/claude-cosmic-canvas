@@ -37,7 +37,7 @@ function DefaultProfilesPage() {
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
       <SettingsPageHeader
         title="Profiles"
-        description="One-click bundles of Voice + Knowledge + Domain. Pick a profile and every default swaps in at once — no more setting three toggles."
+        description="One-click bundles of Voice + Knowledge + Domain + Audience. Pick a profile and every default swaps in at once — no more setting four toggles."
       />
 
       <div className="mb-4 rounded-lg border border-border bg-surface-elev p-3 text-xs text-muted-foreground">
