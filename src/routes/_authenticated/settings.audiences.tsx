@@ -61,12 +61,19 @@ function AudiencesSettings() {
   const [rejectedNames, setRejectedNames] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(false), 4000);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
 
   const create = useMutation({
     mutationFn: (v: { name: string; description?: string; icp?: Icp }) => createFn({ data: v }),
     onSuccess: () => {
       setName(""); setDescription(""); setSuggestion(null); setManualOpen(false);
-      setRejectedNames([]); setError(null); invalidate();
+      setRejectedNames([]); setError(null); setSavedFlash(true); invalidate();
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not add audience"),
   });
