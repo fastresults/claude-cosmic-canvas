@@ -1,47 +1,39 @@
+
 ## Goal
+Make `/settings/audiences` mobile-safe (no clipped controls) and guide novices to keep building their audience set after the first one lands.
 
-Make "Add audience" AI-first: clicking to add always drafts the **next-best ICP that does not duplicate any existing audience**, ranked by market size / relevance to the user's domain and knowledge.
+## Problems observed
+1. **Row overflow on mobile.** Each audience row in "Your audiences" is a single `flex` line: chevron + icon + long name (with inline "default" / "AI" pills) + "Set default" button + delete "X". On a 390px viewport the "Set default" pill and star get pushed past the right edge and clip. Root cause: the name span has no `min-w-0`, the pills are inline inside the same span so they can't wrap, and the action buttons aren't `shrink-0`.
+2. **No "what next" cue.** After the first audience saves, the Add card collapses back to just the two buttons ("Draft next audience with AI" / "Add manually instead"). A novice doesn't know that audiences are meant to be a *set* (2–4 ICPs), that Eve will target the next-largest non-overlapping one, or that they can mark a different one as default later.
+3. **Empty-state → filled-state transition is silent.** No confirmation, no "great, here's what to do next."
 
-## Behavior
+## Changes (UI only — `src/routes/_authenticated/settings.audiences.tsx`)
 
-- The blank-input "Add audience" path is removed as the default. The primary CTA becomes **"Draft next audience with AI"** (a single button that replaces today's "Suggest with AI" + "Generate & save" split).
-- On click:
-  1. Server gathers domain + knowledge context (already implemented) **plus the list of existing audience names + one-line persona summaries**.
-  2. AI is instructed to propose the **next-largest, highest-value ICP** for this creator that is meaningfully distinct from every existing audience — no overlaps in persona, roles, or industries.
-  3. Drafted audience is shown inline (name + description + ICP preview) with **Save** / **Discard** / **Regenerate** actions. Nothing writes to the DB until the user clicks Save.
-- Manual entry is still possible but demoted: a small "Add manually" link below the AI CTA reveals the blank name/description inputs. This keeps the flow AI-first without losing the escape hatch.
-- On save, the new audience is appended; subsequent "Draft next" clicks see it in the existing list and pick the *next* gap.
+### 1. Mobile-safe audience row
+Rework each `<li>` header into the responsive grid pattern from `responsive-layout-patterns`:
 
-## Server changes (`src/lib/audiences/audiences.functions.ts`)
+- Outer row: `grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2` (chevron | title block | actions).
+- Chevron + Users icon become `shrink-0`.
+- Title becomes its own `min-w-0` block with `truncate` on the name and pills moved to a **second line** underneath (`flex flex-wrap gap-1 mt-0.5`), not inline in the truncated span — so "default" / "AI" badges never fight the name for width.
+- Actions column: collapse "Set default" text on mobile to an icon-only star button (`sm:inline` reveals the label at ≥640px), keep the "X" delete as icon-only. Both `shrink-0`, `aria-label` preserved.
+- Add `overflow-hidden` on the `<li>` so nothing can bleed past the card edge.
 
-1. Extend `SuggestInput` with an optional `existing` array: `{ name, persona?, role_titles?, industries? }[]`. Default to the caller's audiences when not provided.
-2. In `suggestAudienceFromContext.handler`, if `existing` is not supplied, fetch the user's audiences (name + `icp.persona`, `icp.role_titles`, `icp.industries`) and use that.
-3. Update the `system` prompt to make the ranking + de-dup rule explicit:
-   - "Propose the **next most valuable ICP** for this creator, ranked by addressable size, buying intent, and fit with the domain and knowledge."
-   - "It MUST be meaningfully distinct from every audience already listed — no overlapping persona, role titles, or industries. If an obvious high-value ICP is already covered, pick the next-best gap."
-   - "If every strong ICP is already covered, return a narrower **sub-segment** of an under-served vertical rather than a duplicate."
-4. Include the existing audiences in the user prompt as `Existing audiences (do not duplicate):\n- <name>: <persona> [roles: …] [industries: …]`.
-5. Post-generation guard: if the drafted `name`, `persona`, or `role_titles` collide (case-insensitive) with an existing audience, re-run the AI **once** with an added "the previous suggestion `<x>` duplicated `<y>` — pick a different segment" nudge. If still duplicate, return anyway but flag `is_duplicate_warning: true` in the response so the UI can warn.
-6. `generateDefaultAudience` already calls `suggestAudienceFromContext({ data: {} })` — it now automatically benefits from de-dup.
+### 2. Guidance for novice users
+Add a small, always-visible helper block inside the "Your audiences" section, shown only when `audiences.length >= 1`:
 
-## UI changes (`src/routes/_authenticated/settings.audiences.tsx`)
+- Above the list: one-line hint — "Most people target 2–4 audiences. Eve rotates content to fit whichever is active."
+- Below the list: a subtle dashed "+ Draft another audience with AI" tile (same action as the top button, `onClick={draftNext}`) so the next-step affordance sits *at the end of the list* where the eye lands after reading it. Disabled + spinner while `suggest.isPending`.
+- After a successful save, briefly show an inline success line in the Add card: "Saved. Draft another to broaden your reach, or set this one as default below." (auto-clears after ~4s via a `useEffect` timer, or on next interaction.)
 
-1. Replace the two-button header ("Suggest with AI" + "Generate & save") with a single primary button: **"Draft next audience with AI"** (uses the existing `suggestFn`).
-2. Hide the name/description inputs by default. Show them only after:
-   - AI has drafted (pre-filled + editable), or
-   - the user clicks a subdued "Add manually" link.
-3. After a draft appears, show **Save**, **Regenerate**, **Discard** buttons. Regenerate re-calls `suggestFn` (which now excludes existing + the just-discarded draft via a client-side `existing` extension).
-4. If server returns `is_duplicate_warning`, show a small amber warning: "This may overlap with `<name>`. Regenerate or edit before saving."
-5. Empty-state copy updates: "No audiences yet. Draft your first ICP with AI." with the same primary button.
+### 3. Small polish
+- "Add manually instead" link: give it a `+` icon and slightly more prominence (still secondary) so novices see it as an option rather than body text.
+- Section heading: change "YOUR AUDIENCES" caption to include the count ("YOUR AUDIENCES · 1") — gives a quiet nudge toward growing the set.
 
 ## Out of scope
-
-- No DB schema changes.
-- No changes to `applyDefaultProfile`, prompt injection, or brain edges.
-- The `generateDefaultAudience` one-click path stays for the initial-setup gate; it now inherits de-dup for free.
+- No server / schema / prompt changes.
+- No changes to the Add card's AI drafting flow itself (already AI-first).
+- No changes to `DefaultsStrip` or other pages.
 
 ## Verification
-
-- Add one audience manually, then click "Draft next" → new suggestion has a different persona/roles/industries.
-- Click "Draft next" three times in a row (saving each) → third suggestion is a distinct sub-segment, not a repeat of the first two.
-- Server log shows the `Existing audiences` block in the prompt when `[audiences] suggest` runs.
+- Playwright at 390×844: screenshot the audiences page with 1 and with 3 audiences; confirm no horizontal overflow, no clipped buttons, pills wrap under the name, "Draft another" tile visible at list end.
+- Desktop (≥640px): "Set default" label reappears next to the star; layout unchanged from today otherwise.

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Users, Plus, X, Sparkles, Star, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import {
@@ -61,12 +61,19 @@ function AudiencesSettings() {
   const [rejectedNames, setRejectedNames] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = setTimeout(() => setSavedFlash(false), 4000);
+    return () => clearTimeout(t);
+  }, [savedFlash]);
 
   const create = useMutation({
     mutationFn: (v: { name: string; description?: string; icp?: Icp }) => createFn({ data: v }),
     onSuccess: () => {
       setName(""); setDescription(""); setSuggestion(null); setManualOpen(false);
-      setRejectedNames([]); setError(null); invalidate();
+      setRejectedNames([]); setError(null); setSavedFlash(true); invalidate();
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not add audience"),
   });
@@ -148,6 +155,12 @@ function AudiencesSettings() {
           Eve reviews your domain, knowledge, and existing audiences, then proposes the next-largest ICP that doesn't overlap with what you already have.
         </p>
 
+        {savedFlash && (
+          <div className="mb-3 rounded-md border border-accent/40 bg-accent/10 p-2.5 text-xs text-accent">
+            Saved. Draft another to broaden your reach, or set one as default below.
+          </div>
+        )}
+
         {suggestion?.is_duplicate_warning && (
           <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-500">
             This may overlap with <span className="font-medium">{suggestion.duplicate_of}</span>. Regenerate or edit before saving.
@@ -223,9 +236,9 @@ function AudiencesSettings() {
           <button
             type="button"
             onClick={() => setManualOpen(true)}
-            className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-surface-elev hover:text-foreground"
           >
-            Add manually instead
+            <Plus className="h-3 w-3" /> Add manually instead
           </button>
         )}
 
@@ -235,83 +248,111 @@ function AudiencesSettings() {
 
       <section className="mt-6">
         <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Your audiences
+          Your audiences{audiences.length > 0 ? ` · ${audiences.length}` : ""}
         </h2>
         {audiences.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
             No audiences yet. Use “Draft next audience with AI” above to let Eve propose your first ICP from your Domain and knowledge.
           </div>
         ) : (
-          <ul className="space-y-2">
-            {audiences.map((a) => {
-              const isOpen = expanded === a.id;
-              const icp = (a.icp ?? {}) as Partial<Icp>;
-              return (
-                <li key={a.id} className="rounded-lg border border-border bg-card">
-                  <div className="flex items-center gap-2 pr-2">
-                    <button
-                      type="button"
-                      onClick={() => setExpanded(isOpen ? null : a.id)}
-                      className="flex flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-elev"
-                    >
-                      {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                      <Users className="h-4 w-4 text-accent" />
-                      <span className="flex-1 truncate text-sm text-foreground">
-                        {a.name}
-                        {a.is_default && (
-                          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent align-middle">
-                            <Star className="h-2.5 w-2.5" /> default
-                          </span>
-                        )}
-                        {a.is_ai_generated && (
-                          <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary align-middle">
-                            AI
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                    {!a.is_default && (
+          <>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Most people target 2–4 audiences. Eve rotates content to fit whichever one is active.
+            </p>
+            <ul className="space-y-2">
+              {audiences.map((a) => {
+                const isOpen = expanded === a.id;
+                const icp = (a.icp ?? {}) as Partial<Icp>;
+                return (
+                  <li key={a.id} className="overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-2">
                       <button
                         type="button"
-                        onClick={() => setDefault.mutate(a.id)}
-                        aria-label={`Set ${a.name} as default`}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface-elev hover:text-accent"
+                        onClick={() => setExpanded(isOpen ? null : a.id)}
+                        aria-label={isOpen ? `Collapse ${a.name}` : `Expand ${a.name}`}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-surface-elev"
                       >
-                        <Star className="h-3.5 w-3.5" /> <span>Set default</span>
+                        {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => remove.mutate(a.id)}
-                      aria-label={`Remove ${a.name}`}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  {isOpen && (
-                    <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-                      {a.description && <p className="mb-2 text-foreground">{a.description}</p>}
-                      <Field label="Persona" value={icp.persona} />
-                      <Field label="Roles" value={icp.role_titles?.join(", ")} />
-                      <Field label="Industries" value={icp.industries?.join(", ")} />
-                      <Field label="Company size" value={icp.company_size} />
-                      <Field label="Seniority" value={icp.seniority} />
-                      <Field label="Goals" value={icp.goals?.join("; ")} />
-                      <Field label="Pains" value={icp.pains?.join("; ")} />
-                      <Field label="Channels" value={icp.channels?.join(", ")} />
-                      <Field label="Tone" value={icp.tone_preference} />
-                      <Field label="Objections" value={icp.objections?.join("; ")} />
-                      <Field label="Success metrics" value={icp.success_metrics?.join("; ")} />
-                      <div className="mt-3">
-                        <RenameRow audience={a} onSave={(name) => update.mutate({ id: a.id, name })} />
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : a.id)}
+                        className="flex min-w-0 flex-col items-start text-left"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Users className="h-4 w-4 shrink-0 text-accent" />
+                          <span className="truncate text-sm text-foreground">{a.name}</span>
+                        </div>
+                        {(a.is_default || a.is_ai_generated) && (
+                          <div className="mt-1 flex flex-wrap gap-1 pl-6">
+                            {a.is_default && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                                <Star className="h-2.5 w-2.5" /> default
+                              </span>
+                            )}
+                            {a.is_ai_generated && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                AI
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        {!a.is_default && (
+                          <button
+                            type="button"
+                            onClick={() => setDefault.mutate(a.id)}
+                            aria-label={`Set ${a.name} as default`}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md p-1.5 text-xs text-muted-foreground hover:bg-surface-elev hover:text-accent sm:px-2"
+                          >
+                            <Star className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Set default</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => remove.mutate(a.id)}
+                          aria-label={`Remove ${a.name}`}
+                          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    {isOpen && (
+                      <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                        {a.description && <p className="mb-2 text-foreground">{a.description}</p>}
+                        <Field label="Persona" value={icp.persona} />
+                        <Field label="Roles" value={icp.role_titles?.join(", ")} />
+                        <Field label="Industries" value={icp.industries?.join(", ")} />
+                        <Field label="Company size" value={icp.company_size} />
+                        <Field label="Seniority" value={icp.seniority} />
+                        <Field label="Goals" value={icp.goals?.join("; ")} />
+                        <Field label="Pains" value={icp.pains?.join("; ")} />
+                        <Field label="Channels" value={icp.channels?.join(", ")} />
+                        <Field label="Tone" value={icp.tone_preference} />
+                        <Field label="Objections" value={icp.objections?.join("; ")} />
+                        <Field label="Success metrics" value={icp.success_metrics?.join("; ")} />
+                        <div className="mt-3">
+                          <RenameRow audience={a} onSave={(name) => update.mutate({ id: a.id, name })} />
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <button
+              type="button"
+              onClick={draftNext}
+              disabled={suggest.isPending}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-surface-elev/50 px-3 py-3 text-xs text-muted-foreground transition-colors hover:border-accent/40 hover:text-accent disabled:opacity-50"
+            >
+              {suggest.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Draft another audience with AI
+            </button>
+          </>
         )}
       </section>
     </div>
