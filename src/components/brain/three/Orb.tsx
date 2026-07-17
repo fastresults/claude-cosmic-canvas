@@ -40,7 +40,16 @@ function getHalo() {
   return sharedHalo;
 }
 
-const YELLOW_TYPES = new Set(["you", "persona", "voice_sample", "directive"]);
+// Node types that always show a persistent label (not just on hover).
+// Covers the foundational pillars: You, Voice, and Knowledge.
+const PERSISTENT_LABEL_TYPES = new Set([
+  "you",
+  "persona",
+  "voice_sample",
+  "directive",
+  "knowledge",
+  "document",
+]);
 
 export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: Props) {
   const group = useRef<THREE.Group>(null);
