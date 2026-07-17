@@ -129,7 +129,8 @@ export const signMediaUrl = createServerFn({ method: "POST" })
     z
       .object({
         id: z.string().uuid(),
-        expiresIn: z.number().int().min(30).max(60 * 60 * 24).default(300),
+        expiresIn: z.number().int().min(30).max(60 * 60 * 24 * 365).default(300),
+        download: z.boolean().default(true),
       })
       .parse(i),
   )
@@ -143,12 +144,15 @@ export const signMediaUrl = createServerFn({ method: "POST" })
     if (!row) throw new Error("Asset not found");
     const { data: signed, error } = await context.supabase.storage
       .from("media-hub")
-      .createSignedUrl(row.storage_path, data.expiresIn, {
-        download: row.filename,
-      });
+      .createSignedUrl(
+        row.storage_path,
+        data.expiresIn,
+        data.download ? { download: row.filename } : undefined,
+      );
     if (error) throw error;
     return { url: signed.signedUrl };
   });
+
 
 export function kindFromMime(mime: string): (typeof MEDIA_KINDS)[number] {
   if (mime.startsWith("image/")) return "image";
