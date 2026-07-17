@@ -72,10 +72,16 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
       return truncate(data?.name);
     }
     case "draft": {
-      const { data } = await supabase.from("create_drafts").select("format_id, title").eq("id", id).maybeSingle();
-      if (!data) return null;
-      return truncate(data.title) ?? truncate(data.format_id.replace(/_/g, " "), 32);
+      const { data } = await supabase.from("create_drafts").select("title").eq("id", id).maybeSingle();
+      return truncate(data?.title);
     }
+    case "image": {
+      const { data } = await supabase.from("create_media").select("prompt, url").eq("id", id).maybeSingle();
+      if (!data) return null;
+      const filename = data.url ? data.url.split("/").pop()?.split("?")[0] ?? null : null;
+      return truncate(data.prompt) ?? truncate(filename, 32);
+    }
+
     case "campaign": {
       const { data } = await supabase.from("campaigns").select("title").eq("id", id).maybeSingle();
       return truncate(data?.title);
