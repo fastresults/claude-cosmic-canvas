@@ -256,12 +256,13 @@ async function synthesizeDossier(args: {
   const lovableKey = process.env.LOVABLE_API_KEY;
   if (!lovableKey) throw new Error("LOVABLE_API_KEY is not configured");
 
-  const maxChars = 45000;
+  const maxChars = 25000;
   let combined = scrapedPages.join("\n\n---\n\n");
   if (combined.length > maxChars) combined = combined.slice(0, maxChars) + "\n\n[Content truncated...]";
-  const maxExt = 15000;
+  const maxExt = 8000;
   let ext = externalIntel;
   if (ext.length > maxExt) ext = ext.slice(0, maxExt) + "\n\n[External intel truncated...]";
+
 
   const contextClause = additionalContext
     ? `\nAdditional context provided by the user: ${additionalContext}`
