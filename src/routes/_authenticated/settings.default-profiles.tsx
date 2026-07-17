@@ -16,6 +16,8 @@ import {
   Zap,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { ProfileVsPresetCard } from "@/components/settings/ProfileVsPresetCard";
+import { FirstRunTip } from "@/components/onboarding/FirstRunTip";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
