@@ -424,11 +424,19 @@ export async function runCompanyResearchCore(
   const rawUrl = input.companyUrl.trim();
   const companyUrl =
     rawUrl.startsWith("http://") || rawUrl.startsWith("https://") ? rawUrl : `https://${rawUrl}`;
-  const maxPages = input.maxPages ?? 10;
+  const maxPages = input.maxPages ?? 6;
 
+  const tScrape = Date.now();
+  const tPplx = Date.now();
   const [scrape, externalIntel] = await Promise.all([
-    discoverAndScrapePages(companyUrl, maxPages),
-    searchExternalIntelligence(companyName, companyUrl),
+    discoverAndScrapePages(companyUrl, maxPages).then((r) => {
+      console.log(`[research] map+scrape ${Date.now() - tScrape}ms (${r.pages.length} pages)`);
+      return r;
+    }),
+    searchExternalIntelligence(companyName, companyUrl).then((r) => {
+      console.log(`[research] perplexity ${Date.now() - tPplx}ms (${r.length} chars)`);
+      return r;
+    }),
   ]);
 
   let pages = scrape.pages;
@@ -444,6 +452,7 @@ export async function runCompanyResearchCore(
     );
   }
 
+  const tSynth = Date.now();
   const dossier = await synthesizeDossier({
     companyName,
     companyUrl,
@@ -451,6 +460,7 @@ export async function runCompanyResearchCore(
     scrapedPages: pages,
     externalIntel,
   });
+  console.log(`[research] synthesis ${Date.now() - tSynth}ms, total ${Date.now() - start}ms`);
 
   return {
     dossier,
@@ -460,6 +470,7 @@ export async function runCompanyResearchCore(
     externalIntelUsed: externalIntel.length > 0,
   };
 }
+
 
 /**
  * Convert a dossier into human-readable Markdown sections for `create_drafts.sections`.
