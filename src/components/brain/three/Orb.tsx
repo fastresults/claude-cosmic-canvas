@@ -75,8 +75,19 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
     }
   });
 
-  const hasLabel = !!node.label && node.label.trim().length > 0;
-  const showLabel = hasLabel && (isYellow || isHover || focused);
+  const trimmedLabel = node.label?.trim() ?? "";
+  const hasLabel = trimmedLabel.length > 0;
+  // Persistent label: yellow orbs & focused state — only real titles.
+  const showPersistent = hasLabel && (isYellow || focused);
+  // Hover always shows something meaningful — real title if we have it,
+  // otherwise a friendly type fallback + short id suffix.
+  const rawId = node.id.includes(":") ? node.id.split(":")[1] ?? node.id : node.id;
+  const shortId = rawId.replace(/-/g, "").slice(-4).toUpperCase();
+  const fallback = TYPE_HOVER_FALLBACK[node.nodeType] ?? "Node";
+  const hoverLabel = hasLabel ? trimmedLabel : `${fallback} · ${shortId}`;
+  const showLabel = showPersistent || isHover;
+  const displayLabel = isHover ? hoverLabel : trimmedLabel;
+
 
 
   return (
