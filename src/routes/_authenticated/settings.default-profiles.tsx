@@ -232,13 +232,32 @@ function CreateProfileSheet({
     setAudienceId("");
   }
 
+  const dedupeByName = <T extends { id: string; name: string }>(items: T[]): T[] => {
+    const seen = new Set<string>();
+    const out: T[] = [];
+    for (const it of items) {
+      const key = (it.name ?? "").trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+    return out;
+  };
   const voiceList = useMemo(
-    () => (voices as { id: string; name: string }[]) ?? [],
+    () => dedupeByName((voices as { id: string; name: string }[]) ?? []),
     [voices],
   );
   const audienceList = useMemo(
-    () => (audiences as { id: string; name: string }[]) ?? [],
+    () => dedupeByName((audiences as { id: string; name: string }[]) ?? []),
     [audiences],
+  );
+  const knowledgeList = useMemo(
+    () => dedupeByName((knowledge as { id: string; name: string }[]) ?? []),
+    [knowledge],
+  );
+  const domainList = useMemo(
+    () => dedupeByName((domains as { id: string; name: string }[]) ?? []),
+    [domains],
   );
 
   async function save() {
@@ -317,14 +336,14 @@ function CreateProfileSheet({
           label="Knowledge"
           value={knowledgeId}
           onChange={setKnowledgeId}
-          options={knowledge as { id: string; name: string }[]}
+          options={knowledgeList}
         />
         <SlotSelect
           icon={<Compass className="h-3.5 w-3.5" />}
           label="Domain"
           value={domainId}
           onChange={setDomainId}
-          options={domains as { id: string; name: string }[]}
+          options={domainList}
         />
         <SlotSelect
           icon={<Users className="h-3.5 w-3.5" />}
