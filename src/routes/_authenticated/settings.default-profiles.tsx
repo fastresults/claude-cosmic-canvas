@@ -43,7 +43,7 @@ function DefaultProfilesPage() {
       <div className="mb-4 rounded-lg border border-border bg-surface-elev p-3 text-xs text-muted-foreground">
         <strong className="text-foreground">Profiles vs Presets:</strong> a{" "}
         <em>Profile</em> is who you're being right now (voice + knowledge +
-        domain). A{" "}
+        domain + audience). A{" "}
         <Link to="/settings/presets" className="text-accent hover:underline">
           Preset
         </Link>{" "}
