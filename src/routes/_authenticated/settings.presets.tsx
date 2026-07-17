@@ -18,6 +18,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { ProfileVsPresetCard } from "@/components/settings/ProfileVsPresetCard";
+import { FirstRunTip } from "@/components/onboarding/FirstRunTip";
 import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/primitives/Pill";
 import { EveSheet } from "@/components/primitives/EveSheet";
