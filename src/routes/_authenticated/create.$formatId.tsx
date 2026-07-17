@@ -398,7 +398,9 @@ function FormatPage() {
               }}
             />
           )}
+          {busy && formatId === "company-research" && <ResearchProgress />}
           <StreamCanvas sections={sections} busy={busy} />
+
         </div>
       )}
 
