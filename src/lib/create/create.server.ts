@@ -290,3 +290,152 @@ function deriveTitle(body: string, seed: string): string {
   if (stripped.length > 0 && stripped.length <= 120) return stripped;
   return seed.slice(0, 80);
 }
+
+/**
+ * Parse a free-form research seed into a `{ companyName, companyUrl }` pair.
+ * Extracts the first domain-like token from the seed as the URL; everything
+ * else (with the domain removed) becomes the company name.
+ */
+function parseResearchSeed(seed: string): { companyName: string; companyUrl: string } | null {
+  const raw = seed.trim();
+  if (!raw) return null;
+  const domainRegex = /\b((?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,})(?:\/[^\s]*)?/i;
+  const match = raw.match(domainRegex);
+  if (!match) {
+    // No URL — treat the whole seed as the company name and guess a domain.
+    return { companyName: raw, companyUrl: "" };
+  }
+  const url = match[0];
+  const nameCandidate = raw.replace(url, "").replace(/[,;|]+/g, " ").replace(/\s+/g, " ").trim();
+  const cleaned = nameCandidate.replace(/^(search|research|find|look\s*up|about)\s+/i, "").trim();
+  const companyName = cleaned || url.replace(/^https?:\/\//, "").split("/")[0];
+  return { companyName, companyUrl: url };
+}
+
+async function runCompanyResearchAsDraft(
+  data: GenerateDraftInput,
+  ctx: { supabase: SupabaseClient<any>; userId: string },
+): Promise<GenerateDraftResult> {
+  const { supabase, userId } = ctx;
+
+  const parsed = parseResearchSeed(data.seed);
+  if (!parsed || (!parsed.companyUrl && !parsed.companyName)) {
+    return {
+      fallback: true,
+      draftId: null,
+      message: "Please include a company name and website (e.g. 'Smoke Rise Country Club smokerisecc.com').",
+    };
+  }
+  if (!parsed.companyUrl) {
+    return {
+      fallback: true,
+      draftId: null,
+      message: `Please include a website URL for "${parsed.companyName}" (e.g. companyname.com) so we can research it.`,
+    };
+  }
+
+  const { runCompanyResearchCore, dossierToSections } = await import(
+    "@/lib/research/company-research.server"
+  );
+
+  let researchResult;
+  try {
+    researchResult = await runCompanyResearchCore({
+      companyName: parsed.companyName,
+      companyUrl: parsed.companyUrl,
+      additionalContext: "",
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Company research failed";
+    return { fallback: true, draftId: null, message };
+  }
+
+  const sections = dossierToSections(researchResult.dossier);
+  const suggestedTitle = `${researchResult.dossier.company?.name ?? parsed.companyName} — Corporate Research`;
+
+  if (!data.draftId && !data.title) {
+    return {
+      fallback: false,
+      draftId: null,
+      pendingTitle: true,
+      suggestedTitle,
+      sections,
+    };
+  }
+
+  const briefSnapshot = {
+    format_id: "company-research",
+    seed: data.seed.slice(0, 500),
+    company_name: parsed.companyName,
+    company_url: parsed.companyUrl,
+    dossier: researchResult.dossier,
+    pages_scraped: researchResult.pagesScraped,
+    urls_selected: researchResult.urlsSelected,
+    processing_time_ms: researchResult.processingTimeMs,
+    external_intel_used: researchResult.externalIntelUsed,
+  };
+
+  const basePayload = {
+    user_id: userId,
+    format_id: "company-research" as const,
+    sections: sections as unknown as Json,
+    brief_snapshot: briefSnapshot as unknown as Json,
+    preset_id: data.presetId ?? null,
+    voice_id: data.voiceId ?? null,
+    status: "draft" as const,
+    workspace_id: data.workspaceId ?? null,
+    workspace_item_id: data.workspaceItemId ?? null,
+  };
+
+  let draftId = data.draftId ?? null;
+  let finalTitle: string;
+  if (draftId) {
+    const updatePayload = data.title ? { ...basePayload, title: data.title } : basePayload;
+    const { data: row, error } = await supabase
+      .from("create_drafts")
+      .update(updatePayload)
+      .eq("id", draftId)
+      .eq("user_id", userId)
+      .select("title")
+      .single();
+    if (error) throw error;
+    finalTitle = row.title;
+  } else {
+    const insertPayload = { ...basePayload, title: data.title! };
+    const { data: row, error } = await supabase
+      .from("create_drafts")
+      .insert(insertPayload)
+      .select("id, title")
+      .single();
+    if (error) throw error;
+    draftId = row.id;
+    finalTitle = row.title;
+  }
+
+  const { writeEdgeServer } = await import("@/lib/ai/provenance.server");
+  if (draftId) {
+    await writeEdgeServer(supabase, userId, {
+      srcType: "you",
+      srcId: userId,
+      edgeKind: "GENERATED_BY_TOOL",
+      dstType: "draft",
+      dstId: draftId,
+      meta: {
+        tool: "company-research",
+        format: "company-research",
+        seed: data.seed.slice(0, 500),
+        pages_scraped: researchResult.pagesScraped,
+        processing_time_ms: researchResult.processingTimeMs,
+      },
+    });
+  }
+
+  return {
+    fallback: false,
+    draftId: draftId!,
+    pendingTitle: false,
+    title: finalTitle,
+    sections,
+  };
+}
+
