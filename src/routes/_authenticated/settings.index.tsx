@@ -40,6 +40,7 @@ const SECTIONS: Section[] = [
   { to: "/media", icon: FolderOpen, label: "Media Hub", hint: "Images, documents, audio, and video — separate from drafts" },
   { to: "/settings/knowledge", icon: BookOpen, label: "Curriculum Vitae", hint: "LinkedIn, résumé, bios, notes", slot: "knowledge" },
   { to: "/settings/domains", icon: Compass, label: "Domains", hint: "Passions and areas of expertise", slot: "domain" },
+  { to: "/settings/audiences", icon: Users, label: "Audiences", hint: "Ideal customer profiles you write for", slot: "audience" },
   { to: "/settings/default-profiles", icon: Zap, label: "Profiles", hint: "One-click bundles of voice + knowledge + domain" },
   { to: "/settings/presets", icon: Layers, label: "Presets", hint: "Reusable content lenses (voice + domains + audience + refs)" },
   { to: "/settings/distribution", icon: Link2, label: "Distribution", hint: "Channels, email sender, calendar" },
