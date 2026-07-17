@@ -735,6 +735,7 @@ function VoicePicker({
                 <VoicePickerSection
                   title="Voice library"
                   count={filteredLibrary.length}
+                  forceVisible={loadingSystem}
                   icon={<Library className="h-3.5 w-3.5" />}
                 >
                   {loadingSystem ? (
@@ -791,15 +792,17 @@ function VoicePicker({
 function VoicePickerSection({
   title,
   count,
+  forceVisible = false,
   icon,
   children,
 }: {
   title: string;
   count: number;
+  forceVisible?: boolean;
   icon: React.ReactNode;
   children: React.ReactNode;
 }) {
-  if (count === 0) return null;
+  if (count === 0 && !forceVisible) return null;
   return (
     <section className="mb-5">
       <div className="mb-2 flex items-center justify-between text-xs">
