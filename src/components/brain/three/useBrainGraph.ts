@@ -72,15 +72,21 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
       return truncate(data?.name);
     }
     case "draft": {
-      const { data } = await supabase.from("create_drafts").select("title").eq("id", id).maybeSingle();
+      const { data } = await supabase
+        .from("create_drafts")
+        .select("title")
+        .eq("id", id)
+        .maybeSingle();
       return truncate(data?.title);
     }
+
     case "image": {
       const { data } = await supabase.from("create_media").select("prompt, url").eq("id", id).maybeSingle();
       if (!data) return null;
       const filename = data.url ? data.url.split("/").pop()?.split("?")[0] ?? null : null;
       return truncate(data.prompt) ?? truncate(filename, 32);
     }
+
 
     case "campaign": {
       const { data } = await supabase.from("campaigns").select("title").eq("id", id).maybeSingle();
@@ -157,10 +163,15 @@ export function useBrainGraph() {
       if (row.src_type !== "you") targets.push([srcId, row.src_type, row.src_id]);
       targets.push([dstId, row.dst_type, row.dst_id]);
       for (const [nodeId, type, rawId] of targets) {
-        const label = await fetchLabel(type, rawId);
+        let label = await fetchLabel(type, rawId);
+        if (!label) {
+          await new Promise((r) => setTimeout(r, 500));
+          label = await fetchLabel(type, rawId);
+        }
         if (!label || !mounted) continue;
         setNodes((prev) => prev.map((n) => (n.id === nodeId && !n.label ? { ...n, label } : n)));
       }
+
 
     };
 

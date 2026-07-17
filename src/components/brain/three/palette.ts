@@ -55,3 +55,25 @@ export const TYPE_LABEL: Record<NodeType, string> = {
   preset: "Preset",
   document: "Document",
 };
+
+// Human-readable fallback used ONLY for hover tooltips when no descriptive
+// title has resolved. Never used as a persistent label.
+export const TYPE_HOVER_FALLBACK: Record<NodeType, string> = {
+  you: "You",
+  persona: "Persona",
+  voice_sample: "Voice sample",
+  directive: "Directive",
+  domain: "Domain",
+  audience: "Audience",
+  knowledge: "Knowledge entry",
+  entity: "Entity",
+  draft: "Untitled draft",
+  image: "Untitled image",
+  campaign: "Campaign",
+  channel: "Channel",
+  scheduled: "Scheduled post",
+  mcp_client: "MCP client",
+  preset: "Preset",
+  document: "Document",
+};
+
