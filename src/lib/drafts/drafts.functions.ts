@@ -342,7 +342,9 @@ const AttachInput = z.object({
   aspectRatio: z.string().nullable().optional(),
   parentImageId: z.string().uuid().nullable().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
-  generatedBy: z.enum(["gpt-image-2", "gemini", "upload", "library"]).default("gemini"),
+  mediaAssetId: z.string().uuid().nullable().optional(),
+  generatedBy: z.enum(["gpt-image-2", "gemini", "upload", "library", "media-hub"]).default("gemini"),
+
 });
 
 export const attachDraftImage = createServerFn({ method: "POST" })
@@ -371,7 +373,9 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         parent_image_id: data.parentImageId ?? null,
         sort_order: count ?? 0,
         meta: (data.meta ?? {}) as Json,
+        media_asset_id: data.mediaAssetId ?? null,
       })
+
       .select("id")
       .single();
     if (error) {

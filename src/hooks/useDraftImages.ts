@@ -47,7 +47,9 @@ export function useAttachDraftImage(draftId: string) {
       aspectRatio?: string | null;
       parentImageId?: string | null;
       meta?: Record<string, unknown>;
-      generatedBy: "gpt-image-2" | "gemini" | "upload" | "library";
+      mediaAssetId?: string | null;
+      generatedBy: "gpt-image-2" | "gemini" | "upload" | "library" | "media-hub";
+
     }) => fn({ data: { draftId, ...v } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["draft-images", draftId] });

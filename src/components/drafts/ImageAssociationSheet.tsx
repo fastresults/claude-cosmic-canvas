@@ -4,12 +4,16 @@
  * scoped to draftId + role.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check } from "lucide-react";
+import { Sparkles, Upload as UploadIcon, Library, X, Loader2, RefreshCw, Check, FolderOpen } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { streamDraftImage } from "@/lib/drafts/streamImage";
 import type { StreamDraftImageMetadata } from "@/lib/drafts/streamImage";
 import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/useDraftImages";
+import { listMediaAssets, signMediaUrl } from "@/lib/media/media.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { ThumbPeek } from "@/components/primitives/ThumbPeek";
+
 
 
 type Role = "cover" | "social" | "inline";
@@ -26,7 +30,7 @@ export function ImageAssociationSheet({
   draftId: string;
   role?: Role;
 }) {
-  const [tab, setTab] = useState<"generate" | "upload" | "library">("generate");
+  const [tab, setTab] = useState<"generate" | "upload" | "library" | "media">("generate");
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => onOpenChange(false)}>
@@ -50,13 +54,18 @@ export function ImageAssociationSheet({
           <TabBtn active={tab === "upload"} onClick={() => setTab("upload")} icon={<UploadIcon className="h-3.5 w-3.5" />}>
             Upload
           </TabBtn>
+          <TabBtn active={tab === "media"} onClick={() => setTab("media")} icon={<FolderOpen className="h-3.5 w-3.5" />}>
+            Media Hub
+          </TabBtn>
           <TabBtn active={tab === "library"} onClick={() => setTab("library")} icon={<Library className="h-3.5 w-3.5" />}>
             Library
           </TabBtn>
         </div>
         {tab === "generate" && <GenerateTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
         {tab === "upload" && <UploadTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
+        {tab === "media" && <MediaHubTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
         {tab === "library" && <LibraryTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
+
       </div>
     </div>
   );
@@ -507,6 +516,106 @@ function LibraryTab({ draftId, role, onDone }: { draftId: string; role: Role; on
     </div>
   );
 }
+
+// ---------- Media Hub ----------------------------------------------------
+
+function MediaHubTab({ draftId: _draftId, role, onDone }: { draftId: string; role: Role; onDone: () => void }) {
+  const attach = useAttachDraftImage(_draftId);
+  const list = useServerFn(listMediaAssets);
+  const sign = useServerFn(signMediaUrl);
+  const [attaching, setAttaching] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const q = useQuery({
+    queryKey: ["media-hub", "images"],
+    queryFn: () => list({ data: { kind: "image", limit: 120 } }),
+  });
+
+  async function attachAsset(id: string, title: string | null, filename: string) {
+    setAttaching(id);
+    setErr(null);
+    try {
+      const { url } = await sign({ data: { id, expiresIn: 60 * 60 * 24 * 365, download: false } });
+      await attach.mutateAsync({
+        role,
+        url,
+        prompt: title ?? filename,
+        mediaAssetId: id,
+        generatedBy: "media-hub",
+      });
+      onDone();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Attach failed");
+    } finally {
+      setAttaching(null);
+    }
+  }
+
+  if (q.isPending) return <div className="p-6 text-center text-sm text-muted-foreground">Loading Media Hub…</div>;
+  if (q.isError) return <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">Couldn't load Media Hub.</div>;
+  const items = q.data ?? [];
+  if (!items.length) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-6 text-center text-sm text-muted-foreground">
+        No images in your Media Hub yet. Upload some from Settings → Media Hub.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {err && <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{err}</div>}
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((it) => (
+          <MediaThumb
+            key={it.id}
+            id={it.id}
+            title={it.title ?? it.filename}
+            busy={attaching === it.id}
+            onAttach={() => attachAsset(it.id, it.title ?? null, it.filename)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MediaThumb({
+  id,
+  title,
+  busy,
+  onAttach,
+}: {
+  id: string;
+  title: string;
+  busy: boolean;
+  onAttach: () => void;
+}) {
+  const sign = useServerFn(signMediaUrl);
+  const preview = useQuery({
+    queryKey: ["media-hub", "preview", id],
+    queryFn: async () => (await sign({ data: { id, expiresIn: 600, download: false } })).url,
+    staleTime: 5 * 60_000,
+  });
+  return (
+    <ThumbPeek
+      src={preview.data ?? ""}
+      alt={title}
+      label={title}
+      confirmLabel={busy ? "Attaching…" : "Attach to draft"}
+      onConfirm={onAttach}
+      className="group aspect-square overflow-hidden rounded-xl bg-surface"
+    >
+      {preview.data ? (
+        <img src={preview.data} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+      ) : (
+        <div className="grid h-full place-items-center text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      )}
+    </ThumbPeek>
+  );
+}
+
 
 // ---------- Storage helpers ---------------------------------------------
 
