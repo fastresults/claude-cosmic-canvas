@@ -1,43 +1,47 @@
-## Diagnosis (confirmed from logs)
+## Goal
 
-- The gateway call at `2026-07-17T19:14:23Z` (log_id `019f7180-4790-744b-8780-4318c395f747`, model `google/gemini-3-flash-preview`) returned **HTTP 200** with 358 output tokens — the model responded.
-- Server log shows: `[audiences] suggest failed NoObjectGeneratedError [AI_NoObjectGeneratedError]: No object generated: response did not match schema.`
+Make "Add audience" AI-first: clicking to add always drafts the **next-best ICP that does not duplicate any existing audience**, ranked by market size / relevance to the user's domain and knowledge.
 
-So the model produced content, but the AI SDK's post-hoc validation rejected it against the strict `OutSchema` in `suggestAudienceFromContext`. Every field in that schema is required (strings must be present, arrays must be arrays). If Gemini omitted one — e.g. left `company_size` off, or returned `null` — the whole call throws and the UI shows "Could not generate an audience right now."
+## Behavior
 
-This is exactly the failure mode the AI SDK knowledge file warns about: strict output schemas throw at runtime on otherwise-successful gateway calls, and the fix is a fallback parse plus a looser schema.
+- The blank-input "Add audience" path is removed as the default. The primary CTA becomes **"Draft next audience with AI"** (a single button that replaces today's "Suggest with AI" + "Generate & save" split).
+- On click:
+  1. Server gathers domain + knowledge context (already implemented) **plus the list of existing audience names + one-line persona summaries**.
+  2. AI is instructed to propose the **next-largest, highest-value ICP** for this creator that is meaningfully distinct from every existing audience — no overlaps in persona, roles, or industries.
+  3. Drafted audience is shown inline (name + description + ICP preview) with **Save** / **Discard** / **Regenerate** actions. Nothing writes to the DB until the user clicks Save.
+- Manual entry is still possible but demoted: a small "Add manually" link below the AI CTA reveals the blank name/description inputs. This keeps the flow AI-first without losing the escape hatch.
+- On save, the new audience is appended; subsequent "Draft next" clicks see it in the existing list and pick the *next* gap.
 
-## Fix (single file: `src/lib/audiences/audiences.functions.ts`)
+## Server changes (`src/lib/audiences/audiences.functions.ts`)
 
-1. **Loosen `OutSchema`** so every field tolerates model omissions:
-   - `name`, `description`, and every string ICP field: `z.string().nullish()`.
-   - Every array ICP field: `z.array(z.string()).nullish()`.
-   - The whole `icp` object: `.nullish()`.
-   Keep it flat, no bounds, no enums — same rule as before.
+1. Extend `SuggestInput` with an optional `existing` array: `{ name, persona?, role_titles?, industries? }[]`. Default to the caller's audiences when not provided.
+2. In `suggestAudienceFromContext.handler`, if `existing` is not supplied, fetch the user's audiences (name + `icp.persona`, `icp.role_titles`, `icp.industries`) and use that.
+3. Update the `system` prompt to make the ranking + de-dup rule explicit:
+   - "Propose the **next most valuable ICP** for this creator, ranked by addressable size, buying intent, and fit with the domain and knowledge."
+   - "It MUST be meaningfully distinct from every audience already listed — no overlapping persona, role titles, or industries. If an obvious high-value ICP is already covered, pick the next-best gap."
+   - "If every strong ICP is already covered, return a narrower **sub-segment** of an under-served vertical rather than a duplicate."
+4. Include the existing audiences in the user prompt as `Existing audiences (do not duplicate):\n- <name>: <persona> [roles: …] [industries: …]`.
+5. Post-generation guard: if the drafted `name`, `persona`, or `role_titles` collide (case-insensitive) with an existing audience, re-run the AI **once** with an added "the previous suggestion `<x>` duplicated `<y>` — pick a different segment" nudge. If still duplicate, return anyway but flag `is_duplicate_warning: true` in the response so the UI can warn.
+6. `generateDefaultAudience` already calls `suggestAudienceFromContext({ data: {} })` — it now automatically benefits from de-dup.
 
-2. **Guard the `generateText` call with a fallback** per AI SDK guidance:
-   ```ts
-   import { generateText, Output, NoObjectGeneratedError } from "ai";
-   try { … output = result.output }
-   catch (e) {
-     if (NoObjectGeneratedError.isInstance(e)) {
-       output = safeJsonParse(e.text) ?? {};
-     } else throw e;
-   }
-   ```
-   `safeJsonParse` strips ```json fences if present and returns `null` on failure.
+## UI changes (`src/routes/_authenticated/settings.audiences.tsx`)
 
-3. **Normalize the result** before returning, so a partial response still yields a valid audience:
-   - Coerce every string field with `?? ""`.
-   - Coerce every array field with `?? []` and filter to non-empty strings.
-   - Feed the normalized object through the existing `IcpSchema.parse(...)` (which already defaults missing fields).
-   - If `name` came back empty, fall back to a deterministic name like `"${domainName || "General"} audience"` so the UI never gets a blank.
+1. Replace the two-button header ("Suggest with AI" + "Generate & save") with a single primary button: **"Draft next audience with AI"** (uses the existing `suggestFn`).
+2. Hide the name/description inputs by default. Show them only after:
+   - AI has drafted (pre-filled + editable), or
+   - the user clicks a subdued "Add manually" link.
+3. After a draft appears, show **Save**, **Regenerate**, **Discard** buttons. Regenerate re-calls `suggestFn` (which now excludes existing + the just-discarded draft via a client-side `existing` extension).
+4. If server returns `is_duplicate_warning`, show a small amber warning: "This may overlap with `<name>`. Regenerate or edit before saving."
+5. Empty-state copy updates: "No audiences yet. Draft your first ICP with AI." with the same primary button.
 
-4. **Keep the outer error message** for true failures (network, 5xx), but no longer throw on schema mismatch — the fallback path returns a usable audience.
+## Out of scope
 
-No other files change. No schema/db changes. No UI changes.
+- No DB schema changes.
+- No changes to `applyDefaultProfile`, prompt injection, or brain edges.
+- The `generateDefaultAudience` one-click path stays for the initial-setup gate; it now inherits de-dup for free.
 
 ## Verification
 
-- Retry "Suggest with AI" on `/settings/audiences` and confirm fields populate.
-- Check server logs — the `[audiences] suggest failed NoObjectGeneratedError` line should no longer appear on a normal run; if it does, the fallback parse now recovers instead of throwing.
+- Add one audience manually, then click "Draft next" → new suggestion has a different persona/roles/industries.
+- Click "Draft next" three times in a row (saving each) → third suggestion is a distinct sub-segment, not a repeat of the first two.
+- Server log shows the `Existing audiences` block in the prompt when `[audiences] suggest` runs.
