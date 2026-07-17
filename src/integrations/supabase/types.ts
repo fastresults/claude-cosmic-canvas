@@ -326,6 +326,7 @@ export type Database = {
           generated_by: string | null
           id: string
           kind: string
+          media_asset_id: string | null
           meta: Json
           parent_image_id: string | null
           prompt: string | null
@@ -343,6 +344,7 @@ export type Database = {
           generated_by?: string | null
           id?: string
           kind: string
+          media_asset_id?: string | null
           meta?: Json
           parent_image_id?: string | null
           prompt?: string | null
@@ -360,6 +362,7 @@ export type Database = {
           generated_by?: string | null
           id?: string
           kind?: string
+          media_asset_id?: string | null
           meta?: Json
           parent_image_id?: string | null
           prompt?: string | null
@@ -376,6 +379,13 @@ export type Database = {
             columns: ["draft_id"]
             isOneToOne: false
             referencedRelation: "create_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "create_media_media_asset_id_fkey"
+            columns: ["media_asset_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
             referencedColumns: ["id"]
           },
           {
@@ -869,6 +879,63 @@ export type Database = {
           last_used_at?: string | null
           name?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      media_assets: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          filename: string
+          height: number | null
+          id: string
+          kind: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          filename: string
+          height?: number | null
+          id?: string
+          kind: string
+          mime_type: string
+          size_bytes?: number
+          storage_path: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          filename?: string
+          height?: number | null
+          id?: string
+          kind?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+          width?: number | null
         }
         Relationships: []
       }

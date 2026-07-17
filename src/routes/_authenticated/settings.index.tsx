@@ -15,6 +15,7 @@ import {
   ChevronRight,
   SunMoon,
   AlertCircle,
+  FolderOpen,
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
@@ -35,6 +36,7 @@ type Section = {
 const SECTIONS: Section[] = [
   { to: "/settings/account", icon: User, label: "Account", hint: "Profile and sign out" },
   { to: "/settings/voice", icon: Mic, label: "Voice & Style", hint: "Personas, samples, directives", slot: "voice" },
+  { to: "/media", icon: FolderOpen, label: "Media Hub", hint: "Images, documents, audio, and video — separate from drafts" },
   { to: "/settings/knowledge", icon: BookOpen, label: "Curriculum Vitae", hint: "LinkedIn, résumé, bios, notes", slot: "knowledge" },
   { to: "/settings/domains", icon: Compass, label: "Domains", hint: "Passions and areas of expertise", slot: "domain" },
   { to: "/settings/default-profiles", icon: Zap, label: "Profiles", hint: "One-click bundles of voice + knowledge + domain" },
