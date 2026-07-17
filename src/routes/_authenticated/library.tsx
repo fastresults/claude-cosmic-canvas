@@ -111,8 +111,8 @@ function Library() {
 
   // Reset collapse state when the scope tab changes.
   useEffect(() => {
-    setExpandedGroups(workspaceId ? { __deepLink: true } : {});
-  }, [scope, workspaceId]);
+    setExpandedGroups({});
+  }, [scope]);
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ["campaigns"],
