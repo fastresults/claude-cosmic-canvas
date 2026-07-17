@@ -107,6 +107,12 @@ function Library() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openDraftId, setOpenDraftId] = useState<string | null>(null);
   const [aiParsing, setAiParsing] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  // Reset collapse state when the scope tab changes.
+  useEffect(() => {
+    setExpandedGroups(workspaceId ? { __deepLink: true } : {});
+  }, [scope, workspaceId]);
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ["campaigns"],
