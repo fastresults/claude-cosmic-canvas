@@ -74,12 +74,12 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
     case "draft": {
       const { data } = await supabase
         .from("create_drafts")
-        .select("title, topic, seed")
+        .select("title")
         .eq("id", id)
         .maybeSingle();
-      if (!data) return null;
-      return truncate(data.title) ?? truncate(data.topic) ?? truncate(data.seed, 32);
+      return truncate(data?.title);
     }
+
     case "image": {
       const { data } = await supabase.from("create_media").select("prompt, url").eq("id", id).maybeSingle();
       if (!data) return null;
