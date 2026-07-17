@@ -239,6 +239,8 @@ export const listRecentDrafts = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .eq("status", "draft")
       .eq("archived", false)
+      // Recent Drafts strip = general library only; milestone items live under their workspace.
+      .is("workspace_id", null)
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) throw error;
