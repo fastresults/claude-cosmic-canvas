@@ -163,10 +163,15 @@ export function useBrainGraph() {
       if (row.src_type !== "you") targets.push([srcId, row.src_type, row.src_id]);
       targets.push([dstId, row.dst_type, row.dst_id]);
       for (const [nodeId, type, rawId] of targets) {
-        const label = await fetchLabel(type, rawId);
+        let label = await fetchLabel(type, rawId);
+        if (!label) {
+          await new Promise((r) => setTimeout(r, 500));
+          label = await fetchLabel(type, rawId);
+        }
         if (!label || !mounted) continue;
         setNodes((prev) => prev.map((n) => (n.id === nodeId && !n.label ? { ...n, label } : n)));
       }
+
 
     };
 
