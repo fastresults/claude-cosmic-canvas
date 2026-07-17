@@ -10,6 +10,7 @@ import { ListView } from "./views/ListView";
 import { HealthView } from "./views/HealthView";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
+import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
 import type { NodeType } from "@/lib/brain/edges";
 
 const VIEWS = [
@@ -27,7 +28,12 @@ export function BrainCanvas() {
   const [peek, setPeek] = useState<GraphNode | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set());
-  const { nodes, edges } = useBrainGraph();
+  const { activeProfile } = useDefaultProfiles();
+  const { nodes: rawNodes, edges } = useBrainGraph();
+  const nodes = useMemo(() => {
+    const label = activeProfile?.name?.trim() || "You";
+    return rawNodes.map((n) => (n.nodeType === "you" ? { ...n, label } : n));
+  }, [rawNodes, activeProfile?.name]);
   const zoomRef = useRef<ZoomController | null>(null);
 
   const visibleTypes = useMemo(
