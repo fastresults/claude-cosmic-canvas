@@ -124,11 +124,39 @@ function PresetsPage() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-          {query || filter !== "all"
-            ? "No presets match."
-            : "No presets yet. Tap New preset to build your first lens."}
-        </div>
+        query || filter !== "all" ? (
+          <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
+            No presets match.
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border bg-surface-elev p-5">
+            <div className="mb-1 text-sm font-medium text-foreground">
+              Save your first Preset
+            </div>
+            <div className="mb-4 text-xs text-muted-foreground">
+              Think of a piece you write often — a launch post, a customer
+              recap, a milestone update. Capture how it should feel once, then
+              pick it from the composer every time.
+            </div>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+            >
+              Create my first Preset
+            </button>
+            <div className="mt-3 text-center text-[11px] text-muted-foreground">
+              Not sure yet?{" "}
+              <Link
+                to="/settings/default-profiles"
+                className="text-accent hover:underline"
+              >
+                Start with a Profile instead
+              </Link>{" "}
+              — it sets your baseline identity.
+            </div>
+          </div>
+        )
       ) : (
         <ul className="space-y-2">
           {filtered.map((p) => (
