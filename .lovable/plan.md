@@ -1,64 +1,103 @@
-## Where Audience is actually wired today
+## Goal
 
-Audits show Audience is a table + settings page + `useUserDefaults` pill, but it stops there. It is **not** wired into the surfaces that matter:
+Make the Profile vs Preset distinction obvious the moment a user lands on either screen — no reading required — and guide first-time users through picking or building each one.
 
-| Surface | Audience today |
-|---|---|
-| `DefaultsStrip` pill row | ✅ shown (fourth pill) |
-| `settings/audiences` CRUD + AI drafter | ✅ works |
-| `default_profiles` schema (`audience_id`) | ✅ column exists |
-| **Profile create/edit sheet** | ❌ no Audience selector — profiles can't bundle an audience |
-| **Profile card chips** (`SlotChip`) | ❌ only Voice/Knowledge/Domain shown |
-| **`applyProfile`** swap | Partially — swaps audience default only if profile has one, but UI can't set it |
-| **Create flow prompt** (`create.functions.ts`) | ❌ audience never injected into the model system prompt |
-| **Draft regeneration / image prompts** | ❌ uses free-text `audience` string from draft, not the structured ICP |
-| **Orchestrator system prompt** (`system.server.ts`) | ⚠️ only via `MilestoneContext`; generic/create/copilot surfaces don't receive audience |
-| **Milestone `StrategyPanel` / actor** | ⚠️ mentions "audience" as concept, doesn't load active audience ICP |
-| **`presets/injection.ts` `[AUDIENCE]` block** | ❌ file exists, zero callers |
-| **Channel-aware social prompts** | ❌ channel rules ignore audience persona |
-| **`RequireDefaultsGate`** | ❌ doesn't require Audience before creating |
+## The mental model we're teaching
 
-Net: the user set an Audience, but no generation call ever sees it.
+- **Profile = "Who I am"** — persistent identity (Voice + Knowledge + Domain + Audience). One active at a time.
+- **Preset = "How I want this piece to feel"** — a saved brief for one type of content (tone, format, length, angle, references).
 
-## Plan — make Audience a first-class input everywhere
+Everywhere the two appear, we teach that split with the same words, same icons, same color coding.
 
-### 1. Profile bundle wiring (UI gap that user is looking at)
-- `settings.default-profiles.tsx` → `CreateProfileSheet`: add Audience `<Select>` fed by `listAudiences`; store `audienceId`; pass to `createProfile`.
-- `SlotChip`: add `"audience"` kind + `Users` icon; render fourth chip on each profile card.
-- Support edit (not just create) so existing profiles can attach an audience.
-- Profile description helper text: "Voice + Knowledge + Domain + Audience".
+## Concrete UX changes
 
-### 2. Prompt injection (make the model actually use Audience)
-- New helper `renderAudienceBlock(audience)` in `src/lib/audiences/render.ts` — formats ICP: role, seniority, industry, pains, goals, objections, channels.
-- `composeOrchestratorSystem` (system.server.ts): accept `audience` arg; append `[AUDIENCE]` block for **all** surfaces (create, milestone, copilot, brain), not just milestone context.
-- `create.functions.ts` generation path: load active audience (from profile or user default) and pass into system compose. Same for regenerate + section rewrites in `drafts.functions.ts`.
-- Channel-aware social prompts: prepend audience tone constraint per channel (e.g. "Write for {ICP}; use their vocabulary; address {top_pain}").
-- Milestone `StrategyPanel` / `actor.ts` `contextBlock`: pull structured audience instead of free-text `audience` string.
+### 1. Rename in the sidebar with subtitles
 
-### 3. Draft ↔ Audience linkage
-- `drafts` table already stores free-text `audience`; add `audience_id` FK (nullable). Backfill from active profile at draft create.
-- `saveDraft` / `regenerateDraft`: read `audience_id`, resolve ICP server-side, inject.
-- Draft header: show a small "For: {audience name}" chip so the user sees what the model is targeting.
+`Settings → Profiles` and `Settings → Presets` each get a one-line subtitle:
+- Profiles — *"Your active identity"*
+- Presets — *"Saved briefs for one piece"*
 
-### 4. Gates + guidance
-- `RequireDefaultsGate`: include `audience` in required set (currently silent). Blocking copy: "Pick an audience so Eve writes for a specific reader."
-- Empty-state on Create/Milestone: if no audience, offer one-tap "Draft one with AI" (reuses existing `suggestAudienceFromContext`).
+Icon coding: Profiles use a person/badge icon in accent; Presets use a document/lens icon in a distinct hue (e.g. warm amber). Same coding on the cards, the composer chips, and every reference to either concept.
 
-### 5. Orchestrator awareness
-- System prompt gains rule: "Always speak to the [AUDIENCE]. If the audience is missing, ask before drafting."
-- `MILESTONE_ACTOR_SYSTEM`: add explicit "rank channels by fit to [AUDIENCE.channels]".
+### 2. Header explainer card (identical shape on both pages)
 
-### Files touched
-- `src/routes/_authenticated/settings.default-profiles.tsx` (audience selector + chip)
-- `src/lib/profiles/profiles.functions.ts` (already accepts `audience_id`; add update handler if missing)
-- `src/lib/audiences/render.ts` (new)
-- `src/lib/orchestrator/system.server.ts` (audience block for all surfaces)
-- `src/lib/workspaces/context.server.ts` (structured audience)
-- `src/lib/create/create.functions.ts` + `src/lib/drafts/drafts.functions.ts` (resolve + inject)
-- `src/lib/create/format-rules.ts` (channel × audience tone hooks)
-- `src/components/settings/RequireDefaultsGate.tsx` (require audience)
-- DB migration: `drafts.audience_id uuid references audiences(id)` (nullable, ON DELETE SET NULL)
+Top of each settings page, a two-column comparison card:
 
-### Out of scope
-- Rewriting the AI audience drafter itself (already working per last turn).
-- Analytics on audience performance (future).
+```
+┌──────────────── PROFILE ────────────────┬──────────────── PRESET ─────────────────┐
+│  Who you are right now                  │  How this piece should feel             │
+│  Voice · Knowledge · Domain · Audience  │  Tone · Format · Length · Angle · Refs  │
+│  One active at a time                   │  Pick per draft                         │
+│  [You're here] on Profiles page         │  [You're here] on Presets page          │
+└─────────────────────────────────────────┴─────────────────────────────────────────┘
+```
+
+"You're here" highlights the current side. On mobile it stacks; the current side is full-color, the other is muted with a "See Presets →" / "See Profiles →" link.
+
+### 3. Empty-state that guides, not just describes
+
+Replace the current dashed-border placeholder with a 3-step guided card:
+
+**Profiles empty state**
+1. Pick your Voice → (opens Voice picker inline)
+2. Pick your Knowledge base → (inline)
+3. Pick your Audience → (inline)
+Then a primary "Save as my first Profile" button. Domain is optional; audience gets a "Draft with AI" affordance since we already have that server function.
+
+**Presets empty state**
+1. What kind of piece? (LinkedIn post, essay, milestone, etc.)
+2. What tone? (slider or 3–4 chips)
+3. Who's it for? (audience picker — inherits from active Profile by default)
+Then "Save as my first Preset."
+
+### 4. Composer teaches by doing
+
+In the composer's DefaultsStrip, the Profile pill and Preset pill sit side-by-side with distinct icons and a hairline divider between them. Long-press (or tap the info dot) shows a 1-line tooltip: *"Profile = who you are. Preset = the brief for this piece."*
+
+New button on the composer overflow: **"Save this setup as…"** → sheet with two big cards:
+- **Save as Profile** ("I'll want this identity again")
+- **Save as Preset** ("I'll want this brief again")
+
+Choosing one pre-fills the correct create sheet. This is the single most effective teaching moment.
+
+### 5. Inherited-from-Profile pills inside Preset editor
+
+When editing a Preset, Audience and Domain fields show as inherited chips pulled from the active Profile with a small "Override for this Preset" toggle. Makes it visually obvious that Presets *ride on top of* Profiles, not replace them.
+
+### 6. Cross-links on cards
+
+- Each Profile card gets a subtle footer: *"Most-used Presets in this profile: [chip] [chip] [chip]"*
+- Each Preset card shows: *"Best paired with Profile: [chip]"*
+
+Data comes from `preset_usage` join on last-active Profile.
+
+### 7. First-run coach marks
+
+First time a user visits either page, a dismissible tip sheet appears at the bottom with a two-panel diagram (Profile stack vs. Preset lens on top). One-tap dismiss, stored in `profiles.onboarding_flags`.
+
+### 8. Copy audit — replace every conflicting sentence
+
+Sweep all current copy that says "one-click bundles" for both and split:
+- Profiles: *"Your identity, ready in one tap."*
+- Presets: *"Your brief, ready in one tap."*
+
+## Files touched
+
+- `src/routes/_authenticated/settings.default-profiles.tsx` — header comparison card, guided empty state, cross-link footer, new copy
+- `src/routes/_authenticated/settings.presets.tsx` — same header, guided empty state, inherited pills, cross-link footer, new copy
+- `src/components/settings/DefaultsStrip.tsx` — icon + subtitle coding, info tooltip
+- `src/components/shell/ComposerBar.tsx` (or the overflow menu) — new "Save this setup as…" entry + sheet
+- `src/components/settings/ProfileVsPresetCard.tsx` — new shared explainer card
+- `src/components/onboarding/FirstRunTip.tsx` — new dismissible coach mark component
+- `src/hooks/useOnboardingFlags.ts` — new hook backed by `profiles.onboarding_flags` (already exists as jsonb) 
+- Sidebar nav config — add subtitles
+
+## What we're NOT doing
+
+- No schema changes, no data migration
+- Not merging the two concepts
+- No changes to how the orchestrator consumes them (Profile audience already injects globally from last turn)
+
+## Success signal
+
+A new user should be able to answer, unprompted, after 10 seconds on either page: *"What's the difference?"* The header card + subtitle + coach mark are designed to make that answer trivial.

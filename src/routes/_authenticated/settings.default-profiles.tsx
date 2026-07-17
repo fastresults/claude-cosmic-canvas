@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -16,6 +16,8 @@ import {
   Zap,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
+import { ProfileVsPresetCard } from "@/components/settings/ProfileVsPresetCard";
+import { FirstRunTip } from "@/components/onboarding/FirstRunTip";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
@@ -37,28 +39,28 @@ function DefaultProfilesPage() {
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
       <SettingsPageHeader
         title="Profiles"
-        description="One-click bundles of Voice + Knowledge + Domain + Audience. Pick a profile and every default swaps in at once — no more setting four toggles."
+        description="Your active identity, ready in one tap."
       />
 
-      <div className="mb-4 rounded-lg border border-border bg-surface-elev p-3 text-xs text-muted-foreground">
-        <strong className="text-foreground">Profiles vs Presets:</strong> a{" "}
-        <em>Profile</em> is who you're being right now (voice + knowledge +
-        domain + audience). A{" "}
-        <Link to="/settings/presets" className="text-accent hover:underline">
-          Preset
-        </Link>{" "}
-        is a content lens for a single piece (angle, audience, references).
-      </div>
+      <ProfileVsPresetCard current="profile" />
+
+      <FirstRunTip
+        id="profiles-vs-presets"
+        title="Profile vs Preset — the 10-second version"
+      >
+        A <strong className="text-foreground">Profile</strong> is who you are
+        right now (Voice, Knowledge, Domain, Audience). A{" "}
+        <strong className="text-foreground">Preset</strong> is the brief for
+        one piece (tone, format, length, references). Switch Profile when you
+        switch hats; pick a Preset per draft.
+      </FirstRunTip>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : profiles.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-          No profiles yet. Tap the + button to bundle a Voice, Knowledge base,
-          Domain and Audience into a one-click profile.
-        </div>
+        <EmptyProfileGuide onStart={() => setCreating(true)} />
       ) : (
         <ul className="space-y-2">
           {profiles.map((p) => (
@@ -376,6 +378,50 @@ function SlotSelect({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function EmptyProfileGuide({ onStart }: { onStart: () => void }) {
+  const steps = [
+    { n: 1, title: "Pick your Voice", hint: "How you sound." },
+    { n: 2, title: "Point at your Knowledge", hint: "What you draw from." },
+    { n: 3, title: "Set your Audience", hint: "Who you're writing for." },
+  ];
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-surface-elev p-5">
+      <div className="mb-1 text-sm font-medium text-foreground">
+        Build your first Profile in 3 steps
+      </div>
+      <div className="mb-4 text-xs text-muted-foreground">
+        This becomes your active identity. Every draft you write uses it until
+        you switch.
+      </div>
+      <ol className="mb-4 space-y-2">
+        {steps.map((s) => (
+          <li
+            key={s.n}
+            className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2"
+          >
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent">
+              {s.n}
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-foreground">
+                {s.title}
+              </div>
+              <div className="text-[11px] text-muted-foreground">{s.hint}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        onClick={onStart}
+        className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+      >
+        Build my first Profile
+      </button>
     </div>
   );
 }
