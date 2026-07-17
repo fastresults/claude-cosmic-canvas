@@ -461,6 +461,8 @@ function SlotSelect({
   onAdoptSystemVoice,
   open,
   onOpenChange,
+  createHref,
+  createLabel,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -473,6 +475,8 @@ function SlotSelect({
   onAdoptSystemVoice?: (id: string) => Promise<void>;
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
+  createHref?: string;
+  createLabel?: string;
 }) {
   if (label === "Voice" && systemOptions && onAdoptSystemVoice && onOpenChange) {
     return (
@@ -510,9 +514,19 @@ function SlotSelect({
           </option>
         ))}
       </select>
+      {createHref && (
+        <Link
+          to={createHref}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+        >
+          <Plus className="h-3 w-3" />
+          {createLabel ?? `Create new ${label.toLowerCase()}`}
+        </Link>
+      )}
     </div>
   );
 }
+
 
 function VoicePicker({
   icon,
