@@ -324,6 +324,13 @@ function CreateProfileSheet({
           onChange={setDomainId}
           options={domains as { id: string; name: string }[]}
         />
+        <SlotSelect
+          icon={<Users className="h-3.5 w-3.5" />}
+          label="Audience"
+          value={audienceId}
+          onChange={setAudienceId}
+          options={audienceList}
+        />
 
         <button
           type="button"
