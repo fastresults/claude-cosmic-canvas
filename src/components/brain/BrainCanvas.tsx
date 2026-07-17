@@ -10,6 +10,7 @@ import { ListView } from "./views/ListView";
 import { HealthView } from "./views/HealthView";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
+import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
 import type { NodeType } from "@/lib/brain/edges";
 
 const VIEWS = [
