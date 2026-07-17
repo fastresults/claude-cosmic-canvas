@@ -139,147 +139,239 @@ export const setDefaultAudience = createServerFn({ method: "POST" })
   });
 
 // ---------- AI suggester ----------
+const ExistingAudienceRef = z.object({
+  name: z.string(),
+  persona: z.string().optional().default(""),
+  role_titles: z.array(z.string()).optional().default([]),
+  industries: z.array(z.string()).optional().default([]),
+});
 const SuggestInput = z.object({
   domain_id: z.string().uuid().nullable().optional(),
   knowledge_profile_id: z.string().uuid().nullable().optional(),
   focus: z.string().max(600).optional(),
+  existing: z.array(ExistingAudienceRef).max(50).optional(),
+  avoid_names: z.array(z.string()).max(50).optional(),
 });
 
-export const suggestAudienceFromContext = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => SuggestInput.parse(i))
-  .handler(async ({ data, context }) => {
-    // Gather grounding context: domain name + knowledge profile name + a few knowledge titles.
-    let domainName = "";
-    if (data.domain_id) {
-      const { data: d } = await context.supabase
-        .from("domains").select("name").eq("id", data.domain_id).maybeSingle();
-      domainName = d?.name ?? "";
-    } else {
-      const { data: d } = await context.supabase
-        .from("domains").select("name").eq("user_id", context.userId).eq("is_default", true).maybeSingle();
-      domainName = d?.name ?? "";
-    }
+async function runSuggestion(params: {
+  supabase: import("@supabase/supabase-js").SupabaseClient;
+  userId: string;
+  data: z.infer<typeof SuggestInput>;
+}) {
+  const { supabase, userId, data } = params;
 
-    let profileName = "";
-    let profileId = data.knowledge_profile_id ?? null;
-    if (!profileId) {
-      const { data: p } = await context.supabase
-        .from("knowledge_profiles").select("id, name").eq("user_id", context.userId).eq("is_default", true).maybeSingle();
-      profileId = p?.id ?? null;
-      profileName = p?.name ?? "";
-    } else {
-      const { data: p } = await context.supabase
-        .from("knowledge_profiles").select("name").eq("id", profileId).maybeSingle();
-      profileName = p?.name ?? "";
-    }
+  // Domain
+  let domainName = "";
+  if (data.domain_id) {
+    const { data: d } = await supabase
+      .from("domains").select("name").eq("id", data.domain_id).maybeSingle();
+    domainName = d?.name ?? "";
+  } else {
+    const { data: d } = await supabase
+      .from("domains").select("name").eq("user_id", userId).eq("is_default", true).maybeSingle();
+    domainName = d?.name ?? "";
+  }
 
-    let knowledgeSnippets: string[] = [];
-    if (profileId) {
-      const { data: entries } = await context.supabase
-        .from("knowledge_entries")
-        .select("title, source_type")
-        .eq("user_id", context.userId)
-        .eq("profile_id", profileId)
-        .is("archived_at", null)
-        .limit(12);
-      knowledgeSnippets = (entries ?? [])
-        .map((e) => `- ${e.title ?? "Untitled"} (${e.source_type ?? "note"})`)
-        .filter(Boolean);
-    }
+  // Knowledge profile
+  let profileName = "";
+  let profileId = data.knowledge_profile_id ?? null;
+  if (!profileId) {
+    const { data: p } = await supabase
+      .from("knowledge_profiles").select("id, name").eq("user_id", userId).eq("is_default", true).maybeSingle();
+    profileId = p?.id ?? null;
+    profileName = p?.name ?? "";
+  } else {
+    const { data: p } = await supabase
+      .from("knowledge_profiles").select("name").eq("id", profileId).maybeSingle();
+    profileName = p?.name ?? "";
+  }
 
-    const { createLovableAiGatewayProvider } = await import("@/lib/ai/gateway.server");
-    const { generateText, Output } = await import("ai");
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY is not configured");
-    const gateway = createLovableAiGatewayProvider(key);
+  // Knowledge snippets
+  let knowledgeSnippets: string[] = [];
+  if (profileId) {
+    const { data: entries } = await supabase
+      .from("knowledge_entries")
+      .select("title, source_type")
+      .eq("user_id", userId)
+      .eq("profile_id", profileId)
+      .is("archived_at", null)
+      .limit(12);
+    knowledgeSnippets = (entries ?? [])
+      .map((e) => `- ${e.title ?? "Untitled"} (${e.source_type ?? "note"})`)
+      .filter(Boolean);
+  }
 
-    const system = `You define an Ideal Customer Profile (ICP) for a content creator.
-Return a concrete, specific ICP grounded in the provided domain and knowledge context.
-Prefer concrete titles, industries, and pains over generic phrasing. No filler.`;
-
-    const prompt = [
-      `Domain: ${domainName || "(unspecified)"}`,
-      `Knowledge profile: ${profileName || "(unspecified)"}`,
-      knowledgeSnippets.length ? `Knowledge highlights:\n${knowledgeSnippets.join("\n")}` : "",
-      data.focus ? `Additional focus: ${data.focus}` : "",
-      "",
-      "Produce: a short name (3-6 words), a one-sentence description, and a structured ICP.",
-    ].filter(Boolean).join("\n");
-
-    // Loose schema — model omissions must not throw post-hoc validation.
-    const OutSchema = z.object({
-      name: z.string().nullish(),
-      description: z.string().nullish(),
-      icp: z.object({
-        persona: z.string().nullish(),
-        role_titles: z.array(z.string()).nullish(),
-        industries: z.array(z.string()).nullish(),
-        company_size: z.string().nullish(),
-        seniority: z.string().nullish(),
-        goals: z.array(z.string()).nullish(),
-        pains: z.array(z.string()).nullish(),
-        channels: z.array(z.string()).nullish(),
-        tone_preference: z.string().nullish(),
-        objections: z.array(z.string()).nullish(),
-        success_metrics: z.array(z.string()).nullish(),
-      }).nullish(),
+  // Existing audiences — auto-fetch if caller didn't pass them.
+  let existing = data.existing;
+  if (!existing) {
+    const { data: rows } = await supabase
+      .from("audiences")
+      .select("name, icp")
+      .eq("user_id", userId);
+    existing = (rows ?? []).map((r) => {
+      const icp = (r.icp ?? {}) as Partial<Icp>;
+      return {
+        name: r.name,
+        persona: icp.persona ?? "",
+        role_titles: icp.role_titles ?? [],
+        industries: icp.industries ?? [],
+      };
     });
+  }
 
-    const { NoObjectGeneratedError } = await import("ai");
-    const safeJsonParse = (text: string | undefined): Record<string, unknown> | null => {
-      if (!text) return null;
-      const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-      try { return JSON.parse(cleaned); } catch { return null; }
-    };
+  const existingBlock = existing.length
+    ? "Existing audiences (do NOT duplicate):\n" +
+      existing.map((e) => {
+        const bits = [e.persona].filter(Boolean);
+        if (e.role_titles?.length) bits.push(`roles: ${e.role_titles.slice(0, 4).join(", ")}`);
+        if (e.industries?.length) bits.push(`industries: ${e.industries.slice(0, 4).join(", ")}`);
+        return `- ${e.name}${bits.length ? ` — ${bits.join(" | ")}` : ""}`;
+      }).join("\n")
+    : "";
 
-    let raw: Record<string, unknown> = {};
-    try {
-      const { output } = await generateText({
-        model: gateway("google/gemini-3-flash-preview"),
-        system,
-        prompt,
-        output: Output.object({ schema: OutSchema }),
-      });
-      raw = (output ?? {}) as Record<string, unknown>;
-    } catch (err) {
-      if (NoObjectGeneratedError.isInstance(err)) {
-        raw = safeJsonParse((err as { text?: string }).text) ?? {};
-      } else {
-        console.error("[audiences] suggest failed", err);
-        throw new Error("Could not generate an audience right now. Please try again.");
-      }
-    }
+  const avoidBlock = data.avoid_names?.length
+    ? `Also avoid these recently-drafted names/personas: ${data.avoid_names.join(" | ")}`
+    : "";
 
-    const rawIcp = (raw.icp ?? {}) as Record<string, unknown>;
-    const str = (v: unknown) => (typeof v === "string" ? v : "");
-    const arr = (v: unknown) =>
-      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+  const { createLovableAiGatewayProvider } = await import("@/lib/ai/gateway.server");
+  const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("LOVABLE_API_KEY is not configured");
+  const gateway = createLovableAiGatewayProvider(key);
 
-    const name = str(raw.name).trim() || `${domainName || "General"} audience`;
-    const description = str(raw.description).trim();
-    const icp = IcpSchema.parse({
-      persona: str(rawIcp.persona),
-      role_titles: arr(rawIcp.role_titles),
-      industries: arr(rawIcp.industries),
-      company_size: str(rawIcp.company_size),
-      seniority: str(rawIcp.seniority),
-      goals: arr(rawIcp.goals),
-      pains: arr(rawIcp.pains),
-      channels: arr(rawIcp.channels),
-      tone_preference: str(rawIcp.tone_preference),
-      objections: arr(rawIcp.objections),
-      success_metrics: arr(rawIcp.success_metrics),
+  const system = `You define Ideal Customer Profiles (ICPs) for a content creator.
+Propose the NEXT most valuable ICP for this creator, ranked by addressable size, buying intent, and fit with the domain and knowledge context.
+It MUST be meaningfully distinct from every audience already listed — no overlapping persona, role titles, or industries.
+If an obvious high-value ICP is already covered, pick the next-best gap.
+If every strong ICP is already covered, return a narrower sub-segment of an under-served vertical rather than a duplicate.
+Return concrete titles, industries, and pains. No filler, no generic phrasing.`;
+
+  const prompt = [
+    `Domain: ${domainName || "(unspecified)"}`,
+    `Knowledge profile: ${profileName || "(unspecified)"}`,
+    knowledgeSnippets.length ? `Knowledge highlights:\n${knowledgeSnippets.join("\n")}` : "",
+    existingBlock,
+    avoidBlock,
+    data.focus ? `Additional focus: ${data.focus}` : "",
+    "",
+    "Produce: a short name (3-6 words), a one-sentence description, and a structured ICP.",
+  ].filter(Boolean).join("\n");
+
+  const OutSchema = z.object({
+    name: z.string().nullish(),
+    description: z.string().nullish(),
+    icp: z.object({
+      persona: z.string().nullish(),
+      role_titles: z.array(z.string()).nullish(),
+      industries: z.array(z.string()).nullish(),
+      company_size: z.string().nullish(),
+      seniority: z.string().nullish(),
+      goals: z.array(z.string()).nullish(),
+      pains: z.array(z.string()).nullish(),
+      channels: z.array(z.string()).nullish(),
+      tone_preference: z.string().nullish(),
+      objections: z.array(z.string()).nullish(),
+      success_metrics: z.array(z.string()).nullish(),
+    }).nullish(),
+  });
+
+  const safeJsonParse = (text: string | undefined): Record<string, unknown> | null => {
+    if (!text) return null;
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+    try { return JSON.parse(cleaned); } catch { return null; }
+  };
+
+  let raw: Record<string, unknown> = {};
+  try {
+    const { output } = await generateText({
+      model: gateway("google/gemini-3-flash-preview"),
+      system,
+      prompt,
+      output: Output.object({ schema: OutSchema }),
     });
+    raw = (output ?? {}) as Record<string, unknown>;
+  } catch (err) {
+    if (NoObjectGeneratedError.isInstance(err)) {
+      raw = safeJsonParse((err as { text?: string }).text) ?? {};
+    } else {
+      console.error("[audiences] suggest failed", err);
+      throw new Error("Could not generate an audience right now. Please try again.");
+    }
+  }
 
-    return {
+  const rawIcp = (raw.icp ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const arr = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+
+  const name = str(raw.name).trim() || `${domainName || "General"} audience`;
+  const description = str(raw.description).trim();
+  const icp = IcpSchema.parse({
+    persona: str(rawIcp.persona),
+    role_titles: arr(rawIcp.role_titles),
+    industries: arr(rawIcp.industries),
+    company_size: str(rawIcp.company_size),
+    seniority: str(rawIcp.seniority),
+    goals: arr(rawIcp.goals),
+    pains: arr(rawIcp.pains),
+    channels: arr(rawIcp.channels),
+    tone_preference: str(rawIcp.tone_preference),
+    objections: arr(rawIcp.objections),
+    success_metrics: arr(rawIcp.success_metrics),
+  });
+
+  // Duplicate detection
+  const norm = (s: string) => s.toLowerCase().trim();
+  const overlap = (a: string[], b: string[]) => {
+    const set = new Set(a.map(norm));
+    return b.some((x) => set.has(norm(x)));
+  };
+  const duplicateOf = existing.find((e) =>
+    norm(e.name) === norm(name) ||
+    (e.persona && icp.persona && norm(e.persona) === norm(icp.persona)) ||
+    overlap(e.role_titles ?? [], icp.role_titles ?? []) ||
+    overlap(e.industries ?? [], icp.industries ?? []),
+  );
+
+  return {
+    result: {
       name: name.slice(0, 120),
       description: description.slice(0, 800),
       icp,
       source_domain_id: data.domain_id ?? null,
       source_knowledge_profile_id: profileId,
-    };
+      is_duplicate_warning: !!duplicateOf,
+      duplicate_of: duplicateOf?.name ?? null,
+    },
+    existing,
+  };
+}
+
+export const suggestAudienceFromContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => SuggestInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const first = await runSuggestion({ supabase: context.supabase, userId: context.userId, data });
+    if (!first.result.is_duplicate_warning) return first.result;
+
+    // One retry with an explicit nudge
+    const retry = await runSuggestion({
+      supabase: context.supabase,
+      userId: context.userId,
+      data: {
+        ...data,
+        existing: first.existing,
+        avoid_names: [
+          ...(data.avoid_names ?? []),
+          first.result.name,
+          ...(first.result.icp.persona ? [first.result.icp.persona] : []),
+        ],
+      },
+    });
+    return retry.result;
   });
+
+
 
 
 // One-click: generate + save + set default.
