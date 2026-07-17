@@ -6,6 +6,7 @@
  * Server-only: import inside a server-fn handler.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { renderAudienceBlock } from "@/lib/audiences/render";
 
 export type MilestoneContext = {
   displayName: string | null;
