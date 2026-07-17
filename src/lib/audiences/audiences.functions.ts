@@ -95,11 +95,10 @@ export const updateAudience = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { id, icp, ...rest } = data;
-    const patch: Record<string, unknown> = { ...rest };
-    if (icp !== undefined) patch.icp = icp as unknown as Json;
+    const patch = { ...rest, ...(icp !== undefined ? { icp: icp as unknown as Json } : {}) };
     const { data: row, error } = await context.supabase
       .from("audiences")
-      .update(patch)
+      .update(patch as never)
       .eq("id", id)
       .eq("user_id", context.userId)
       .select(SELECT_COLS)
