@@ -1,43 +1,34 @@
-## Plan: robust Voice picker for Profiles
+## Add "Create new" shortcut to every pillar picker
 
-### What I confirmed
-- The Profile creation screen currently uses a native `<select>` for Voice, so it only shows the small set of already-adopted user voices.
-- The backend has a larger visible system voice library available separately: 54 curated voices across categories.
-- The current Profile voice picker does not expose that library, category filtering, rich descriptions, or adoption from the picker.
+Right now the Voice, Domain, Knowledge, and Audience selectors on `/settings/default-profiles` are plain native `<select>` menus (except Voice, which is the new `VoicePicker` dialog). If a user doesn't see the option they want, there's no path forward from inside the picker — they have to know to navigate to the correct settings page themselves.
 
-### Build the improved picker
-1. **Replace the native Voice dropdown only**
-   - Keep Knowledge, Domain, and Audience selectors as-is for now.
-   - Replace the Voice `<select>` in the Profile creation sheet with a full-screen/mobile-first picker dialog or bottom sheet.
+### Goal
+Every pillar picker exposes a clear "Add / build new" affordance that deep-links to the correct settings screen.
 
-2. **Show both available voice sources**
-   - **My voices**: voices the user already has saved/adopted.
-   - **Voice library**: all visible curated system voices.
-   - If the user selects a library voice, adopt/save it first, then select it for the Profile automatically.
+### Changes
 
-3. **Add robust filtering**
-   - Search by voice name, profession, tagline, category, and tone.
-   - Category chips/tabs such as Public Figures, Business Leaders, Consulting & Strategy, Marketing & Sales, etc.
-   - Quick filters for “My voices” vs “Library”.
-   - Clear filter affordance when no result matches.
+1. **Replace remaining native selects with a consistent `PillarPicker` dialog** (same pattern as `VoicePicker`) for Domain, Knowledge, and Audience on `settings.default-profiles.tsx`. Each picker:
+   - Search + list of existing items (deduped case-insensitively)
+   - Sticky footer row: **"+ Create new [Domain/Knowledge/Audience]"** → navigates to the matching settings route and closes the dialog
+   - Empty-state variant: when no items exist, the primary CTA is the same "Create new" link with helper copy
 
-4. **Make each option human-readable**
-   - Display full voice name.
-   - Show category/profession and tagline where available.
-   - Show tone/style metadata in compact chips.
-   - Avoid duplicate names defensively.
+2. **Update `VoicePicker`** to add the same sticky footer row: **"+ Create a new Voice"** → `/settings/voices` (or wherever voice creation lives). Keeps the existing "Add + use" inline adoption for system voices.
 
-5. **Mobile-first interaction**
-   - Use a tall scrollable picker with sticky search/filter controls.
-   - Make rows large enough to tap comfortably.
-   - Keep selected state obvious with a checkmark and selected label on the collapsed field.
-   - Add loading and “adopting voice…” states so the user knows something is happening.
+3. **Route mapping** used by the shortcut:
+   - Voice → `/settings/voices`
+   - Domain → `/settings/domains`
+   - Knowledge → `/settings/knowledge`
+   - Audience → `/settings/audiences`
+   (Verify exact paths during implementation; use the ones already registered.)
 
-6. **Cache/invalidation**
-   - Reuse existing `listVoiceProfiles`, `listSystemVoices`, and `adoptSystemVoice` server functions.
-   - After adopting a library voice, invalidate voice queries so it appears under “My voices” too.
+4. **Return behavior**: after creating a new item in settings and returning to the profile screen, the picker's list refreshes (invalidate the relevant query) so the new item is immediately selectable.
 
-### Technical notes
-- Primary file: `src/routes/_authenticated/settings.default-profiles.tsx`.
-- Existing category labels can be reused from the Voice settings page.
-- No database migration is needed for this UI fix.
+### Out of scope
+- No changes to the settings pages themselves.
+- No changes to how profiles are saved.
+- No new pillars.
+
+### Files touched
+- `src/routes/_authenticated/settings.default-profiles.tsx`
+- `src/components/pickers/VoicePicker.tsx`
+- New: `src/components/pickers/PillarPicker.tsx` (shared shell for Domain/Knowledge/Audience)

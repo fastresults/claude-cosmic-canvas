@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -413,6 +413,8 @@ function CreateProfileSheet({
           value={knowledgeId}
           onChange={setKnowledgeId}
           options={knowledgeList}
+          createHref="/settings/knowledge"
+          createLabel="Create a new knowledge profile"
         />
         <SlotSelect
           icon={<Compass className="h-3.5 w-3.5" />}
@@ -420,6 +422,8 @@ function CreateProfileSheet({
           value={domainId}
           onChange={setDomainId}
           options={domainList}
+          createHref="/settings/domains"
+          createLabel="Create a new domain"
         />
         <SlotSelect
           icon={<Users className="h-3.5 w-3.5" />}
@@ -427,7 +431,10 @@ function CreateProfileSheet({
           value={audienceId}
           onChange={setAudienceId}
           options={audienceList}
+          createHref="/settings/audiences"
+          createLabel="Create a new audience"
         />
+
 
         <button
           type="button"
@@ -454,6 +461,8 @@ function SlotSelect({
   onAdoptSystemVoice,
   open,
   onOpenChange,
+  createHref,
+  createLabel,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -466,6 +475,8 @@ function SlotSelect({
   onAdoptSystemVoice?: (id: string) => Promise<void>;
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
+  createHref?: string;
+  createLabel?: string;
 }) {
   if (label === "Voice" && systemOptions && onAdoptSystemVoice && onOpenChange) {
     return (
@@ -503,9 +514,19 @@ function SlotSelect({
           </option>
         ))}
       </select>
+      {createHref && (
+        <Link
+          to={createHref}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
+        >
+          <Plus className="h-3 w-3" />
+          {createLabel ?? `Create new ${label.toLowerCase()}`}
+        </Link>
+      )}
     </div>
   );
 }
+
 
 function VoicePicker({
   icon,
@@ -782,9 +803,23 @@ function VoicePicker({
                 </div>
               )}
             </div>
+            <div className="border-t border-border bg-card px-4 py-3">
+              <Link
+                to="/settings/voice"
+                onClick={() => onOpenChange(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-accent/50 bg-accent/5 px-3 py-2.5 text-sm font-medium text-accent hover:bg-accent/10"
+              >
+                <Plus className="h-4 w-4" />
+                Create a new voice
+              </Link>
+              <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                Don't see the voice you want? Build one in Voice settings.
+              </p>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
