@@ -65,7 +65,7 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
   const colorObj = useMemo(() => new THREE.Color(color), [color]);
   const opacity = dim ? 0.25 : 1;
 
-  const isYellow = YELLOW_TYPES.has(node.nodeType);
+  const hasPersistentLabel = PERSISTENT_LABEL_TYPES.has(node.nodeType);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
