@@ -381,3 +381,47 @@ function SlotSelect({
     </div>
   );
 }
+
+function EmptyProfileGuide({ onStart }: { onStart: () => void }) {
+  const steps = [
+    { n: 1, title: "Pick your Voice", hint: "How you sound." },
+    { n: 2, title: "Point at your Knowledge", hint: "What you draw from." },
+    { n: 3, title: "Set your Audience", hint: "Who you're writing for." },
+  ];
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-surface-elev p-5">
+      <div className="mb-1 text-sm font-medium text-foreground">
+        Build your first Profile in 3 steps
+      </div>
+      <div className="mb-4 text-xs text-muted-foreground">
+        This becomes your active identity. Every draft you write uses it until
+        you switch.
+      </div>
+      <ol className="mb-4 space-y-2">
+        {steps.map((s) => (
+          <li
+            key={s.n}
+            className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2"
+          >
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent">
+              {s.n}
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-foreground">
+                {s.title}
+              </div>
+              <div className="text-[11px] text-muted-foreground">{s.hint}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        onClick={onStart}
+        className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+      >
+        Build my first Profile
+      </button>
+    </div>
+  );
+}
