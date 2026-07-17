@@ -16,6 +16,11 @@ const SearchInput = z.object({
   q: z.string().optional(),
   filters: FiltersSchema.optional(),
   sort: z.enum(["recent", "oldest", "score"]).default("recent"),
+  // Library partition: general = personal library (no milestone),
+  // milestone = items attached to any milestone workspace,
+  // all = unfiltered (admin/debug only).
+  scope: z.enum(["general", "milestone", "all"]).default("general"),
+  workspaceId: z.string().uuid().nullable().optional(),
   cursor: z.string().nullable().optional(),
   limit: z.number().min(1).max(60).default(30),
 });
@@ -45,9 +50,17 @@ export const searchDrafts = createServerFn({ method: "POST" })
     let query = supabase
       .from("create_drafts")
       .select(
-        "id, format_id, title, sections, quality_score, status, created_at, campaign_id",
+        "id, format_id, title, sections, quality_score, status, created_at, campaign_id, workspace_id",
       )
       .eq("user_id", context.userId);
+
+    // Partition: General = no milestone; Milestone = attached to a workspace.
+    if (data.scope === "general") {
+      query = query.is("workspace_id", null);
+    } else if (data.scope === "milestone") {
+      if (data.workspaceId) query = query.eq("workspace_id", data.workspaceId);
+      else query = query.not("workspace_id", "is", null);
+    }
 
     const q = data.q?.trim();
     if (q && q.length > 0) {
@@ -112,6 +125,19 @@ export const searchDrafts = createServerFn({ method: "POST" })
       }
     }
 
+    // Fetch workspace titles for any milestone-attached rows on this page.
+    const wsIds = Array.from(
+      new Set(page.map((r) => r.workspace_id).filter((x): x is string => !!x)),
+    );
+    const wsTitles: Record<string, string> = {};
+    if (wsIds.length) {
+      const { data: wss } = await supabase
+        .from("opportunity_workspaces")
+        .select("id, title")
+        .in("id", wsIds);
+      for (const w of wss ?? []) wsTitles[w.id] = w.title ?? "Milestone";
+    }
+
     // Adapt to legacy Library row shape used by the UI
     const items = page.map((r) => {
       const sections = Array.isArray(r.sections) ? r.sections : [];
@@ -125,10 +151,11 @@ export const searchDrafts = createServerFn({ method: "POST" })
         body: displayTitle ? bodyText : bodyText || r.title || "",
         score: r.quality_score != null ? { total: Number(r.quality_score) } : {},
         status: r.status ?? "draft",
-
         image_url: covers[r.id] ?? null,
         created_at: r.created_at,
         campaign_id: r.campaign_id,
+        workspace_id: r.workspace_id ?? null,
+        workspace_title: r.workspace_id ? wsTitles[r.workspace_id] ?? null : null,
       };
     });
 
