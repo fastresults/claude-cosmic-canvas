@@ -11,9 +11,9 @@ import {
   setDefaultAudience,
   updateAudience,
   suggestAudienceFromContext,
-  generateDefaultAudience,
   type Icp,
 } from "@/lib/audiences/audiences.functions";
+
 
 export const Route = createFileRoute("/_authenticated/settings/audiences")({
   component: AudiencesSettings,
