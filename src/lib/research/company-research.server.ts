@@ -155,20 +155,16 @@ async function searchExternalIntelligence(
     console.warn("[research] no PERPLEXITY_API_KEY, skipping external enrichment");
     return "";
   }
-  const searchPrompt = `Provide a comprehensive factual briefing on "${companyName}" (${companyUrl}). Include ALL of the following if available:
+  const searchPrompt = `Provide a concise factual briefing on "${companyName}" (${companyUrl}). Cover ONLY these areas, with specific numbers, dates, and names where available:
 
-1. FINANCIAL INFORMATION: Total funding raised, funding rounds (dates, amounts, lead investors), valuation, revenue figures, financial performance, donors, sponsors, revenue sources, how the organization makes money
-2. BOARD OF DIRECTORS & ADVISORS: Full names, titles, affiliations, backgrounds
-3. LEADERSHIP & KEY EXECUTIVES: Names, roles, backgrounds beyond what's on their website
-4. INVESTORS & BACKERS: All known investors, venture capital firms, angel investors, institutional backers, donors, sponsors
-5. RECENT NEWS & PRESS: Major announcements, partnerships, acquisitions, controversies from the last 12 months
-6. COMPETITIVE LANDSCAPE: Key competitors and how they compare
-7. MARKET POSITION: Market share, industry rankings, analyst coverage
-8. PARTNERSHIPS & ALLIANCES: Strategic partnerships, integrations, channel partners
-9. AWARDS & RECOGNITION: Industry awards, certifications, notable rankings
-10. KEY CUSTOMERS: Named customers, case studies, notable logos
+1. FINANCIALS: Total funding, latest round (date/amount/lead), valuation, revenue, how they make money
+2. BOARD & LEADERSHIP: Board members, key executives, founders — names, titles, affiliations
+3. INVESTORS: All known investors, VC firms, notable backers or donors
+4. RECENT NEWS (last 12 months): Major announcements, partnerships, acquisitions
+5. COMPETITORS: Top 3-5 competitors and brief differentiation
+6. CUSTOMERS & PARTNERSHIPS: Named customers, notable strategic partners
 
-Be exhaustive and factual. Include specific numbers, dates, and names wherever possible. If this is a nonprofit, club, or association, include membership numbers, dues structure, major donors, grant funding, and governance structure.`;
+Be dense and factual. If nonprofit/club/association, include membership size, dues, major donors.`;
 
   try {
     const res = await fetch(PERPLEXITY_URL, {
@@ -183,11 +179,12 @@ Be exhaustive and factual. Include specific numbers, dates, and names wherever p
           {
             role: "system",
             content:
-              "You are a corporate intelligence researcher. Provide factual, well-sourced information. Include specific numbers, dates, and names. Be exhaustive.",
+              "You are a corporate intelligence researcher. Provide factual, well-sourced information. Include specific numbers, dates, and names. Be concise and dense.",
           },
           { role: "user", content: searchPrompt },
         ],
         temperature: 0.1,
+        max_tokens: 1500,
       }),
     });
     if (!res.ok) {
@@ -195,6 +192,7 @@ Be exhaustive and factual. Include specific numbers, dates, and names wherever p
       console.warn(`[research] perplexity failed ${res.status}: ${body.slice(0, 200)}`);
       return "";
     }
+
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
