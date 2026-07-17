@@ -413,6 +413,8 @@ function CreateProfileSheet({
           value={knowledgeId}
           onChange={setKnowledgeId}
           options={knowledgeList}
+          createHref="/settings/knowledge"
+          createLabel="Create a new knowledge profile"
         />
         <SlotSelect
           icon={<Compass className="h-3.5 w-3.5" />}
@@ -420,6 +422,8 @@ function CreateProfileSheet({
           value={domainId}
           onChange={setDomainId}
           options={domainList}
+          createHref="/settings/domains"
+          createLabel="Create a new domain"
         />
         <SlotSelect
           icon={<Users className="h-3.5 w-3.5" />}
@@ -427,7 +431,10 @@ function CreateProfileSheet({
           value={audienceId}
           onChange={setAudienceId}
           options={audienceList}
+          createHref="/settings/audiences"
+          createLabel="Create a new audience"
         />
+
 
         <button
           type="button"
