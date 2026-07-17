@@ -87,7 +87,7 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
   const trimmedLabel = node.label?.trim() ?? "";
   const hasLabel = trimmedLabel.length > 0;
   // Persistent label: yellow orbs & focused state — only real titles.
-  const showPersistent = hasLabel && (isYellow || focused);
+  const showPersistent = hasLabel && (hasPersistentLabel || focused);
   // Hover always shows something meaningful — real title if we have it,
   // otherwise a friendly type fallback + short id suffix.
   const rawId = node.id.includes(":") ? node.id.split(":")[1] ?? node.id : node.id;
