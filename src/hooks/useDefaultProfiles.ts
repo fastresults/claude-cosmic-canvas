@@ -44,6 +44,7 @@ export function useDefaultProfiles() {
     qc.invalidateQueries({ queryKey: ["voice-active"] });
     qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] });
     qc.invalidateQueries({ queryKey: ["settings", "domains"] });
+    qc.invalidateQueries({ queryKey: ["audiences"] });
   };
 
   return {
