@@ -150,6 +150,9 @@ export const saveDraft = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { ORCHESTRATOR_MODEL } = await import("@/lib/orchestrator/config");
     const { writeEdgesServer } = await import("@/lib/ai/provenance.server");
+    const { readWorkspaceContext } = await import(
+      "@/lib/workspaces/workspaceContextStore"
+    );
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -158,21 +161,33 @@ export const saveDraft = createServerFn({ method: "POST" })
       .maybeSingle();
     const personaId: string | null = profile?.persona_active_id ?? null;
 
-    const { data: draft, error: draftErr } = await supabase
-      .from("drafts")
+    // Derive a non-blank title (create_drafts.title is NOT NULL): first line
+    // of the body, trimmed to a short summary.
+    const firstLine = data.body
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? "Quick post";
+    const derivedTitle =
+      firstLine.length > 80 ? firstLine.slice(0, 77).trimEnd() + "…" : firstLine;
+
+    const wsCtx = readWorkspaceContext();
+
+    const { data: row, error: draftErr } = await supabase
+      .from("create_drafts")
       .insert({
         user_id: userId,
-        format: data.format,
-        body: data.body,
-        hooks: [],
-        score: { total: 0, voiceMatch: 0 },
+        format_id: data.format,
+        title: derivedTitle,
+        sections: [{ heading: null, body: data.body }],
         status: "draft",
         campaign_id: data.campaignId ?? null,
+        workspace_id: wsCtx.workspace_id ?? null,
+        workspace_item_id: wsCtx.workspace_item_id ?? null,
       })
-      .select("id, format, body, score, status, created_at")
+      .select("id, format_id, sections, status, created_at")
       .single();
 
-    if (draftErr || !draft) {
+    if (draftErr || !row) {
       throw new Error(`Failed to save draft: ${draftErr?.message ?? "unknown"}`);
     }
 
@@ -182,7 +197,7 @@ export const saveDraft = createServerFn({ method: "POST" })
         srcId: userId,
         edgeKind: "GENERATED_BY_TOOL",
         dstType: "draft",
-        dstId: draft.id,
+        dstId: row.id,
         meta: {
           tool: "claude",
           model: ORCHESTRATOR_MODEL,
@@ -197,23 +212,49 @@ export const saveDraft = createServerFn({ method: "POST" })
         srcId: personaId,
         edgeKind: "SPEAKS_IN",
         dstType: "draft",
-        dstId: draft.id,
+        dstId: row.id,
       });
     }
     await writeEdgesServer(supabase, userId, edges);
 
-    return { draft };
+    // Legacy return shape so working-draft.tsx callers keep working.
+    return {
+      draft: {
+        id: row.id,
+        format: row.format_id,
+        body: data.body,
+        score: { total: 0, voiceMatch: 0 },
+        status: row.status,
+        created_at: row.created_at,
+      },
+    };
   });
 
 export const listRecentDrafts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
-      .from("drafts")
-      .select("id, format, body, score, status, image_url, created_at, campaign_id")
+      .from("create_drafts")
+      .select("id, format_id, title, sections, quality_score, status, created_at, campaign_id")
+      .eq("user_id", context.userId)
       .eq("status", "draft")
+      .eq("archived", false)
       .order("created_at", { ascending: false })
       .limit(30);
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []).map((r) => {
+      const sections = Array.isArray(r.sections) ? r.sections : [];
+      const first = (sections[0] ?? {}) as { body?: string };
+      return {
+        id: r.id,
+        format: r.format_id,
+        body: first.body ?? r.title ?? "",
+        score: r.quality_score != null ? { total: Number(r.quality_score) } : { total: 0, voiceMatch: 0 },
+        status: r.status,
+        image_url: null as string | null,
+        created_at: r.created_at,
+        campaign_id: r.campaign_id,
+      };
+    });
   });
+

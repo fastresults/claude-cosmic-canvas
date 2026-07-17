@@ -1,70 +1,33 @@
+## Root cause (verified)
 
-## Diagnosis
+The "Perils of AI" post you just saved **is** in the database — but in the wrong table.
 
-Two independent causes make Company Research feel like it "takes forever to save":
+- Found: `drafts` row `07220c02-41a4-4bf9-af71-19787281f014`, `format='post'`, body starts with "AI can sound calm, certain, and endlessly available… That does not make it a therapist. For someone experiencing paran…", `created_at` 2026-07-17 16:59:56 UTC (matches "less than 3 minutes ago").
+- Library reads from `create_drafts` only (`src/lib/library/library.functions.ts` → `searchDrafts`), so the row is invisible there.
 
-### 1. Client render loop (the UI freeze you're seeing)
+The app has two draft tables from two eras:
+- Legacy `drafts` — written by `saveDraft` in `src/lib/content/content.functions.ts` (used by the working-draft / Home-orb quick-post flow via `src/lib/content/working-draft.tsx`), and by an orchestrator tool in `src/lib/orchestrator/tools/index.ts`.
+- New `create_drafts` — written by every format flow in `src/lib/create/create.server.ts`, and read by Library, Content → Drafts, Create hub tiles, workspaces, scheduler.
 
-Console shows a nonstop cascade:
+The "Perils of AI" post came through the legacy quick-post path, so it landed in `drafts` and every modern surface (Library, Create hub, Content → Drafts) missed it.
 
-```
-Maximum update depth exceeded
-  at Object.unregister (src/lib/voice/voice-scope.tsx:19:3)
-  at src/lib/voice/voice-scope.tsx:54:20
-```
+## Fix — consolidate on `create_drafts`
 
-Root cause in `src/lib/voice/voice-scope.tsx`:
+Single source of truth. Legacy `drafts` becomes read-only (kept for old rows / Brain edges).
 
-- The provider's context `value` is memoized on `owners`, so `ctx` becomes a **new object every time owners changes**.
-- `useVoiceScopeOwner`'s effect depends on `ctx`, so any register/unregister → new ctx → effect re-runs → `unregister` + `register` → owners changes → new ctx → repeat forever.
+1. **Rewrite `saveDraft`** in `src/lib/content/content.functions.ts` to insert into `create_drafts` instead of `drafts`:
+   - Map fields: `format → format_id`, `body → sections: [{ heading: null, body }]`, add `title: null`, `status: 'draft'`, `user_id`, `campaign_id`, and pick up `workspace_id` / `workspace_item_id` from `readWorkspaceContext()` (matches the pattern used by `create.server.ts`).
+   - Keep the returned shape backwards-compatible for `working-draft.tsx` (return `{ draft: { id, format, body, score, status, created_at } }` synthesized from the new row).
+   - Keep the provenance edge write (`writeEdgesServer`) unchanged — `dstType: 'draft'`, `dstId: newRow.id`.
+2. **Update the orchestrator tool** in `src/lib/orchestrator/tools/index.ts` (line 64 `from("drafts")` insert) to write to `create_drafts` the same way, so tool-authored drafts also show up.
+3. **Point `listRecentDrafts`** at `create_drafts` (filter `status='draft'`, project to the same legacy shape the callers expect).
+4. **Backfill the orphan** — one migration that copies any `drafts` rows created in the last 7 days that don't already have a matching `create_drafts` row (match on `user_id + body`) into `create_drafts` with `format_id = format`, `sections = [{heading:null, body}]`, preserving `created_at` and `campaign_id`. This surfaces the "Perils of AI" draft and any other recent stragglers without touching historical rows.
+5. **Leave `useBrainGraph.ts`** reading legacy `drafts` alone for now (Brain view over historical nodes) — mark with a `TODO` to migrate once legacy rows are dual-written or migrated.
 
-This locks the main thread while the research call is in flight, so the "Saving…" state never repaints and the app appears hung well past when the server actually finishes.
+Not doing: dual-writing to both tables (invites drift), or teaching Library to union both tables (perpetuates the split).
 
-### 2. Server pipeline is genuinely slow (~30–90s, not a bug)
+## Verification
 
-In `src/lib/research/company-research.server.ts` a single Company Research run does:
-
-1. Firecrawl `/map` (~3–8s)
-2. Up to **10 parallel** Firecrawl `/scrape` calls, each with `waitFor: 3000` and a 30s abort (slowest page dominates → ~8–20s)
-3. Perplexity `sonar-pro` deep briefing in parallel (~20–45s — usually the tail)
-4. Gemini 2.5 Pro JSON synthesis over ~60k chars (~15–30s)
-
-That's real work, but there's no progress signal to the user, so it reads as "stuck saving". Server-fn logs for this run are empty, confirming the client never got past the loop above to actually kick off / display progress cleanly on that attempt.
-
-## Fix
-
-### A. Stop the render loop (root cause of "hang")
-
-Rewrite `useVoiceScopeOwner` so the effect does not depend on the context object:
-
-- Destructure `register` / `unregister` from context (both are already stable `useCallback` refs — they don't change when `owners` changes).
-- Depend only on `[register, unregister, id, active]`, not `ctx`.
-- Guard `!ctx` outside the effect deps.
-
-Result: single register on mount, single unregister on unmount. No cascade. UI stays responsive during the research call.
-
-### B. Cut Company Research wall-clock time (~50% target)
-
-Small, safe tuning in `src/lib/research/company-research.server.ts`:
-
-1. Lower `maxPages` default from **10 → 6** and tighten per-scrape `waitFor: 3000 → 1200`, abort `30s → 15s`. Empirically the top 6 scored pages carry the signal; the tail just drags out the parallel batch.
-2. Cap the Perplexity call with `max_tokens: 1500` and shorten the prompt to the 6 highest-value asks (financials, board, leadership, investors, recent news, competitors) — currently 10 asks, no cap, which is the usual tail.
-3. Shrink synthesis context: `maxChars 45000 → 25000`, `maxExt 15000 → 8000`. Gemini 2.5 Pro synthesis time scales with input.
-4. Add three `console.time` markers (`map+scrape`, `perplexity`, `synthesis`) so future slow runs are diagnosable from server-fn logs.
-
-Expected: typical runs drop from 45–75s to ~20–35s.
-
-### C. Show progress so it doesn't feel like a hang
-
-In `src/routes/_authenticated/create.$formatId.tsx`, when the format is `company-research`, render a small step indicator under the composing card ("Mapping site…" → "Scraping pages…" → "Gathering external intel…" → "Synthesizing dossier…") driven by a simple elapsed-time timer (no server streaming needed for this pass). Keeps the perceived wait honest.
-
-## Out of scope
-
-- No changes to the dossier schema, DB writes, or the create/save flow.
-- No switch to background-job pattern yet — the wall-clock after fix A+B is within acceptable server-fn budget. If a future run trips a hard timeout, we can revisit with `EdgeRuntime.waitUntil`-style deferred processing.
-
-## Files touched
-
-- `src/lib/voice/voice-scope.tsx` — fix the effect deps (A).
-- `src/lib/research/company-research.server.ts` — tune limits + timings + logs (B).
-- `src/routes/_authenticated/create.$formatId.tsx` — progress steps for `company-research` (C).
+- Save a post from the Home orb quick-post → appears at top of `/library` and on Create hub tiles immediately.
+- After migration runs, "Perils of AI" (id `07220c02…`) is visible in Library sorted first under "Today".
+- No format/flow that previously produced a `drafts` row still bypasses `create_drafts`.
