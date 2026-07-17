@@ -454,7 +454,8 @@ function Library() {
           const forceOpen =
             !collapsible ||
             (q?.trim().length ?? 0) > 0 ||
-            activeChips.length > 0;
+            activeChips.length > 0 ||
+            !!workspaceId;
           const isOpen = forceOpen || !!expandedGroups[group];
           const panelId = `library-group-${group.replace(/\s+/g, "-")}`;
           return (
