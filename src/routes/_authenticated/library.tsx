@@ -95,6 +95,8 @@ function Library() {
   const statusFn = useServerFn(bulkSetStatus);
   const qc = useQueryClient();
   const confirm = useConfirm();
+  const { scope, workspaceId } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   const [inputValue, setInputValue] = useState("");
   const [q, setQ] = useState("");
@@ -112,13 +114,15 @@ function Library() {
   });
 
   const query = useInfiniteQuery({
-    queryKey: ["library-search", q, filters, sort],
+    queryKey: ["library-search", scope, workspaceId ?? null, q, filters, sort],
     queryFn: ({ pageParam }) =>
       searchFn({
         data: {
           q: q || undefined,
           filters,
           sort,
+          scope,
+          workspaceId: workspaceId ?? null,
           cursor: (pageParam as string | null) ?? null,
           limit: 30,
         },
@@ -143,7 +147,10 @@ function Library() {
     const groups = new Map<string, Draft[]>();
     for (const d of drafts) {
       let key: string;
-      if (sort === "score") {
+      if (scope === "milestone" && sort !== "score") {
+        // Group by milestone title in the Milestones tab (unless sorting by score).
+        key = d.workspace_title ?? "Milestone";
+      } else if (sort === "score") {
         const total = (d.score as { total?: number })?.total ?? 0;
         key = total >= 80 ? "Top" : total >= 50 ? "Strong" : total > 0 ? "Draft" : "Unscored";
       } else {
@@ -154,7 +161,7 @@ function Library() {
       groups.set(key, arr);
     }
     return Array.from(groups.entries());
-  }, [drafts, sort]);
+  }, [drafts, sort, scope]);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement | null>(null);
