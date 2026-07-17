@@ -152,10 +152,16 @@ export function useBrainGraph() {
         return [...prev, { id: row.id, source: srcId, target: dstId, kind: row.edge_kind }];
       });
 
-      // Resolve pretty label
-      const label = await fetchLabel(row.dst_type, row.dst_id);
-      if (!label || !mounted) return;
-      setNodes((prev) => prev.map((n) => (n.id === dstId ? { ...n, label } : n)));
+      // Resolve descriptive labels for both endpoints (skip "you").
+      const targets: Array<[string, NodeType, string]> = [];
+      if (row.src_type !== "you") targets.push([srcId, row.src_type, row.src_id]);
+      targets.push([dstId, row.dst_type, row.dst_id]);
+      for (const [nodeId, type, rawId] of targets) {
+        const label = await fetchLabel(type, rawId);
+        if (!label || !mounted) continue;
+        setNodes((prev) => prev.map((n) => (n.id === nodeId && !n.label ? { ...n, label } : n)));
+      }
+
     };
 
     (async () => {
