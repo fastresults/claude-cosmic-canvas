@@ -43,6 +43,7 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
       voice: loaded.voice,
       directives: loaded.directives,
       context: loaded.context,
+      audience: loaded.audience,
       surface: data.surface,
       surfaceInstructions: data.surfaceInstructions,
     });
