@@ -1,33 +1,43 @@
-## Problem
+## Plan: robust Voice picker for Profiles
 
-The Voice dropdown in the Profile sheet shows "Like Barack Obama Voice" three times. Confirmed via DB: `voice_profiles` has 3 rows with that exact name for the current user (created 14:10, 14:29, 14:38 on 2026-07-15) — real duplicates, not a rendering bug. Same risk exists for any voice created more than once.
+### What I confirmed
+- The Profile creation screen currently uses a native `<select>` for Voice, so it only shows the small set of already-adopted user voices.
+- The backend has a larger visible system voice library available separately: 54 curated voices across categories.
+- The current Profile voice picker does not expose that library, category filtering, rich descriptions, or adoption from the picker.
 
-## Fix (two layers)
+### Build the improved picker
+1. **Replace the native Voice dropdown only**
+   - Keep Knowledge, Domain, and Audience selectors as-is for now.
+   - Replace the Voice `<select>` in the Profile creation sheet with a full-screen/mobile-first picker dialog or bottom sheet.
 
-### 1. Database — merge existing duplicates and block new ones
+2. **Show both available voice sources**
+   - **My voices**: voices the user already has saved/adopted.
+   - **Voice library**: all visible curated system voices.
+   - If the user selects a library voice, adopt/save it first, then select it for the Profile automatically.
 
-New migration:
-- For each `(user_id, lower(trim(name)))` group with >1 row, keep the **oldest** row (canonical id). 
-- Repoint any references on the newer duplicates to the canonical id:
-  - `profiles.active_voice_id`
-  - `default_profiles.voice_id`
-  - `voice_signals.voice_profile_id`
-  - any other FK to `voice_profiles.id` discovered during the migration write
-- Delete the duplicate rows.
-- Add `CREATE UNIQUE INDEX voice_profiles_user_name_uidx ON voice_profiles (user_id, lower(trim(name)));` so a second save with the same name updates instead of inserting.
+3. **Add robust filtering**
+   - Search by voice name, profession, tagline, category, and tone.
+   - Category chips/tabs such as Public Figures, Business Leaders, Consulting & Strategy, Marketing & Sales, etc.
+   - Quick filters for “My voices” vs “Library”.
+   - Clear filter affordance when no result matches.
 
-### 2. App — defensive dedupe + friendlier save
+4. **Make each option human-readable**
+   - Display full voice name.
+   - Show category/profession and tagline where available.
+   - Show tone/style metadata in compact chips.
+   - Avoid duplicate names defensively.
 
-- In `settings.default-profiles.tsx` (`CreateProfileSheet`), dedupe `voiceList` by case-insensitive name before passing to the `<Select>`, keeping the first occurrence. Same treatment for the audience/knowledge/domain lists as a small hardening pass (cheap, same pattern).
-- In `voice.functions.ts` `upsertVoiceProfile` (or wherever a new voice is created — will confirm on read), if an insert hits the new unique index, update the existing row by name instead of surfacing a DB error. This turns "save again" into an idempotent edit and matches user expectation.
+5. **Mobile-first interaction**
+   - Use a tall scrollable picker with sticky search/filter controls.
+   - Make rows large enough to tap comfortably.
+   - Keep selected state obvious with a checkmark and selected label on the collapsed field.
+   - Add loading and “adopting voice…” states so the user knows something is happening.
 
-## Out of scope
+6. **Cache/invalidation**
+   - Reuse existing `listVoiceProfiles`, `listSystemVoices`, and `adoptSystemVoice` server functions.
+   - After adopting a library voice, invalidate voice queries so it appears under “My voices” too.
 
-- No UI redesign of the voice picker.
-- No rename of any existing voice — user-visible names stay identical, just unique.
-
-## Verification
-
-- Re-run the same DB query; expect exactly one row per name per user.
-- Reopen the Profile sheet; Voice dropdown lists each voice once.
-- Save a voice with an existing name from Settings → Voice; confirm it updates the existing row rather than adding a fourth.
+### Technical notes
+- Primary file: `src/routes/_authenticated/settings.default-profiles.tsx`.
+- Existing category labels can be reused from the Voice settings page.
+- No database migration is needed for this UI fix.

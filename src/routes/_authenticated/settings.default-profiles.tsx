@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   Plus,
@@ -14,6 +14,11 @@ import {
   Compass,
   Users,
   Zap,
+  Search,
+  X,
+  ChevronDown,
+  Library,
+  UserRound,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { ProfileVsPresetCard } from "@/components/settings/ProfileVsPresetCard";
@@ -21,7 +26,11 @@ import { FirstRunTip } from "@/components/onboarding/FirstRunTip";
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
-import { listVoiceProfiles } from "@/lib/voice/voice.functions";
+import {
+  adoptSystemVoice,
+  listSystemVoices,
+  listVoiceProfiles,
+} from "@/lib/voice/voice.functions";
 import { listProfiles as listKnowledgeProfiles } from "@/lib/knowledge/knowledge.functions";
 import { listDomains } from "@/lib/settings/settings.functions";
 import { listAudiences } from "@/lib/audiences/audiences.functions";
@@ -29,6 +38,40 @@ import { listAudiences } from "@/lib/audiences/audiences.functions";
 export const Route = createFileRoute("/_authenticated/settings/default-profiles")({
   component: DefaultProfilesPage,
 });
+
+type UserVoiceOption = {
+  id: string;
+  name: string;
+  category?: string | null;
+  tone?: string | null;
+  formality?: number | null;
+  humor?: number | null;
+  technicality?: number | null;
+  conciseness?: number | null;
+};
+
+type SystemVoiceOption = {
+  id: string;
+  name: string;
+  profession?: string | null;
+  tagline?: string | null;
+  category?: string | null;
+  tone?: string | null;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  public_figures: "Public Figures",
+  business_leaders: "Business Leaders",
+  consulting_strategy: "Consulting & Strategy",
+  marketing_sales: "Marketing & Sales",
+  thought_leadership: "Thought Leadership",
+  academic_journalism: "Academic & Journalism",
+  journalism: "Journalism",
+  coaching_self_help: "Coaching & Self-Help",
+  investment_finance: "Investment & Finance",
+  spirituality: "Spirituality",
+  other: "Other",
+};
 
 function DefaultProfilesPage() {
   const { profiles, isLoading, remove, favorite, setDefault, apply } =
@@ -192,14 +235,23 @@ function CreateProfileSheet({
   onOpenChange: (v: boolean) => void;
 }) {
   const { create } = useDefaultProfiles();
+  const qc = useQueryClient();
   const listVoicesFn = useServerFn(listVoiceProfiles);
+  const listSystemVoicesFn = useServerFn(listSystemVoices);
+  const adoptSystemVoiceFn = useServerFn(adoptSystemVoice);
   const listKnowledgeFn = useServerFn(listKnowledgeProfiles);
   const listDomainsFn = useServerFn(listDomains);
   const listAudiencesFn = useServerFn(listAudiences);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voice-profiles-list"],
-    queryFn: () => listVoicesFn(),
+    queryFn: () => listVoicesFn({ data: {} }),
+  });
+  const { data: systemVoices = [], isLoading: systemVoicesLoading } = useQuery({
+    queryKey: ["system-voices"],
+    queryFn: () => listSystemVoicesFn({ data: {} }),
+    staleTime: 5 * 60_000,
+    enabled: open,
   });
   const { data: knowledge = [] } = useQuery({
     queryKey: ["knowledge", "profiles"],
@@ -221,6 +273,17 @@ function CreateProfileSheet({
   const [knowledgeId, setKnowledgeId] = useState<string>("");
   const [domainId, setDomainId] = useState<string>("");
   const [audienceId, setAudienceId] = useState<string>("");
+  const [voicePickerOpen, setVoicePickerOpen] = useState(false);
+
+  const adoptVoice = useMutation({
+    mutationFn: (id: string) => adoptSystemVoiceFn({ data: { id } }),
+    onSuccess: (row) => {
+      setVoiceId(row.id);
+      qc.invalidateQueries({ queryKey: ["voice-profiles-list"] });
+      qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
+    },
+  });
 
   function reset() {
     setName("");
@@ -230,6 +293,7 @@ function CreateProfileSheet({
     setKnowledgeId("");
     setDomainId("");
     setAudienceId("");
+    setVoicePickerOpen(false);
   }
 
   const dedupeByName = <T extends { id: string; name: string }>(items: T[]): T[] => {
@@ -244,8 +308,12 @@ function CreateProfileSheet({
     return out;
   };
   const voiceList = useMemo(
-    () => dedupeByName((voices as { id: string; name: string }[]) ?? []),
+    () => dedupeByName((voices as UserVoiceOption[]) ?? []),
     [voices],
+  );
+  const systemVoiceList = useMemo(
+    () => dedupeByName((systemVoices as SystemVoiceOption[]) ?? []),
+    [systemVoices],
   );
   const audienceList = useMemo(
     () => dedupeByName((audiences as { id: string; name: string }[]) ?? []),
@@ -330,6 +398,14 @@ function CreateProfileSheet({
           value={voiceId}
           onChange={setVoiceId}
           options={voiceList}
+          systemOptions={systemVoiceList}
+          loadingSystem={systemVoicesLoading}
+          adoptingId={adoptVoice.isPending ? adoptVoice.variables : undefined}
+          onAdoptSystemVoice={async (id) => {
+            await adoptVoice.mutateAsync(id);
+          }}
+          open={voicePickerOpen}
+          onOpenChange={setVoicePickerOpen}
         />
         <SlotSelect
           icon={<BookOpen className="h-3.5 w-3.5" />}
@@ -372,13 +448,43 @@ function SlotSelect({
   value,
   onChange,
   options,
+  systemOptions,
+  loadingSystem,
+  adoptingId,
+  onAdoptSystemVoice,
+  open,
+  onOpenChange,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { id: string; name: string }[];
+  systemOptions?: SystemVoiceOption[];
+  loadingSystem?: boolean;
+  adoptingId?: string;
+  onAdoptSystemVoice?: (id: string) => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }) {
+  if (label === "Voice" && systemOptions && onAdoptSystemVoice && onOpenChange) {
+    return (
+      <VoicePicker
+        icon={icon}
+        label={label}
+        value={value}
+        onChange={onChange}
+        options={options as UserVoiceOption[]}
+        systemOptions={systemOptions}
+        loadingSystem={Boolean(loadingSystem)}
+        adoptingId={adoptingId}
+        onAdoptSystemVoice={onAdoptSystemVoice}
+        open={Boolean(open)}
+        onOpenChange={onOpenChange}
+      />
+    );
+  }
+
   return (
     <div>
       <label className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -398,6 +504,377 @@ function SlotSelect({
         ))}
       </select>
     </div>
+  );
+}
+
+function VoicePicker({
+  icon,
+  label,
+  value,
+  onChange,
+  options,
+  systemOptions,
+  loadingSystem,
+  adoptingId,
+  onAdoptSystemVoice,
+  open,
+  onOpenChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: UserVoiceOption[];
+  systemOptions: SystemVoiceOption[];
+  loadingSystem: boolean;
+  adoptingId?: string;
+  onAdoptSystemVoice: (id: string) => Promise<void>;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [source, setSource] = useState<"all" | "mine" | "library">("all");
+  const [category, setCategory] = useState("all");
+  const selected = options.find((o) => o.id === value);
+
+  const categoryOptions = useMemo(() => {
+    const cats = new Set<string>();
+    for (const item of [...options, ...systemOptions]) {
+      if (item.category) cats.add(item.category);
+    }
+    return ["all", ...Array.from(cats).sort((a, b) => {
+      const la = CATEGORY_LABELS[a] ?? a;
+      const lb = CATEGORY_LABELS[b] ?? b;
+      return la.localeCompare(lb);
+    })];
+  }, [options, systemOptions]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const matchesQuery = (parts: Array<string | number | null | undefined>) => {
+    if (!normalizedQuery) return true;
+    return parts.join(" ").toLowerCase().includes(normalizedQuery);
+  };
+  const showMine = source === "all" || source === "mine";
+  const showLibrary = source === "all" || source === "library";
+  const filteredMine = options.filter((voice) => {
+    if (category !== "all" && voice.category !== category) return false;
+    return matchesQuery([
+      voice.name,
+      voice.category,
+      CATEGORY_LABELS[voice.category ?? ""],
+      voice.tone,
+      voice.formality,
+      voice.humor,
+      voice.technicality,
+      voice.conciseness,
+    ]);
+  });
+  const ownedNames = new Set(options.map((o) => o.name.trim().toLowerCase()));
+  const filteredLibrary = systemOptions.filter((voice) => {
+    if (ownedNames.has(voice.name.trim().toLowerCase())) return false;
+    if (category !== "all" && voice.category !== category) return false;
+    return matchesQuery([
+      voice.name,
+      voice.profession,
+      voice.tagline,
+      voice.category,
+      CATEGORY_LABELS[voice.category ?? ""],
+      voice.tone,
+    ]);
+  });
+  const hasResults = (showMine && filteredMine.length > 0) ||
+    (showLibrary && filteredLibrary.length > 0);
+  const resetFilters = () => {
+    setQuery("");
+    setSource("all");
+    setCategory("all");
+  };
+
+  return (
+    <div>
+      <label className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {icon}
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        className="flex w-full items-center justify-between gap-3 rounded-md border border-input bg-surface-elev px-3 py-2 text-left text-sm outline-none focus:border-accent"
+      >
+        <span className="min-w-0">
+          <span className={selected ? "block truncate text-foreground" : "block text-muted-foreground"}>
+            {selected ? selected.name : "Choose from all voices"}
+          </span>
+          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+            {selected?.tone ?? "Search saved voices and the full voice library"}
+          </span>
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-background/70 backdrop-blur-sm sm:items-center"
+          onClick={() => onOpenChange(false)}
+        >
+          <div
+            className="flex h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-border bg-card shadow-2xl sm:h-[78vh] sm:rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-border bg-card px-4 py-3">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Mic className="h-4 w-4 text-accent" />
+                    Choose voice
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Search saved voices or adopt one from the curated library.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+                  aria-label="Close voice picker"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by voice, category, tone, profession…"
+                  className="w-full rounded-md border border-input bg-surface-elev py-2.5 pl-9 pr-3 text-sm outline-none focus:border-accent"
+                  autoFocus
+                />
+              </div>
+              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                {([
+                  ["all", "All"],
+                  ["mine", "My voices"],
+                  ["library", "Library"],
+                ] as const).map(([key, text]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSource(key)}
+                    className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-medium ${
+                      source === key
+                        ? "border-accent bg-accent/15 text-accent"
+                        : "border-border bg-surface-elev text-muted-foreground"
+                    }`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+                {categoryOptions.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`shrink-0 rounded-md border px-2.5 py-1 text-[11px] ${
+                      category === cat
+                        ? "border-accent bg-accent/15 text-accent"
+                        : "border-border bg-surface-elev text-muted-foreground"
+                    }`}
+                  >
+                    {cat === "all" ? "All categories" : CATEGORY_LABELS[cat] ?? cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {value && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange("");
+                    onOpenChange(false);
+                  }}
+                  className="mb-3 flex w-full items-center justify-between rounded-md border border-dashed border-border bg-surface-elev px-3 py-3 text-left text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <span>No voice for this profile</span>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+
+              {showMine && (
+                <VoicePickerSection
+                  title="My voices"
+                  count={filteredMine.length}
+                  icon={<UserRound className="h-3.5 w-3.5" />}
+                >
+                  {filteredMine.map((voice) => (
+                    <VoiceOptionButton
+                      key={voice.id}
+                      selected={value === voice.id}
+                      title={voice.name}
+                      subtitle={voice.tone ?? undefined}
+                      meta={[
+                        voice.category ? CATEGORY_LABELS[voice.category] ?? voice.category : undefined,
+                        voice.formality != null ? `Formality ${voice.formality}` : undefined,
+                        voice.technicality != null ? `Technicality ${voice.technicality}` : undefined,
+                      ]}
+                      actionLabel={value === voice.id ? "Selected" : "Use"}
+                      onClick={() => {
+                        onChange(voice.id);
+                        onOpenChange(false);
+                      }}
+                    />
+                  ))}
+                </VoicePickerSection>
+              )}
+
+              {showLibrary && (
+                <VoicePickerSection
+                  title="Voice library"
+                  count={filteredLibrary.length}
+                  forceVisible={loadingSystem}
+                  icon={<Library className="h-3.5 w-3.5" />}
+                >
+                  {loadingSystem ? (
+                    <div className="rounded-md border border-border p-4 text-center text-xs text-muted-foreground">
+                      Loading voice library…
+                    </div>
+                  ) : (
+                    filteredLibrary.map((voice) => (
+                      <VoiceOptionButton
+                        key={voice.id}
+                        selected={false}
+                        title={voice.name}
+                        subtitle={voice.tagline ?? voice.profession ?? undefined}
+                        meta={[
+                          voice.category ? CATEGORY_LABELS[voice.category] ?? voice.category : undefined,
+                          voice.profession ?? undefined,
+                          voice.tone ?? undefined,
+                        ]}
+                        actionLabel={adoptingId === voice.id ? "Adding…" : "Add + use"}
+                        disabled={Boolean(adoptingId)}
+                        onClick={async () => {
+                          await onAdoptSystemVoice(voice.id);
+                          onOpenChange(false);
+                        }}
+                      />
+                    ))
+                  )}
+                </VoicePickerSection>
+              )}
+
+              {!hasResults && !loadingSystem && (
+                <div className="rounded-md border border-dashed border-border p-6 text-center">
+                  <div className="text-sm font-medium text-foreground">No voices match</div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Try a different search, source, or category.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-3 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VoicePickerSection({
+  title,
+  count,
+  forceVisible = false,
+  icon,
+  children,
+}: {
+  title: string;
+  count: number;
+  forceVisible?: boolean;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  if (count === 0 && !forceVisible) return null;
+  return (
+    <section className="mb-5">
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 font-semibold uppercase tracking-wide text-muted-foreground">
+          {icon}
+          {title}
+        </div>
+        <span className="text-muted-foreground">{count}</span>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </section>
+  );
+}
+
+function VoiceOptionButton({
+  selected,
+  title,
+  subtitle,
+  meta,
+  actionLabel,
+  disabled,
+  onClick,
+}: {
+  selected: boolean;
+  title: string;
+  subtitle?: string;
+  meta: Array<string | undefined>;
+  actionLabel: string;
+  disabled?: boolean;
+  onClick: () => void | Promise<void>;
+}) {
+  const visibleMeta = meta.filter(Boolean) as string[];
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`w-full rounded-md border px-3 py-3 text-left transition active:scale-[0.99] disabled:opacity-60 ${
+        selected
+          ? "border-accent bg-accent/15"
+          : "border-border bg-surface-elev hover:border-accent/50"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="break-words text-sm font-medium text-foreground">{title}</div>
+          {subtitle && (
+            <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {subtitle}
+            </div>
+          )}
+        </div>
+        <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-medium ${
+          selected ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground"
+        }`}>
+          {selected && <Check className="mr-1 inline h-3 w-3" />}
+          {actionLabel}
+        </span>
+      </div>
+      {visibleMeta.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {visibleMeta.slice(0, 4).map((item) => (
+            <span
+              key={item}
+              className="rounded-sm border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      )}
+    </button>
   );
 }
 
