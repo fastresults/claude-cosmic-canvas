@@ -227,16 +227,16 @@ Prefer concrete titles, industries, and pains over generic phrasing. No filler.`
     });
 
     try {
-      const { experimental_output } = await generateText({
+      const { output } = await generateText({
         model: gateway("google/gemini-3-flash-preview"),
         system,
         prompt,
-        experimental_output: Output.object({ schema: OutSchema }),
+        output: Output.object({ schema: OutSchema }),
       });
       return {
-        name: String(experimental_output.name || "").slice(0, 120),
-        description: String(experimental_output.description || "").slice(0, 800),
-        icp: IcpSchema.parse(experimental_output.icp),
+        name: String(output.name || "").slice(0, 120),
+        description: String(output.description || "").slice(0, 800),
+        icp: IcpSchema.parse(output.icp),
         source_domain_id: data.domain_id ?? null,
         source_knowledge_profile_id: profileId,
       };
