@@ -20,11 +20,29 @@ export async function callAnthropic({
   system,
 }: OrchestratorCallInput) {
   const gateway = createOrchestratorProvider();
+
+  // GPT-5.6 (openai/gpt-5.6-*) rejects `max_tokens` and requires
+  // `reasoning_effort: "none"` when tools/function-calling are in play. The
+  // AI SDK's openai-compatible provider would serialize `maxOutputTokens` as
+  // `max_tokens`, so on GPT-5.6 we forward the limit as `max_completion_tokens`
+  // via providerOptions passthrough instead of setting `maxOutputTokens`.
+  const isGpt56 = /^openai\/gpt-5\.6/.test(model);
+
   const result = await generateText({
     model: gateway(model),
     system,
     prompt,
-    maxOutputTokens: maxTokens,
+    ...(isGpt56 ? {} : { maxOutputTokens: maxTokens }),
+    ...(isGpt56
+      ? {
+          providerOptions: {
+            lovable: {
+              max_completion_tokens: maxTokens,
+              reasoningEffort: "none",
+            },
+          },
+        }
+      : {}),
   });
 
   return {
@@ -36,3 +54,4 @@ export async function callAnthropic({
     },
   };
 }
+
