@@ -11,6 +11,7 @@ const ProfileInputSchema = z.object({
   voice_id: z.string().uuid().nullable().optional(),
   knowledge_profile_id: z.string().uuid().nullable().optional(),
   domain_id: z.string().uuid().nullable().optional(),
+  audience_id: z.string().uuid().nullable().optional(),
 });
 
 export const listDefaultProfiles = createServerFn({ method: "GET" })
