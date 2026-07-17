@@ -436,3 +436,28 @@ function FormatPage() {
     </RequireDefaultsGate>
   );
 }
+
+const RESEARCH_STEPS = [
+  { at: 0, label: "Mapping site…" },
+  { at: 6, label: "Scraping pages…" },
+  { at: 14, label: "Gathering external intel…" },
+  { at: 24, label: "Synthesizing dossier…" },
+];
+
+function ResearchProgress() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 500);
+    return () => clearInterval(id);
+  }, []);
+  const current = [...RESEARCH_STEPS].reverse().find((s) => elapsed >= s.at) ?? RESEARCH_STEPS[0];
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+      <span className="text-foreground">{current.label}</span>
+      <span className="ml-auto tabular-nums text-xs">{elapsed}s</span>
+    </div>
+  );
+}
+
