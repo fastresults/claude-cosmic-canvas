@@ -12,6 +12,7 @@ import {
   Mic,
   BookOpen,
   Compass,
+  Users,
   Zap,
 } from "lucide-react";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -21,6 +22,7 @@ import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
 import { listVoiceProfiles } from "@/lib/voice/voice.functions";
 import { listProfiles as listKnowledgeProfiles } from "@/lib/knowledge/knowledge.functions";
 import { listDomains } from "@/lib/settings/settings.functions";
+import { listAudiences } from "@/lib/audiences/audiences.functions";
 
 export const Route = createFileRoute("/_authenticated/settings/default-profiles")({
   component: DefaultProfilesPage,
@@ -35,13 +37,13 @@ function DefaultProfilesPage() {
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
       <SettingsPageHeader
         title="Profiles"
-        description="One-click bundles of Voice + Knowledge + Domain. Pick a profile and every default swaps in at once — no more setting three toggles."
+        description="One-click bundles of Voice + Knowledge + Domain + Audience. Pick a profile and every default swaps in at once — no more setting four toggles."
       />
 
       <div className="mb-4 rounded-lg border border-border bg-surface-elev p-3 text-xs text-muted-foreground">
         <strong className="text-foreground">Profiles vs Presets:</strong> a{" "}
         <em>Profile</em> is who you're being right now (voice + knowledge +
-        domain). A{" "}
+        domain + audience). A{" "}
         <Link to="/settings/presets" className="text-accent hover:underline">
           Preset
         </Link>{" "}
@@ -54,8 +56,8 @@ function DefaultProfilesPage() {
         </div>
       ) : profiles.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-          No profiles yet. Tap the + button to bundle a Voice, Knowledge base
-          and Domain into a one-click profile.
+          No profiles yet. Tap the + button to bundle a Voice, Knowledge base,
+          Domain and Audience into a one-click profile.
         </div>
       ) : (
         <ul className="space-y-2">
@@ -100,6 +102,7 @@ function DefaultProfilesPage() {
                   <SlotChip icon={Mic} id={p.voice_id} kind="voice" />
                   <SlotChip icon={BookOpen} id={p.knowledge_profile_id} kind="knowledge" />
                   <SlotChip icon={Compass} id={p.domain_id} kind="domain" />
+                  <SlotChip icon={Users} id={p.audience_id ?? null} kind="audience" />
                 </div>
               </div>
 
@@ -157,9 +160,14 @@ function SlotChip({
 }: {
   icon: typeof Mic;
   id: string | null;
-  kind: "voice" | "knowledge" | "domain";
+  kind: "voice" | "knowledge" | "domain" | "audience";
 }) {
-  const labels = { voice: "Voice", knowledge: "Knowledge", domain: "Domain" };
+  const labels = {
+    voice: "Voice",
+    knowledge: "Knowledge",
+    domain: "Domain",
+    audience: "Audience",
+  };
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-pill border px-1.5 py-0.5 ${
@@ -185,6 +193,7 @@ function CreateProfileSheet({
   const listVoicesFn = useServerFn(listVoiceProfiles);
   const listKnowledgeFn = useServerFn(listKnowledgeProfiles);
   const listDomainsFn = useServerFn(listDomains);
+  const listAudiencesFn = useServerFn(listAudiences);
 
   const { data: voices = [] } = useQuery({
     queryKey: ["voice-profiles-list"],
@@ -198,6 +207,10 @@ function CreateProfileSheet({
     queryKey: ["settings", "domains"],
     queryFn: () => listDomainsFn(),
   });
+  const { data: audiences = [] } = useQuery({
+    queryKey: ["audiences"],
+    queryFn: () => listAudiencesFn(),
+  });
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -205,6 +218,7 @@ function CreateProfileSheet({
   const [voiceId, setVoiceId] = useState<string>("");
   const [knowledgeId, setKnowledgeId] = useState<string>("");
   const [domainId, setDomainId] = useState<string>("");
+  const [audienceId, setAudienceId] = useState<string>("");
 
   function reset() {
     setName("");
@@ -213,11 +227,16 @@ function CreateProfileSheet({
     setVoiceId("");
     setKnowledgeId("");
     setDomainId("");
+    setAudienceId("");
   }
 
   const voiceList = useMemo(
     () => (voices as { id: string; name: string }[]) ?? [],
     [voices],
+  );
+  const audienceList = useMemo(
+    () => (audiences as { id: string; name: string }[]) ?? [],
+    [audiences],
   );
 
   async function save() {
@@ -229,6 +248,7 @@ function CreateProfileSheet({
       voice_id: voiceId || null,
       knowledge_profile_id: knowledgeId || null,
       domain_id: domainId || null,
+      audience_id: audienceId || null,
     });
     reset();
     onOpenChange(false);
@@ -303,6 +323,13 @@ function CreateProfileSheet({
           value={domainId}
           onChange={setDomainId}
           options={domains as { id: string; name: string }[]}
+        />
+        <SlotSelect
+          icon={<Users className="h-3.5 w-3.5" />}
+          label="Audience"
+          value={audienceId}
+          onChange={setAudienceId}
+          options={audienceList}
         />
 
         <button

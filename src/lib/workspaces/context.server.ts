@@ -6,6 +6,7 @@
  * Server-only: import inside a server-fn handler.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { renderAudienceBlock } from "@/lib/audiences/render";
 
 export type MilestoneContext = {
   displayName: string | null;
@@ -67,6 +68,23 @@ export async function resolveMilestoneContext(
     .eq("is_default", true)
     .maybeSingle();
 
+  // Default audience — the fourth pillar. Render its ICP into a compact block
+  // so the actor writes for a specific reader instead of "general audience".
+  const { data: defaultAudience } = await supabase
+    .from("audiences")
+    .select("name, description, icp")
+    .eq("user_id", userId)
+    .eq("is_default", true)
+    .maybeSingle();
+  const audienceRendered = defaultAudience
+    ? renderAudienceBlock({
+        name: (defaultAudience as { name?: string | null }).name ?? null,
+        description: (defaultAudience as { description?: string | null }).description ?? null,
+        icp: (defaultAudience as { icp?: unknown }).icp as never,
+      })
+    : null;
+  if (!audienceRendered) missing.push("audience");
+
   // Pull a handful of matching knowledge entries by title/tag substring —
   // avoids requiring an embedding call inside the milestone flow.
   const knowledgeSnippets: { title: string; content: string }[] = [];
@@ -109,7 +127,7 @@ export async function resolveMilestoneContext(
   return {
     displayName: profile?.display_name ?? null,
     domain: defaultDomain?.name ?? null,
-    audience: null,
+    audience: audienceRendered,
     personaId,
     voiceDirectives,
     knowledgeProfileId,

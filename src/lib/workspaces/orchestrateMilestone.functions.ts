@@ -91,6 +91,7 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
       voice: loaded.voice,
       directives: loaded.directives,
       context: loaded.context,
+      audience: loaded.audience,
       surface: "milestone",
       surfaceInstructions,
     });

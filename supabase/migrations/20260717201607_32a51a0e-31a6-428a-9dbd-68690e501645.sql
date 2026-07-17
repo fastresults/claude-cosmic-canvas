@@ -1,0 +1,2 @@
+ALTER TABLE public.create_drafts ADD COLUMN IF NOT EXISTS audience_id uuid REFERENCES public.audiences(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_create_drafts_audience_id ON public.create_drafts(audience_id);
