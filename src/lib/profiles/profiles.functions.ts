@@ -118,7 +118,7 @@ export const applyDefaultProfile = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: profile, error: pErr } = await context.supabase
       .from("default_profiles")
-      .select("id, voice_id, knowledge_profile_id, domain_id")
+      .select("id, voice_id, knowledge_profile_id, domain_id, audience_id")
       .eq("id", data.id)
       .eq("user_id", context.userId)
       .maybeSingle();
