@@ -1,39 +1,64 @@
+## Where Audience is actually wired today
 
-## Goal
-Make `/settings/audiences` mobile-safe (no clipped controls) and guide novices to keep building their audience set after the first one lands.
+Audits show Audience is a table + settings page + `useUserDefaults` pill, but it stops there. It is **not** wired into the surfaces that matter:
 
-## Problems observed
-1. **Row overflow on mobile.** Each audience row in "Your audiences" is a single `flex` line: chevron + icon + long name (with inline "default" / "AI" pills) + "Set default" button + delete "X". On a 390px viewport the "Set default" pill and star get pushed past the right edge and clip. Root cause: the name span has no `min-w-0`, the pills are inline inside the same span so they can't wrap, and the action buttons aren't `shrink-0`.
-2. **No "what next" cue.** After the first audience saves, the Add card collapses back to just the two buttons ("Draft next audience with AI" / "Add manually instead"). A novice doesn't know that audiences are meant to be a *set* (2–4 ICPs), that Eve will target the next-largest non-overlapping one, or that they can mark a different one as default later.
-3. **Empty-state → filled-state transition is silent.** No confirmation, no "great, here's what to do next."
+| Surface | Audience today |
+|---|---|
+| `DefaultsStrip` pill row | ✅ shown (fourth pill) |
+| `settings/audiences` CRUD + AI drafter | ✅ works |
+| `default_profiles` schema (`audience_id`) | ✅ column exists |
+| **Profile create/edit sheet** | ❌ no Audience selector — profiles can't bundle an audience |
+| **Profile card chips** (`SlotChip`) | ❌ only Voice/Knowledge/Domain shown |
+| **`applyProfile`** swap | Partially — swaps audience default only if profile has one, but UI can't set it |
+| **Create flow prompt** (`create.functions.ts`) | ❌ audience never injected into the model system prompt |
+| **Draft regeneration / image prompts** | ❌ uses free-text `audience` string from draft, not the structured ICP |
+| **Orchestrator system prompt** (`system.server.ts`) | ⚠️ only via `MilestoneContext`; generic/create/copilot surfaces don't receive audience |
+| **Milestone `StrategyPanel` / actor** | ⚠️ mentions "audience" as concept, doesn't load active audience ICP |
+| **`presets/injection.ts` `[AUDIENCE]` block** | ❌ file exists, zero callers |
+| **Channel-aware social prompts** | ❌ channel rules ignore audience persona |
+| **`RequireDefaultsGate`** | ❌ doesn't require Audience before creating |
 
-## Changes (UI only — `src/routes/_authenticated/settings.audiences.tsx`)
+Net: the user set an Audience, but no generation call ever sees it.
 
-### 1. Mobile-safe audience row
-Rework each `<li>` header into the responsive grid pattern from `responsive-layout-patterns`:
+## Plan — make Audience a first-class input everywhere
 
-- Outer row: `grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2` (chevron | title block | actions).
-- Chevron + Users icon become `shrink-0`.
-- Title becomes its own `min-w-0` block with `truncate` on the name and pills moved to a **second line** underneath (`flex flex-wrap gap-1 mt-0.5`), not inline in the truncated span — so "default" / "AI" badges never fight the name for width.
-- Actions column: collapse "Set default" text on mobile to an icon-only star button (`sm:inline` reveals the label at ≥640px), keep the "X" delete as icon-only. Both `shrink-0`, `aria-label` preserved.
-- Add `overflow-hidden` on the `<li>` so nothing can bleed past the card edge.
+### 1. Profile bundle wiring (UI gap that user is looking at)
+- `settings.default-profiles.tsx` → `CreateProfileSheet`: add Audience `<Select>` fed by `listAudiences`; store `audienceId`; pass to `createProfile`.
+- `SlotChip`: add `"audience"` kind + `Users` icon; render fourth chip on each profile card.
+- Support edit (not just create) so existing profiles can attach an audience.
+- Profile description helper text: "Voice + Knowledge + Domain + Audience".
 
-### 2. Guidance for novice users
-Add a small, always-visible helper block inside the "Your audiences" section, shown only when `audiences.length >= 1`:
+### 2. Prompt injection (make the model actually use Audience)
+- New helper `renderAudienceBlock(audience)` in `src/lib/audiences/render.ts` — formats ICP: role, seniority, industry, pains, goals, objections, channels.
+- `composeOrchestratorSystem` (system.server.ts): accept `audience` arg; append `[AUDIENCE]` block for **all** surfaces (create, milestone, copilot, brain), not just milestone context.
+- `create.functions.ts` generation path: load active audience (from profile or user default) and pass into system compose. Same for regenerate + section rewrites in `drafts.functions.ts`.
+- Channel-aware social prompts: prepend audience tone constraint per channel (e.g. "Write for {ICP}; use their vocabulary; address {top_pain}").
+- Milestone `StrategyPanel` / `actor.ts` `contextBlock`: pull structured audience instead of free-text `audience` string.
 
-- Above the list: one-line hint — "Most people target 2–4 audiences. Eve rotates content to fit whichever is active."
-- Below the list: a subtle dashed "+ Draft another audience with AI" tile (same action as the top button, `onClick={draftNext}`) so the next-step affordance sits *at the end of the list* where the eye lands after reading it. Disabled + spinner while `suggest.isPending`.
-- After a successful save, briefly show an inline success line in the Add card: "Saved. Draft another to broaden your reach, or set this one as default below." (auto-clears after ~4s via a `useEffect` timer, or on next interaction.)
+### 3. Draft ↔ Audience linkage
+- `drafts` table already stores free-text `audience`; add `audience_id` FK (nullable). Backfill from active profile at draft create.
+- `saveDraft` / `regenerateDraft`: read `audience_id`, resolve ICP server-side, inject.
+- Draft header: show a small "For: {audience name}" chip so the user sees what the model is targeting.
 
-### 3. Small polish
-- "Add manually instead" link: give it a `+` icon and slightly more prominence (still secondary) so novices see it as an option rather than body text.
-- Section heading: change "YOUR AUDIENCES" caption to include the count ("YOUR AUDIENCES · 1") — gives a quiet nudge toward growing the set.
+### 4. Gates + guidance
+- `RequireDefaultsGate`: include `audience` in required set (currently silent). Blocking copy: "Pick an audience so Eve writes for a specific reader."
+- Empty-state on Create/Milestone: if no audience, offer one-tap "Draft one with AI" (reuses existing `suggestAudienceFromContext`).
 
-## Out of scope
-- No server / schema / prompt changes.
-- No changes to the Add card's AI drafting flow itself (already AI-first).
-- No changes to `DefaultsStrip` or other pages.
+### 5. Orchestrator awareness
+- System prompt gains rule: "Always speak to the [AUDIENCE]. If the audience is missing, ask before drafting."
+- `MILESTONE_ACTOR_SYSTEM`: add explicit "rank channels by fit to [AUDIENCE.channels]".
 
-## Verification
-- Playwright at 390×844: screenshot the audiences page with 1 and with 3 audiences; confirm no horizontal overflow, no clipped buttons, pills wrap under the name, "Draft another" tile visible at list end.
-- Desktop (≥640px): "Set default" label reappears next to the star; layout unchanged from today otherwise.
+### Files touched
+- `src/routes/_authenticated/settings.default-profiles.tsx` (audience selector + chip)
+- `src/lib/profiles/profiles.functions.ts` (already accepts `audience_id`; add update handler if missing)
+- `src/lib/audiences/render.ts` (new)
+- `src/lib/orchestrator/system.server.ts` (audience block for all surfaces)
+- `src/lib/workspaces/context.server.ts` (structured audience)
+- `src/lib/create/create.functions.ts` + `src/lib/drafts/drafts.functions.ts` (resolve + inject)
+- `src/lib/create/format-rules.ts` (channel × audience tone hooks)
+- `src/components/settings/RequireDefaultsGate.tsx` (require audience)
+- DB migration: `drafts.audience_id uuid references audiences(id)` (nullable, ON DELETE SET NULL)
+
+### Out of scope
+- Rewriting the AI audience drafter itself (already working per last turn).
+- Analytics on audience performance (future).
