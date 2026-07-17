@@ -3,7 +3,7 @@
 // instead of letting the user start generating.
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Check, X, ArrowRight, Mic, BookOpen, Compass } from "lucide-react";
+import { Check, X, ArrowRight, Mic, BookOpen, Compass, Users } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 
 type Props = { children: ReactNode; title?: string; description?: string };
@@ -18,6 +18,7 @@ const ROWS: {
   { slot: "voice", label: "Voice & Style", to: "/settings/voice", icon: Mic, hint: "How Eve writes" },
   { slot: "knowledge", label: "Curriculum Vitae", to: "/settings/knowledge", icon: BookOpen, hint: "What Eve knows about you" },
   { slot: "domain", label: "Domain", to: "/settings/domains", icon: Compass, hint: "What you're expert in" },
+  { slot: "audience", label: "Audience", to: "/settings/audiences", icon: Users, hint: "Who you're writing for" },
 ];
 
 export function RequireDefaultsGate({ children, title, description }: Props) {
@@ -29,6 +30,7 @@ export function RequireDefaultsGate({ children, title, description }: Props) {
     voice: d.voice?.name ?? null,
     knowledge: d.knowledge?.name ?? null,
     domain: d.domain?.name ?? null,
+    audience: d.audience?.name ?? null,
   };
 
   return (
