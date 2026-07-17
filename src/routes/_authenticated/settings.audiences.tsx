@@ -155,6 +155,12 @@ function AudiencesSettings() {
           Eve reviews your domain, knowledge, and existing audiences, then proposes the next-largest ICP that doesn't overlap with what you already have.
         </p>
 
+        {savedFlash && (
+          <div className="mb-3 rounded-md border border-accent/40 bg-accent/10 p-2.5 text-xs text-accent">
+            Saved. Draft another to broaden your reach, or set one as default below.
+          </div>
+        )}
+
         {suggestion?.is_duplicate_warning && (
           <div className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-500">
             This may overlap with <span className="font-medium">{suggestion.duplicate_of}</span>. Regenerate or edit before saving.
