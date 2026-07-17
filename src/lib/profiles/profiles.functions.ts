@@ -159,6 +159,20 @@ export const applyDefaultProfile = createServerFn({ method: "POST" })
         .eq("id", profile.domain_id);
     }
 
+    // 3b. Audience default
+    if (profile.audience_id) {
+      await context.supabase
+        .from("audiences")
+        .update({ is_default: false })
+        .eq("user_id", context.userId)
+        .eq("is_default", true);
+      await context.supabase
+        .from("audiences")
+        .update({ is_default: true })
+        .eq("id", profile.audience_id);
+    }
+
+
     // 4. Bump usage + mark as the active profile.
     await context.supabase
       .from("default_profiles")
