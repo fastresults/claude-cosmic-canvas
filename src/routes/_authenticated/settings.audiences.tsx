@@ -98,7 +98,7 @@ function AudiencesSettings() {
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "AI draft failed"),
   });
-  void generateFn; // kept import; the auto-generate CTA now flows through `suggest` + explicit save
+  
 
 
   const draftNext = () => suggest.mutate(rejectedNames);
