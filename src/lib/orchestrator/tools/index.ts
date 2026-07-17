@@ -61,8 +61,8 @@ export function buildOrchestratorTools(ctx: ToolBindingContext) {
       }),
       execute: async ({ limit }) => {
         const { data, error } = await ctx.supabase
-          .from("drafts")
-          .select("id, title, status, format_id, channel_id, updated_at")
+          .from("create_drafts")
+          .select("id, title, status, format_id, updated_at")
           .eq("user_id", ctx.userId)
           .order("updated_at", { ascending: false })
           .limit(limit);
