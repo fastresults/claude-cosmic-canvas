@@ -1,3 +1,5 @@
+import { Markdown } from "@/components/primitives/Markdown";
+
 type Section = { heading: string | null; body: string };
 
 type Props = {
@@ -5,7 +7,7 @@ type Props = {
   busy?: boolean;
 };
 
-/** Read-only streamed/generated draft canvas. Inline edit is Phase 2. */
+/** Read-only streamed/generated draft canvas. Bodies render as formatted Markdown. */
 export function StreamCanvas({ sections, busy }: Props) {
   if (busy && sections.length === 0) {
     return (
@@ -20,9 +22,12 @@ export function StreamCanvas({ sections, busy }: Props) {
       {sections.map((s, i) => (
         <section key={i} className="rounded-2xl border border-border bg-surface p-4">
           {s.heading && <h2 className="font-display text-lg text-foreground">{s.heading}</h2>}
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{s.body}</p>
+          <div className="mt-2">
+            <Markdown>{s.body}</Markdown>
+          </div>
         </section>
       ))}
     </article>
   );
 }
+
