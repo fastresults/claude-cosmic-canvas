@@ -3,7 +3,10 @@
 @import "tw-animate-css";
 @import "@xyflow/react/dist/style.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Eve OS design system — dark-first, warm amber, kinetic serif display. */
+
 
 @theme inline {
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
