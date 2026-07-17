@@ -127,7 +127,7 @@ export async function resolveMilestoneContext(
   return {
     displayName: profile?.display_name ?? null,
     domain: defaultDomain?.name ?? null,
-    audience: null,
+    audience: audienceRendered,
     personaId,
     voiceDirectives,
     knowledgeProfileId,
