@@ -20,7 +20,7 @@ export const listDefaultProfiles = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("default_profiles")
       .select(
-        "id, name, description, emoji, voice_id, knowledge_profile_id, domain_id, is_default, is_favorite, use_count, last_used_at, created_at, updated_at",
+        "id, name, description, emoji, voice_id, knowledge_profile_id, domain_id, audience_id, is_default, is_favorite, use_count, last_used_at, created_at, updated_at",
       )
       .order("is_favorite", { ascending: false })
       .order("updated_at", { ascending: false });
