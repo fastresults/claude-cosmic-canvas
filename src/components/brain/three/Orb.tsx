@@ -75,7 +75,9 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
     }
   });
 
-  const showLabel = isYellow || isHover || focused;
+  const hasLabel = !!node.label && node.label.trim().length > 0;
+  const showLabel = hasLabel && (isYellow || isHover || focused);
+
 
   return (
     <group ref={group} position={position}>

@@ -25,24 +25,12 @@ function truncate(s: string | null | undefined, n = 40) {
   return clean.length > n ? `${clean.slice(0, n - 1)}…` : clean;
 }
 
-const TYPE_PRETTY: Record<NodeType, string> = {
-  you: "You",
-  persona: "Persona",
-  voice_sample: "Voice",
-  directive: "Directive",
-  domain: "Domain",
-  audience: "Audience",
-  knowledge: "Knowledge",
-  entity: "Entity",
-  draft: "Content",
-  image: "Image",
-  campaign: "Campaign",
-  channel: "Channel",
-  scheduled: "Scheduled",
-  mcp_client: "MCP Client",
-  preset: "Preset",
-  document: "Document",
-};
+// NOTE: We intentionally do NOT expose a type-word fallback map for orb labels.
+// Per project rule, orbs must render the item's real title / filename / topic —
+// never a generic type word like "Draft", "Content", "Image", "Knowledge".
+// Nodes are seeded with an empty label and stay label-less until fetchLabel
+// resolves a descriptive value.
+
 
 async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
   switch (type) {
@@ -84,10 +72,16 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
       return truncate(data?.name);
     }
     case "draft": {
-      const { data } = await supabase.from("create_drafts").select("format_id, title").eq("id", id).maybeSingle();
-      if (!data) return null;
-      return truncate(data.title) ?? truncate(data.format_id.replace(/_/g, " "), 32);
+      const { data } = await supabase.from("create_drafts").select("title").eq("id", id).maybeSingle();
+      return truncate(data?.title);
     }
+    case "image": {
+      const { data } = await supabase.from("create_media").select("prompt, url").eq("id", id).maybeSingle();
+      if (!data) return null;
+      const filename = data.url ? data.url.split("/").pop()?.split("?")[0] ?? null : null;
+      return truncate(data.prompt) ?? truncate(filename, 32);
+    }
+
     case "campaign": {
       const { data } = await supabase.from("campaigns").select("title").eq("id", id).maybeSingle();
       return truncate(data?.title);
@@ -145,7 +139,7 @@ export function useBrainGraph() {
             next.push({
               id,
               nodeType: type,
-              label: TYPE_PRETTY[type] ?? type,
+              label: "",
               importance: 1,
             });
           }
@@ -158,10 +152,16 @@ export function useBrainGraph() {
         return [...prev, { id: row.id, source: srcId, target: dstId, kind: row.edge_kind }];
       });
 
-      // Resolve pretty label
-      const label = await fetchLabel(row.dst_type, row.dst_id);
-      if (!label || !mounted) return;
-      setNodes((prev) => prev.map((n) => (n.id === dstId ? { ...n, label } : n)));
+      // Resolve descriptive labels for both endpoints (skip "you").
+      const targets: Array<[string, NodeType, string]> = [];
+      if (row.src_type !== "you") targets.push([srcId, row.src_type, row.src_id]);
+      targets.push([dstId, row.dst_type, row.dst_id]);
+      for (const [nodeId, type, rawId] of targets) {
+        const label = await fetchLabel(type, rawId);
+        if (!label || !mounted) continue;
+        setNodes((prev) => prev.map((n) => (n.id === nodeId && !n.label ? { ...n, label } : n)));
+      }
+
     };
 
     (async () => {
