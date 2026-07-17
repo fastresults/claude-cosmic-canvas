@@ -54,13 +54,18 @@ export function ImageAssociationSheet({
           <TabBtn active={tab === "upload"} onClick={() => setTab("upload")} icon={<UploadIcon className="h-3.5 w-3.5" />}>
             Upload
           </TabBtn>
+          <TabBtn active={tab === "media"} onClick={() => setTab("media")} icon={<FolderOpen className="h-3.5 w-3.5" />}>
+            Media Hub
+          </TabBtn>
           <TabBtn active={tab === "library"} onClick={() => setTab("library")} icon={<Library className="h-3.5 w-3.5" />}>
             Library
           </TabBtn>
         </div>
         {tab === "generate" && <GenerateTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
         {tab === "upload" && <UploadTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
+        {tab === "media" && <MediaHubTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
         {tab === "library" && <LibraryTab draftId={draftId} role={role} onDone={() => onOpenChange(false)} />}
+
       </div>
     </div>
   );
