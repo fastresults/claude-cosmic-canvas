@@ -39,28 +39,28 @@ function DefaultProfilesPage() {
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
       <SettingsPageHeader
         title="Profiles"
-        description="One-click bundles of Voice + Knowledge + Domain + Audience. Pick a profile and every default swaps in at once — no more setting four toggles."
+        description="Your active identity, ready in one tap."
       />
 
-      <div className="mb-4 rounded-lg border border-border bg-surface-elev p-3 text-xs text-muted-foreground">
-        <strong className="text-foreground">Profiles vs Presets:</strong> a{" "}
-        <em>Profile</em> is who you're being right now (voice + knowledge +
-        domain + audience). A{" "}
-        <Link to="/settings/presets" className="text-accent hover:underline">
-          Preset
-        </Link>{" "}
-        is a content lens for a single piece (angle, audience, references).
-      </div>
+      <ProfileVsPresetCard current="profile" />
+
+      <FirstRunTip
+        id="profiles-vs-presets"
+        title="Profile vs Preset — the 10-second version"
+      >
+        A <strong className="text-foreground">Profile</strong> is who you are
+        right now (Voice, Knowledge, Domain, Audience). A{" "}
+        <strong className="text-foreground">Preset</strong> is the brief for
+        one piece (tone, format, length, references). Switch Profile when you
+        switch hats; pick a Preset per draft.
+      </FirstRunTip>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : profiles.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-          No profiles yet. Tap the + button to bundle a Voice, Knowledge base,
-          Domain and Audience into a one-click profile.
-        </div>
+        <EmptyProfileGuide onStart={() => setCreating(true)} />
       ) : (
         <ul className="space-y-2">
           {profiles.map((p) => (
