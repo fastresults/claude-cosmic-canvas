@@ -40,7 +40,16 @@ function getHalo() {
   return sharedHalo;
 }
 
-const YELLOW_TYPES = new Set(["you", "persona", "voice_sample", "directive"]);
+// Node types that always show a persistent label (not just on hover).
+// Covers the foundational pillars: You, Voice, and Knowledge.
+const PERSISTENT_LABEL_TYPES = new Set([
+  "you",
+  "persona",
+  "voice_sample",
+  "directive",
+  "knowledge",
+  "document",
+]);
 
 export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: Props) {
   const group = useRef<THREE.Group>(null);
@@ -56,7 +65,7 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
   const colorObj = useMemo(() => new THREE.Color(color), [color]);
   const opacity = dim ? 0.25 : 1;
 
-  const isYellow = YELLOW_TYPES.has(node.nodeType);
+  const hasPersistentLabel = PERSISTENT_LABEL_TYPES.has(node.nodeType);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -78,7 +87,7 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
   const trimmedLabel = node.label?.trim() ?? "";
   const hasLabel = trimmedLabel.length > 0;
   // Persistent label: yellow orbs & focused state — only real titles.
-  const showPersistent = hasLabel && (isYellow || focused);
+  const showPersistent = hasLabel && (hasPersistentLabel || focused);
   // Hover always shows something meaningful — real title if we have it,
   // otherwise a friendly type fallback + short id suffix.
   const rawId = node.id.includes(":") ? node.id.split(":")[1] ?? node.id : node.id;
