@@ -336,14 +336,14 @@ function CreateProfileSheet({
           label="Knowledge"
           value={knowledgeId}
           onChange={setKnowledgeId}
-          options={knowledge as { id: string; name: string }[]}
+          options={knowledgeList}
         />
         <SlotSelect
           icon={<Compass className="h-3.5 w-3.5" />}
           label="Domain"
           value={domainId}
           onChange={setDomainId}
-          options={domains as { id: string; name: string }[]}
+          options={domainList}
         />
         <SlotSelect
           icon={<Users className="h-3.5 w-3.5" />}
