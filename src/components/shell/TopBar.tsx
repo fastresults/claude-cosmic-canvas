@@ -1,17 +1,15 @@
 import { Bell, Flame } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ThemeToggle } from "./ThemeToggle";
+import askEveLogo from "@/assets/askeve-logo.png.asset.json";
 
 
 export function TopBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border frosted">
       <div className="mx-auto flex h-full max-w-3xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="text-accent" aria-hidden>
-            ✦
-          </span>
-          <span className="font-display text-lg leading-none">Eve</span>
+        <Link to="/" className="flex items-center" aria-label="AskEve home">
+          <img src={askEveLogo.url} alt="AskEve" className="h-8 w-auto" />
         </Link>
 
         <div className="flex items-center gap-3">
