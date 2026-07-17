@@ -28,7 +28,12 @@ export function BrainCanvas() {
   const [peek, setPeek] = useState<GraphNode | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [hiddenTypes, setHiddenTypes] = useState<Set<NodeType>>(new Set());
-  const { nodes, edges } = useBrainGraph();
+  const { activeProfile } = useDefaultProfiles();
+  const { nodes: rawNodes, edges } = useBrainGraph();
+  const nodes = useMemo(() => {
+    const label = activeProfile?.name?.trim() || "You";
+    return rawNodes.map((n) => (n.nodeType === "you" ? { ...n, label } : n));
+  }, [rawNodes, activeProfile?.name]);
   const zoomRef = useRef<ZoomController | null>(null);
 
   const visibleTypes = useMemo(
