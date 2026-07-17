@@ -19,6 +19,7 @@ import {
   ArrowDownWideNarrow,
   Clock,
   Star,
+  ChevronRight,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
