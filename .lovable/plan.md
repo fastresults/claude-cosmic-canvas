@@ -1,61 +1,116 @@
-# Auto-beautify all CV/résumé imports into rendered Markdown
+# Media Hub — plan
 
-## Problem
+## Current state (verified)
 
-Every résumé that lands in Knowledge (PDF upload, desktop drop, domain drop, LinkedIn paste) is stored as a hand-stitched markdown blob plus a raw dump of `parsed.markdown` appended after `---`. The raw dump is what shows up as the ugly wall of text on the entry card (e.g. `A D A M A N D E R S O N Founder & CEO…`). The `EntryDetailSheet` already renders markdown — the content just isn't beautiful markdown.
+- There is **no** media hub today. `rg` for "media hub / asset manager / media library" returns nothing.
+- Existing media is **draft-scoped only**: the `create_media` table and the private `draft-media` storage bucket are attached to `create_drafts` (see `src/lib/drafts/drafts.functions.ts`, `ImageAssociationSheet.tsx`).
+- There is no route, table, bucket, or nav entry for user-owned, draft-independent assets.
 
-Goal: every CV/résumé import, everywhere in the app, is automatically reformatted by AI into clean, human-readable Markdown before it's saved. No manual step, no user toggle.
+So yes — we need to build it.
 
-## Approach
+## What we're building
 
-Add a single server function that turns `(structured profile, raw parsed markdown) → beautiful markdown`, and route every résumé/LinkedIn ingest path through it. One choke point, global effect.
+A per-user **Media Hub** that stores images, documents, audio, video, and other files independent of any draft. It's the durable "digital asset manager" users can browse, upload to, tag, search, preview, download, delete, and reuse when creating content or associating an image with a draft.
 
-### 1. New server fn: `beautifyResumeMarkdown`
+## Scope (v1)
 
-File: `src/lib/knowledge/beautify.functions.ts` (client-safe import path, matches existing `extract.functions.ts` sibling).
+1. **New Settings entry**: Settings → Media Hub (also reachable as `/settings/media`), with a "Open Media Hub" pill on the Settings index row.
+2. **Full page**: `/_authenticated/media` (grid + list toggle, filter by type/tag, search by name).
+3. **Storage**: a new private bucket `media-hub` (per-user path `${userId}/…`), separate from `draft-media` so retention rules and quotas stay independent.
+4. **Schema**: a new `media_assets` table (see technical section).
+5. **Ingest**: drag-and-drop dropzone + file picker + paste. Reuses the DomainIngestZone visual pattern. Supports multi-file upload with progress.
+6. **Asset detail sheet**: preview (image/pdf/audio/video), rename, tags, description, replace file, download, delete, "copy link", "use in a draft" (opens ImageAssociationSheet pre-filled).
+7. **Draft integration**: `ImageAssociationSheet` and cover-image pickers get a new tab "From Media Hub" so uploaded assets are reusable across drafts without re-upload.
+8. **Search/filter**: by filename, tag, mime type category (image / document / audio / video / other), date.
+9. **Guards**: RLS scoped to `auth.uid()`, private bucket, signed URLs for preview/download.
 
-- `createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])`
-- Input (zod): `{ structured: StructuredProfileSchema, rawMarkdown: string, fileName?: string }`
-- Calls `callAnthropic` (which is the orchestrator gateway → currently `openai/gpt-5.6-sol`) with a strict system prompt: "You are a résumé formatter. Return ONLY GitHub-flavored Markdown. Use these sections in this order when data exists: `#` Full name, italic headline line, About, `## Experience` (each role as `### Title — Company` + date range on next line + bullet summary), `## Education`, `## Skills` (comma-joined), `## Achievements` (bulleted), `## Contact` (any emails/urls/locations you can pull from the raw text). Never invent facts. Prefer structured data; use raw text only to fill contact/details/dates that structured missed. No preamble, no code fences."
-- Prompt body: JSON of `structured` + `\n\n---RAW---\n\n` + `rawMarkdown.slice(0, 40000)`.
-- Return `{ markdown: string }`.
-- Fallback: if the model errors or returns empty, fall back to the existing hand-stitched serializer from `ResumeConfirmSheet` (moved into a shared helper `formatResumeFallback(structured, rawMarkdown)` in the same file) so ingest never breaks.
+Out of scope (v1): folders/nesting, sharing with other users, AI auto-tagging, versioning, quota UI (we'll log size but not enforce a hard cap yet).
 
-### 2. Wire it into every résumé save path
+## Workflow integration
 
-Only one component actually writes résumés/LinkedIn to `ingestEntry`: `src/components/knowledge/ResumeConfirmSheet.tsx` (used by `UploadSheet`, `DesktopDropzone`, `DomainIngestZone`, and `LinkedInSheet`). Replace its inline `content = […].filter(Boolean).join()` block with:
+- **Settings index** → new row "Media Hub · N items · X MB" with an inline chip, linking to `/settings/media` (which forwards to `/media` — keeps discoverability in Settings while the hub itself lives at a top-level authenticated route so it's fast to reach).
+- **Create flow (image association / cover picker)** → new "Media Hub" tab next to "Upload" / "Generate". Selecting an asset writes its `create_media` row referencing the same storage object (or copies, TBD in tech section).
+- **Domain ingest / Knowledge** → unchanged. Knowledge stays about *reference text*; Media Hub is about *binary assets*.
+- **Drafts / Archive** → unchanged. A draft's inline media stays in `draft-media`; only assets explicitly saved to the hub live in `media-hub`.
+- **Brain** → future: surface media as nodes. Not v1.
 
-```
-const { markdown } = await beautifyFn({
-  data: { structured: profile, rawMarkdown: markdown, fileName: title },
-});
-// use `markdown` as content
-```
+## Technical section
 
-Show a small "Formatting résumé…" status while the mutation runs (same pattern as the existing `Saving…` state). One code path, so LinkedIn imports get the same treatment automatically.
+### Storage bucket
 
-### 3. Meta + auditability
+- `media-hub` (private). Path convention: `${userId}/${assetId}/${filename}`.
+- RLS on `storage.objects`: user can CRUD only rows where `bucket_id = 'media-hub' AND (storage.foldername(name))[1] = auth.uid()::text`.
 
-- Keep `meta.structured` (already stored) so downstream features that read structured fields don't break.
-- Add `meta.formatted_by = "ai"` and `meta.formatter_model = ORCHESTRATOR_MODEL` so we can tell AI-formatted entries from legacy ones later.
-- Don't retroactively rewrite existing entries — scope is new imports going forward, matching "based on import and ingest."
+### Table `public.media_assets`
 
-## Files touched
+Columns (domain fields only):
+- `user_id uuid` (→ auth.users)
+- `filename text`, `mime_type text`, `size_bytes bigint`
+- `storage_path text` (bucket path)
+- `kind text` — enum-ish: `image | document | audio | video | other` (derived from mime, stored for cheap filtering)
+- `title text` (defaults to filename), `description text nullable`
+- `tags text[] default '{}'`
+- `width int nullable`, `height int nullable`, `duration_seconds numeric nullable` (populated when known)
+- `checksum text nullable` (sha256, for dedupe later)
+- Standard `id`, `created_at`, `updated_at` + update trigger.
 
-- **new** `src/lib/knowledge/beautify.functions.ts` — server fn + `formatResumeFallback` helper.
-- **edit** `src/components/knowledge/ResumeConfirmSheet.tsx` — call `beautifyResumeMarkdown` inside `save.mutationFn`, set `meta.formatted_by`, add "Formatting…" status.
+GRANTs: `SELECT, INSERT, UPDATE, DELETE` to `authenticated`; `ALL` to `service_role`. No `anon`.
+RLS: all four policies gated by `auth.uid() = user_id`.
 
-Nothing else needs to change — `EntryDetailSheet` already renders markdown, and every résumé/LinkedIn ingest funnels through `ResumeConfirmSheet`.
+### Server functions (`src/lib/media/media.functions.ts`)
 
-## Verify
+- `listMediaAssets({ q?, kind?, tags?, limit, cursor })`
+- `getMediaAsset({ id })` → returns row + short-lived signed URL
+- `createMediaAsset({ filename, mime_type, size_bytes, storage_path, kind, width?, height?, duration_seconds?, checksum? })` — called after client-side upload finishes
+- `updateMediaAsset({ id, title?, description?, tags? })`
+- `deleteMediaAsset({ id })` — deletes row + storage object
+- `signMediaUrl({ id, expiresIn })` — for previews/downloads
 
-1. Upload a PDF résumé → confirm sheet appears → Confirm & save → open entry → detail sheet shows clean sectioned markdown, not the run-together raw text.
-2. Same flow via LinkedIn paste sheet → same beautified result.
-3. Force the AI call to throw (temporarily) → ingest still succeeds with the fallback formatter, entry still readable.
-4. Check `create_drafts` grounding still works: `meta.structured` is intact.
+All `.middleware([requireSupabaseAuth])`.
 
-## Not in scope
+### Client upload flow
 
-- Non-résumé uploads (regular PDFs, notes, audio) — request specifies CVs.
-- Backfilling existing entries — new imports only.
-- User-facing formatting controls or preview-before-save (auto, per the request).
+1. User drops N files into the hub dropzone.
+2. For each file, generate `assetId = crypto.randomUUID()`, upload directly to `media-hub/${userId}/${assetId}/${safeName}` via the browser Supabase client (RLS enforces ownership).
+3. On upload success, extract width/height (images) or duration (audio/video via `HTMLMediaElement.duration`) in the browser, then call `createMediaAsset` server fn to persist metadata.
+4. Show per-file progress + retry.
+
+### Draft reuse
+
+- Add a `mediaAssetId` column to `create_media` (nullable) so a draft image can point back to the hub asset it came from (avoids duplicate uploads).
+- New tab in `ImageAssociationSheet`: "From Media Hub" — queries `listMediaAssets({ kind: 'image' })` and, on select, inserts a `create_media` row referencing the same `storage_path` and `mediaAssetId`.
+
+### Routes
+
+- `src/routes/_authenticated/media.tsx` — hub page (grid, filters, search, dropzone, empty state).
+- `src/routes/_authenticated/settings.media.tsx` — thin Settings entry: quick stats + "Open Media Hub" button linking to `/media`.
+- Update `src/routes/_authenticated/settings.index.tsx` to add the row.
+
+### Components
+
+- `src/components/media/MediaGrid.tsx`
+- `src/components/media/MediaCard.tsx`
+- `src/components/media/MediaDetailSheet.tsx`
+- `src/components/media/MediaDropzone.tsx`
+- `src/components/media/MediaFilters.tsx`
+- Reuse existing `Pill`, `EveSheet`, `RecordingIndicator` styles for consistency.
+
+### Migrations (single migration)
+
+1. `CREATE TABLE public.media_assets (...)` + GRANTs + `ENABLE ROW LEVEL SECURITY` + owner CRUD policies.
+2. Trigger `update_updated_at` on `media_assets`.
+3. `ALTER TABLE public.create_media ADD COLUMN media_asset_id uuid REFERENCES public.media_assets(id) ON DELETE SET NULL;`
+4. Storage bucket `media-hub` created via `supabase--storage_create_bucket` (private) in the same turn; storage.objects RLS policies added via migration.
+
+### Formatting rule compliance
+
+Descriptions and tag chips render as formatted UI — no raw JSON / Markdown surfaces to the user (per global rule).
+
+## Deliverables order
+
+1. Migration (table + bucket policies + `create_media` FK).
+2. Server functions + hook (`useMediaAssets`).
+3. `/media` page with dropzone, grid, filters, detail sheet.
+4. Settings entry + index pill.
+5. `ImageAssociationSheet` "From Media Hub" tab.
+6. Smoke test: upload 3 mixed files, rename, tag, delete, reuse in a draft.
