@@ -373,7 +373,9 @@ export const attachDraftImage = createServerFn({ method: "POST" })
         parent_image_id: data.parentImageId ?? null,
         sort_order: count ?? 0,
         meta: (data.meta ?? {}) as Json,
+        media_asset_id: data.mediaAssetId ?? null,
       })
+
       .select("id")
       .single();
     if (error) {
