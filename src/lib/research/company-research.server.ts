@@ -44,7 +44,7 @@ function firecrawlHeaders(): Record<string, string> {
 async function scrapePage(url: string): Promise<string> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(`${FIRECRAWL_GATEWAY}/scrape`, {
       method: "POST",
       headers: firecrawlHeaders(),
@@ -52,7 +52,7 @@ async function scrapePage(url: string): Promise<string> {
         url,
         formats: ["markdown"],
         onlyMainContent: true,
-        waitFor: 3000,
+        waitFor: 1200,
       }),
       signal: controller.signal,
     });
@@ -71,6 +71,7 @@ async function scrapePage(url: string): Promise<string> {
     return "";
   }
 }
+
 
 async function discoverAndScrapePages(
   baseUrl: string,
