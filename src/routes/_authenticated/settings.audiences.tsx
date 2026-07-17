@@ -39,7 +39,7 @@ function AudiencesSettings() {
   const setDefaultFn = useServerFn(setDefaultAudience);
   const updateFn = useServerFn(updateAudience);
   const suggestFn = useServerFn(suggestAudienceFromContext);
-  const generateFn = useServerFn(generateDefaultAudience);
+
 
   const { data: audiences = [] } = useQuery({
     queryKey: KEY,
