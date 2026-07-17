@@ -160,9 +160,14 @@ function SlotChip({
 }: {
   icon: typeof Mic;
   id: string | null;
-  kind: "voice" | "knowledge" | "domain";
+  kind: "voice" | "knowledge" | "domain" | "audience";
 }) {
-  const labels = { voice: "Voice", knowledge: "Knowledge", domain: "Domain" };
+  const labels = {
+    voice: "Voice",
+    knowledge: "Knowledge",
+    domain: "Domain",
+    audience: "Audience",
+  };
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-pill border px-1.5 py-0.5 ${
