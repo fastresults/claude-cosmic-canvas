@@ -34,7 +34,7 @@ const TYPE_PRETTY: Record<NodeType, string> = {
   audience: "Audience",
   knowledge: "Knowledge",
   entity: "Entity",
-  draft: "Draft",
+  draft: "Content",
   image: "Image",
   campaign: "Campaign",
   channel: "Channel",
