@@ -56,8 +56,8 @@ function DefaultProfilesPage() {
         </div>
       ) : profiles.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-          No profiles yet. Tap the + button to bundle a Voice, Knowledge base
-          and Domain into a one-click profile.
+          No profiles yet. Tap the + button to bundle a Voice, Knowledge base,
+          Domain and Audience into a one-click profile.
         </div>
       ) : (
         <ul className="space-y-2">
