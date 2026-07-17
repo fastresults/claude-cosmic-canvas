@@ -33,12 +33,15 @@ export function VoiceScopeProvider({ children }: { children: ReactNode }) {
 /** A mic surface calls this to declare itself the screen's voice target. */
 export function useVoiceScopeOwner(id: string, active = true): void {
   const ctx = useContext(VoiceScopeCtx);
+  const register = ctx?.register;
+  const unregister = ctx?.unregister;
   useEffect(() => {
-    if (!ctx || !active) return;
-    ctx.register(id);
-    return () => ctx.unregister(id);
-  }, [ctx, id, active]);
+    if (!register || !unregister || !active) return;
+    register(id);
+    return () => unregister(id);
+  }, [register, unregister, id, active]);
 }
+
 
 /** True when any scoped mic is present — the global ComposerBar mic should hide. */
 export function useHasScopedMic(): boolean {
