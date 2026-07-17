@@ -1,47 +1,39 @@
-## Rule
+## Goal
+In the Library's **Milestones** tab, each milestone (workspace) group must be collapsed by default and expand only when the user taps its header.
 
-**Every saved content item lives in exactly one library:**
-- `workspace_id IS NULL` → **General Library** (`/library`)
-- `workspace_id IS NOT NULL` → **Milestone Library** (scoped to that workspace)
-
-No item appears in both. Placement is derived at read time from `create_drafts.workspace_id` — no schema change, no dual-write, no per-format allowlist to maintain.
-
-## Current state (verified)
-
-- `create_drafts` already carries `workspace_id` (nullable). Rows split cleanly today: 8 workspace-bound (`post-content`, `email-sequence`, `press-release`, `op-ed`, `case-study`) and 7 general (`post-content`, `post`, `company-research`, `article-from-notes`).
-- `src/lib/create/create.server.ts` already writes `workspace_id: data.workspaceId ?? null` on every insert. `saveDraft` (just migrated) writes it from `readWorkspaceContext()`. So the save side is already correct — the leak is on the **read** side: `searchDrafts` in `src/lib/library/library.functions.ts` returns everything regardless of `workspace_id`, so milestone items show up in the general Library.
+## Scope
+Frontend/presentation only — `src/routes/_authenticated/library.tsx`. No changes to server functions, schema, or the General tab behavior.
 
 ## Changes
 
-1. **`src/lib/library/library.functions.ts` — `searchDrafts`**
-   - Add `scope: z.enum(["general", "milestone", "all"]).default("general")` to `SearchInput`.
-   - Apply at query time:
-     - `general` → `.is("workspace_id", null)`
-     - `milestone` → `.not("workspace_id", "is", null)` (optionally `.eq("workspace_id", filters.workspaceId)` when a specific milestone is scoped)
-     - `all` → no filter (kept for admin/debug; not exposed in UI)
-   - Include `workspace_id` in the SELECT and in the returned row shape so the UI can badge milestone items.
+1. **Collapsible state per group** (milestone scope only)
+   - Add `const [expanded, setExpanded] = useState<Record<string, boolean>>({})` keyed by group label (workspace title).
+   - Default = collapsed (empty map → falsy → collapsed).
+   - Reset the map when `scope` changes so switching tabs starts fresh.
 
-2. **`src/routes/_authenticated/library.tsx` — add Milestone tab**
-   - Two tabs at the top of Library: **General** (default) and **Milestones**.
-   - Tab state lives in the URL (`?scope=general|milestone`) via `validateSearch`, so it's shareable and preserves back/forward.
-   - Passes `scope` into the `searchDrafts` call.
-   - Milestone tab groups results by workspace title (fetch `opportunity_workspaces.title` for the distinct `workspace_id`s on the page) and each group header links to `/workspaces/$id`.
+2. **Group header becomes a button** (only when `scope === "milestone"`)
+   - Wrap the existing sticky header row in a `<button>` with `aria-expanded`, `aria-controls`.
+   - Add a chevron icon (`ChevronRight` rotates to `ChevronDown` when expanded) on the left.
+   - Keep the existing icon/label/count layout intact; just make it interactive and full-width.
+   - Preserve current styling (sticky, backdrop blur, uppercase tracking).
 
-3. **`src/routes/_authenticated/workspaces.$id.tsx`** — nothing to change functionally, but confirm the workspace detail view already lists its items via `workspace_items` / `create_drafts.workspace_id`. Add a small "Open in Library" link that deep-links to `/library?scope=milestone&workspaceId=<id>` for consistency.
+3. **Conditional item list render**
+   - Render the `items.map(...)` block only when `expanded[group]` is true **or** when `scope !== "milestone"` (General tab remains always-visible, unchanged).
+   - Show a small count-only summary line ("Tap to view N items") in the collapsed state is not needed — the count already appears in the header.
 
-4. **Recent Drafts strips (Create hub, Home)** — audit and filter to `workspace_id IS NULL` so the "general" surface never previews milestone items. Files to touch: any caller of `listRecentDrafts` that renders on general surfaces (`src/lib/content/content.functions.ts` — add `.is("workspace_id", null)` there, since that helper feeds the general Recent Drafts strip).
+4. **Auto-expand on search**
+   - If the user has an active query `q` or any active filter chips, auto-expand all milestone groups so search results aren't hidden. Implement by treating groups as expanded when `q.trim().length > 0 || activeChips.length > 0`.
 
-5. **Save-time enforcement (defensive)** — no code change required today because both `saveDraft` and every format flow already propagate `workspaceId`/`readWorkspaceContext()`. Add a short comment in `saveDraft` and `create.server.ts` documenting the rule so future formats don't accidentally drop `workspace_id`.
+5. **Deep link** (nice-to-have, low risk)
+   - If `workspaceId` search param is present, auto-expand only that workspace's group on mount.
 
-## Out of scope
-
-- No new table, no data migration — existing rows are already partitioned correctly by `workspace_id`.
-- Not changing Milestone workspace UIs; only adding a Library view onto the same data.
-- Not touching `drafts` (legacy) — it's read-only per the previous consolidation.
+## Non-goals
+- No changes to General tab grouping (date-based groups stay always-visible).
+- No animation library additions — a simple CSS transition on the chevron rotation is enough.
+- No changes to selection mode, sort, or bulk actions.
 
 ## Verification
-
-- `/library` (default) shows only rows with `workspace_id IS NULL` — the two `post` rows and the `company-research` row appear; the `press-release`, `op-ed`, `case-study`, `email-sequence` milestone rows do not.
-- `/library?scope=milestone` shows the workspace-bound rows, grouped by workspace title, each linking back to its milestone.
-- Saving a quick post from the Home orb (no milestone context) lands in General.
-- Saving from inside a Milestone workspace lands in that Milestone's library and is absent from General.
+- Milestones tab loads with all groups collapsed, chevrons pointing right, counts visible.
+- Tapping a header expands that group only; tapping again collapses.
+- Typing in the search bar reveals matching items across groups.
+- General tab is visually unchanged.
