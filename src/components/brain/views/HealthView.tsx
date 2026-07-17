@@ -16,7 +16,7 @@ const CORE_TYPES: { type: NodeType; label: string; to: string }[] = [
   { type: "domain", label: "Domain", to: "/settings/domains" },
   { type: "audience", label: "Audience", to: "/settings/presets" },
   { type: "knowledge", label: "Knowledge", to: "/settings/knowledge" },
-  { type: "draft", label: "Draft", to: "/" },
+  { type: "draft", label: "Content", to: "/" },
 ];
 
 export function HealthView({ nodes, edges, onPeek }: Props) {

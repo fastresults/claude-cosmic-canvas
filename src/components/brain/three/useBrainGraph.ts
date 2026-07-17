@@ -34,7 +34,7 @@ const TYPE_PRETTY: Record<NodeType, string> = {
   audience: "Audience",
   knowledge: "Knowledge",
   entity: "Entity",
-  draft: "Draft",
+  draft: "Content",
   image: "Image",
   campaign: "Campaign",
   channel: "Channel",
@@ -84,9 +84,9 @@ async function fetchLabel(type: NodeType, id: string): Promise<string | null> {
       return truncate(data?.name);
     }
     case "draft": {
-      const { data } = await supabase.from("drafts").select("format, body").eq("id", id).maybeSingle();
+      const { data } = await supabase.from("create_drafts").select("format_id, title").eq("id", id).maybeSingle();
       if (!data) return null;
-      return truncate(data.body, 32) ?? (data.format ? `${data.format} draft` : "Draft");
+      return truncate(data.title) ?? truncate(data.format_id.replace(/_/g, " "), 32);
     }
     case "campaign": {
       const { data } = await supabase.from("campaigns").select("title").eq("id", id).maybeSingle();
