@@ -803,9 +803,23 @@ function VoicePicker({
                 </div>
               )}
             </div>
+            <div className="border-t border-border bg-card px-4 py-3">
+              <Link
+                to="/settings/voice"
+                onClick={() => onOpenChange(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-accent/50 bg-accent/5 px-3 py-2.5 text-sm font-medium text-accent hover:bg-accent/10"
+              >
+                <Plus className="h-4 w-4" />
+                Create a new voice
+              </Link>
+              <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                Don't see the voice you want? Build one in Voice settings.
+              </p>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
