@@ -40,7 +40,7 @@ export function buildPresetPrompt(i: PresetInjection) {
   }
 
   const presetLines: string[] = [];
-  if (i.audiences.length) presetLines.push(`Audience: ${i.audiences.join(", ")}`);
+  // Audience already emitted above as its own block; do not duplicate here.
   for (const [k, v] of Object.entries(i.briefConfig)) {
     if (v === null || v === undefined || v === "") continue;
     presetLines.push(`${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
