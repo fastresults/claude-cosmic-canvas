@@ -239,7 +239,7 @@ function AudiencesSettings() {
         </h2>
         {audiences.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-surface-elev p-8 text-center text-sm text-muted-foreground">
-            No audiences yet. Use “Generate & save” to let Eve draft your first ICP from your Domain and Curriculum Vitae.
+            No audiences yet. Use “Draft next audience with AI” above to let Eve propose your first ICP from your Domain and knowledge.
           </div>
         ) : (
           <ul className="space-y-2">
