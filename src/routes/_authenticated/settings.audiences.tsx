@@ -98,11 +98,8 @@ function AudiencesSettings() {
     },
     onError: (e: unknown) => setError(e instanceof Error ? e.message : "AI draft failed"),
   });
-  const generateAndSave = useMutation({
-    mutationFn: () => generateFn(),
-    onSuccess: invalidate,
-    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not generate"),
-  });
+  void generateFn; // kept import; the auto-generate CTA now flows through `suggest` + explicit save
+
 
   const draftNext = () => suggest.mutate(rejectedNames);
   const regenerate = () => {
