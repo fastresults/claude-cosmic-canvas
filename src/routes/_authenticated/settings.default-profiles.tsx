@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
+  Pencil,
   Star,
   StarOff,
   Trash2,
@@ -76,7 +77,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 function DefaultProfilesPage() {
   const { profiles, isLoading, remove, favorite, setDefault, apply } =
     useDefaultProfiles();
-  const [creating, setCreating] = useState(false);
+  const [sheet, setSheet] = useState<
+    { mode: "create" } | { mode: "edit"; profile: (typeof profiles)[number] } | null
+  >(null);
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
@@ -103,7 +106,7 @@ function DefaultProfilesPage() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : profiles.length === 0 ? (
-        <EmptyProfileGuide onStart={() => setCreating(true)} />
+        <EmptyProfileGuide onStart={() => setSheet({ mode: "create" })} />
       ) : (
         <ul className="space-y-2">
           {profiles.map((p) => (
@@ -163,6 +166,14 @@ function DefaultProfilesPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setSheet({ mode: "edit", profile: p })}
+                className="rounded-md p-1 text-muted-foreground hover:text-accent"
+                aria-label={`Edit profile ${p.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setDefault.mutate(p.is_default ? null : p.id)}
                 className="rounded-md p-1 text-muted-foreground hover:text-accent"
                 aria-label={p.is_default ? "Clear active" : "Set as active"}
@@ -186,14 +197,20 @@ function DefaultProfilesPage() {
 
       <button
         type="button"
-        onClick={() => setCreating(true)}
+        onClick={() => setSheet({ mode: "create" })}
         aria-label="New profile"
         className="fixed bottom-24 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-105 sm:right-8"
       >
         <Plus className="h-6 w-6" />
       </button>
 
-      <CreateProfileSheet open={creating} onOpenChange={setCreating} />
+      <ProfileSheet
+        open={sheet !== null}
+        onOpenChange={(v) => {
+          if (!v) setSheet(null);
+        }}
+        profile={sheet?.mode === "edit" ? sheet.profile : null}
+      />
     </div>
   );
 }
@@ -227,14 +244,28 @@ function SlotChip({
   );
 }
 
-function CreateProfileSheet({
+type ProfileRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+  emoji?: string | null;
+  voice_id?: string | null;
+  knowledge_profile_id?: string | null;
+  domain_id?: string | null;
+  audience_id?: string | null;
+};
+
+function ProfileSheet({
   open,
   onOpenChange,
+  profile,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  profile?: ProfileRow | null;
 }) {
-  const { create } = useDefaultProfiles();
+  const { create, update } = useDefaultProfiles();
+  const isEdit = !!profile;
   const qc = useQueryClient();
   const listVoicesFn = useServerFn(listVoiceProfiles);
   const listSystemVoicesFn = useServerFn(listSystemVoices);
@@ -285,16 +316,20 @@ function CreateProfileSheet({
     },
   });
 
-  function reset() {
-    setName("");
-    setDescription("");
-    setEmoji("");
-    setVoiceId("");
-    setKnowledgeId("");
-    setDomainId("");
-    setAudienceId("");
+
+  useEffect(() => {
+    if (!open) return;
+    setName(profile?.name ?? "");
+    setDescription(profile?.description ?? "");
+    setEmoji(profile?.emoji ?? "");
+    setVoiceId(profile?.voice_id ?? "");
+    setKnowledgeId(profile?.knowledge_profile_id ?? "");
+    setDomainId(profile?.domain_id ?? "");
+    setAudienceId(profile?.audience_id ?? "");
     setVoicePickerOpen(false);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, profile?.id]);
+
 
   const dedupeByName = <T extends { id: string; name: string }>(items: T[]): T[] => {
     const seen = new Set<string>();
@@ -330,7 +365,7 @@ function CreateProfileSheet({
 
   async function save() {
     if (!name.trim()) return;
-    await create.mutateAsync({
+    const payload = {
       name: name.trim(),
       description: description.trim() || null,
       emoji: emoji.trim() || null,
@@ -338,19 +373,22 @@ function CreateProfileSheet({
       knowledge_profile_id: knowledgeId || null,
       domain_id: domainId || null,
       audience_id: audienceId || null,
-    });
-    reset();
+    };
+    if (isEdit && profile) {
+      await update.mutateAsync({ id: profile.id, ...payload });
+    } else {
+      await create.mutateAsync(payload);
+    }
     onOpenChange(false);
   }
+
 
   return (
     <EveSheet
       open={open}
-      onOpenChange={(v) => {
-        if (!v) reset();
-        onOpenChange(v);
-      }}
-      title="New profile"
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Edit profile" : "New profile"}
+
     >
       <div className="space-y-4">
         <div className="flex gap-2">
@@ -439,10 +477,10 @@ function CreateProfileSheet({
         <button
           type="button"
           onClick={save}
-          disabled={!name.trim() || create.isPending}
+          disabled={!name.trim() || create.isPending || update.isPending}
           className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-50"
         >
-          {create.isPending ? "Saving…" : "Save profile"}
+          {(create.isPending || update.isPending) ? "Saving…" : isEdit ? "Save changes" : "Save profile"}
         </button>
       </div>
     </EveSheet>
