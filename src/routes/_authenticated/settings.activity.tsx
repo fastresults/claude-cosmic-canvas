@@ -104,10 +104,10 @@ function ActivityPage() {
       </header>
 
       {isLoading ? (
-        <ListSkeleton rows={6} />
+        <ListSkeleton count={6} />
       ) : !data || data.length === 0 ? (
         <EmptyState
-          icon={Activity}
+          icon={<Activity className="h-5 w-5" />}
           title="No activity yet"
           description="As you generate drafts and run research, an audit trail appears here."
         />
