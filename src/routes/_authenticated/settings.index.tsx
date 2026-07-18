@@ -48,6 +48,7 @@ const SECTIONS: Section[] = [
   { to: "/settings/notifications", icon: Bell, label: "Notifications", hint: "Inbox rules, snoozes" },
   { to: "/settings/appearance", icon: SunMoon, label: "Appearance", hint: "Light or dark theme" },
   { to: "/settings/content-ops", icon: Zap, label: "Content Ops", hint: "Templates, presets, tuning" },
+  { to: "/settings/activity", icon: Activity, label: "Activity", hint: "Recent generations, research, and assistant runs" },
 ];
 
 function SettingsIndex() {
