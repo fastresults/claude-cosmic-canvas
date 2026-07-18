@@ -13,10 +13,12 @@ export const Route = createFileRoute("/_authenticated/")({
 });
 
 const SUGGESTIONS = [
-  "Draft a LinkedIn post about our v2 launch",
-  "A punchy tweet on this week's shipping progress",
-  "Reply to the pricing thread — friendly but firm",
-  "Hot take on the AI news cycle",
+  "A LinkedIn post on the lesson from my last board meeting",
+  "A founder-voice thought piece on where my industry is heading",
+  "A short story from a client win that shaped how I lead",
+  "A contrarian take on the advice everyone in my space repeats",
+  "A recap of what I learned shipping this quarter — human, not corporate",
+  "A keynote-style hook I can open my next talk with",
 ];
 
 function Home() {
