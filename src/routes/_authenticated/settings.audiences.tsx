@@ -17,8 +17,14 @@ import {
 } from "@/lib/audiences/audiences.functions";
 
 
+import { PillarLockGate } from "@/components/onboarding/PillarLockGate";
+
 export const Route = createFileRoute("/_authenticated/settings/audiences")({
-  component: AudiencesSettings,
+  component: () => (
+    <PillarLockGate pillar="audience">
+      <AudiencesSettings />
+    </PillarLockGate>
+  ),
 });
 
 type Audience = {
