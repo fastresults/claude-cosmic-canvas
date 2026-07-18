@@ -110,17 +110,21 @@ function DraftsHub() {
       </div>
 
       {drafts.isPending ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">Loading…</div>
+        <ListSkeleton count={5} />
       ) : rows.length === 0 ? (
-        <div className="grid gap-2 rounded-2xl border border-border bg-surface p-6 text-center text-sm text-muted-foreground">
-          <div>No drafts yet.</div>
-          <button
-            onClick={() => navigate({ to: "/create" })}
-            className="mx-auto mt-2 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-foreground"
-          >
-            <Plus className="h-3.5 w-3.5" /> Create your first
-          </button>
-        </div>
+        <EmptyState
+          icon={<FileText className="h-5 w-5" />}
+          title="No drafts yet"
+          description="Start a new piece from Create — voice, audience, and knowledge are all pre-wired."
+          action={
+            <button
+              onClick={() => navigate({ to: "/create" })}
+              className="mx-auto flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-foreground"
+            >
+              <Plus className="h-3.5 w-3.5" /> Create your first
+            </button>
+          }
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((d) => (
