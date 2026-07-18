@@ -26,8 +26,14 @@ import {
 import { pinEntry, archiveEntry } from "@/lib/knowledge/knowledge.functions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { PillarLockGate } from "@/components/onboarding/PillarLockGate";
+
 export const Route = createFileRoute("/_authenticated/settings/knowledge")({
-  component: KnowledgeSettings,
+  component: () => (
+    <PillarLockGate pillar="knowledge">
+      <KnowledgeSettings />
+    </PillarLockGate>
+  ),
 });
 
 function KnowledgeSettings() {
