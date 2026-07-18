@@ -74,6 +74,8 @@ function FormatPage() {
   const archiveFn = useServerFn(archiveCreateDraft);
   const renameFn = useServerFn(renameDraft);
   const suggestFn = useServerFn(suggestDraftTitle);
+  const saveFn = useServerFn(saveCreateDraft);
+
 
 
   const [seed, setSeed] = useState(seedFromUrl ?? "");
