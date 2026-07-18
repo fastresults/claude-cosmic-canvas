@@ -432,21 +432,19 @@ function Library() {
       </div>
 
       {/* Results */}
-      {query.isLoading && (
-        <div className="flex items-center gap-2 py-8 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
-        </div>
-      )}
+      {query.isLoading && <ListSkeleton rows={5} />}
       {!query.isLoading && drafts.length === 0 && (
-        <div className="rounded-lg border border-border bg-card p-6 text-center">
-          <p className="text-sm text-foreground">Nothing matches.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {q || activeChips.length > 0
+        <EmptyState
+          icon={Sparkles}
+          title="Nothing matches"
+          description={
+            q || activeChips.length > 0
               ? "Try broader terms, or clear filters."
-              : "Hold the orb on Home to draft your first post."}
-          </p>
-        </div>
+              : "Hold the orb on Home to draft your first post."
+          }
+        />
       )}
+
 
       <div className="space-y-4">
         {grouped.map(([group, items]) => {
