@@ -14,7 +14,9 @@ const RunDeepResearchInput = z.object({
 export const runDeepResearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => RunDeepResearchInput.parse(i))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { enforceRateLimit, RATE_LIMITS } = await import("@/lib/rate-limit/rate-limit.server");
+    await enforceRateLimit(context.supabase, RATE_LIMITS.research_company);
     const { createLovableAiGatewayProvider } = await import("@/lib/ai/gateway.server");
     const { generateText } = await import("ai");
 
