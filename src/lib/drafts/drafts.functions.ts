@@ -49,6 +49,7 @@ export const listDrafts = createServerFn({ method: "POST" })
         "id, format_id, title, sections, status, archived, quality_score, virality_score, authenticity_score, platform, scheduled_date, published_at, workspace_id, campaign_id, updated_at, created_at",
       )
       .eq("user_id", context.userId)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false })
       .limit(data.limit);
 
