@@ -9,6 +9,7 @@ import { MilestonePrepSheet } from "@/components/workspaces/MilestonePrepSheet";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useWorkspaceContext } from "@/lib/workspaces/workspaceContextStore";
 import { RequireDefaultsGate } from "@/components/settings/RequireDefaultsGate";
+import { getFormatTint } from "@/lib/create/format-tints";
 
 export const Route = createFileRoute("/_authenticated/create/")({
   head: () => ({
