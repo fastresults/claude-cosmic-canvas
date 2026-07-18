@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { Search, Plus, Archive as ArchiveIcon } from "lucide-react";
+import { Search, Plus, Archive as ArchiveIcon, FileText } from "lucide-react";
 import { useDrafts } from "@/hooks/useDrafts";
 import { DraftCard, type DraftListItem } from "@/components/drafts/DraftCard";
 import { DraftDetailSheet } from "@/components/drafts/DraftDetailSheet";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 const searchSchema = z.object({
   q: z.string().optional(),
