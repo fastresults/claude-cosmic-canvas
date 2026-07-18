@@ -286,25 +286,28 @@ function AudiencesSettings() {
                   });
                 };
                 return (
-                  <li
-                    key={a.id}
-                    role="radio"
-                    aria-checked={isActive}
-                    className={`overflow-hidden rounded-lg border bg-card transition-colors ${
-                      isActive
-                        ? "border-accent bg-accent/5 ring-1 ring-accent/40"
-                        : "border-border hover:border-accent/50"
-                    }`}
-                  >
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-2">
-                      <button
-                        type="button"
-                        onClick={activate}
-                        aria-label={isActive ? `${a.name} is active` : `Set ${a.name} as active audience`}
-                        className="shrink-0 rounded-full p-1"
-                      >
+                  <li key={a.id}>
+                    <div
+                      role="radio"
+                      aria-checked={isActive}
+                      tabIndex={0}
+                      onClick={activate}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault();
+                          activate();
+                        }
+                      }}
+                      className={`overflow-hidden rounded-lg border bg-card transition-colors ${
+                        isActive
+                          ? "border-accent bg-accent/5 ring-1 ring-accent/40"
+                          : "border-border cursor-pointer hover:border-accent/50 active:bg-surface-elev"
+                      }`}
+                    >
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-2">
                         <span
-                          className={`grid h-5 w-5 place-items-center rounded-full border-2 transition-colors ${
+                          aria-hidden="true"
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
                             isActive
                               ? "border-accent bg-accent text-accent-foreground"
                               : "border-muted-foreground/40 bg-transparent"
@@ -312,50 +315,46 @@ function AudiencesSettings() {
                         >
                           {isActive && <Check className="h-3 w-3" strokeWidth={3} />}
                         </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={activate}
-                        className="flex min-w-0 flex-col items-start text-left"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <Users className={`h-4 w-4 shrink-0 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
-                          <span className="truncate text-sm text-foreground">{a.name}</span>
+                        <div className="flex min-w-0 flex-col items-start text-left">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Users className={`h-4 w-4 shrink-0 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
+                            <span className="truncate text-sm text-foreground">{a.name}</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1 pl-6">
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
+                                <Star className="h-2.5 w-2.5" /> Active
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Tap anywhere to activate</span>
+                            )}
+                            {a.is_ai_generated && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                AI
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="mt-1 flex flex-wrap gap-1 pl-6">
-                          {isActive ? (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground">
-                              <Star className="h-2.5 w-2.5" /> Active
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">Tap to activate</span>
-                          )}
-                          {a.is_ai_generated && (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                              AI
-                            </span>
-                          )}
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setExpanded(isOpen ? null : a.id); }}
+                            aria-label={isOpen ? `Collapse ${a.name}` : `Expand ${a.name}`}
+                            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev"
+                          >
+                            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); remove.mutate(a.id); }}
+                            aria-label={`Remove ${a.name}`}
+                            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                      </button>
-                      <div className="flex shrink-0 items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setExpanded(isOpen ? null : a.id)}
-                          aria-label={isOpen ? `Collapse ${a.name}` : `Expand ${a.name}`}
-                          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev"
-                        >
-                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => remove.mutate(a.id)}
-                          aria-label={`Remove ${a.name}`}
-                          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
                       </div>
-                    </div>
+
                     {isOpen && (
                       <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
                         {a.description && <p className="mb-2 text-foreground">{a.description}</p>}
