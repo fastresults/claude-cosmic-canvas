@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -14,6 +15,28 @@ import {
   saveDraft,
 } from "@/lib/content/content.functions";
 import type { RefineKind } from "@/components/primitives/DraftCard";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+
+const DRAFT_STORAGE_KEY = "eve-working-draft-v1";
+
+function readStoredDraft(): WorkingDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WorkingDraft;
+    if (typeof parsed?.body === "string" && typeof parsed?.format === "string") return parsed;
+  } catch { /* ignore malformed */ }
+  return null;
+}
+
+function writeStoredDraft(draft: WorkingDraft | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (draft) window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch { /* quota / disabled — best-effort */ }
+}
 
 export type WorkingDraft = {
   body: string;
