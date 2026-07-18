@@ -240,6 +240,40 @@ function FormatPage() {
       setError("Please name your draft to continue.");
       return;
     }
+    // Fast path: content is already generated and sitting in memory.
+    // Persist it directly — do NOT re-invoke the model (that was a 100s round-trip).
+    if (sections.length > 0) {
+      setSavingTitle(true);
+      setError(null);
+      try {
+        const ctx = readWorkspaceContext();
+        const briefSnapshot =
+          requiresChannel && channels.length > 0 ? { channels } : null;
+        const res = await saveFn({
+          data: {
+            draftId: currentDraftId ?? undefined,
+            formatId,
+            title: next,
+            sections: sections as unknown as unknown[],
+            briefSnapshot,
+            status: "draft",
+            workspaceId: ctx.workspace_id ?? wsId ?? null,
+            workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+          },
+        });
+        if (res?.id) setCurrentDraftId(res.id);
+        setTitle(next);
+        setTitlePending(false);
+        qc.invalidateQueries({ queryKey: ["create-drafts"] });
+        qc.invalidateQueries({ queryKey: ["workspace", ctx.workspace_id] });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to save draft");
+      } finally {
+        setSavingTitle(false);
+      }
+      return;
+    }
+    // No content yet — fall back to full generation with the provided title.
     setSavingTitle(true);
     setError(null);
     try {
@@ -248,6 +282,7 @@ function FormatPage() {
       setSavingTitle(false);
     }
   }
+
 
 
   // Voice Orb / Home CTA auto-start.
