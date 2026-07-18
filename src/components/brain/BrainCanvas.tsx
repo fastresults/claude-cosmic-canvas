@@ -1,13 +1,21 @@
-import { useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
 import { Scene, type ZoomController } from "./three/Scene";
 import { BrainSearch } from "./BrainSearch";
 import { BrainLegend } from "./BrainLegend";
-import { TimelineView } from "./views/TimelineView";
-import { RadialView } from "./views/RadialView";
-import { ListView } from "./views/ListView";
-import { HealthView } from "./views/HealthView";
+const TimelineView = lazy(() =>
+  import("./views/TimelineView").then((m) => ({ default: m.TimelineView })),
+);
+const RadialView = lazy(() =>
+  import("./views/RadialView").then((m) => ({ default: m.RadialView })),
+);
+const ListView = lazy(() =>
+  import("./views/ListView").then((m) => ({ default: m.ListView })),
+);
+const HealthView = lazy(() =>
+  import("./views/HealthView").then((m) => ({ default: m.HealthView })),
+);
 import { EveSheet } from "@/components/primitives/EveSheet";
 import { useBrainGraph, type GraphNode } from "./three/useBrainGraph";
 import { useDefaultProfiles } from "@/hooks/useDefaultProfiles";
