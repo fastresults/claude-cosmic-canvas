@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useDrafts, useDraftMutations } from "@/hooks/useDrafts";
 import { DraftCard, type DraftListItem } from "@/components/drafts/DraftCard";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Archive as ArchiveIcon } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/content/archive")({
   head: () => ({
@@ -36,11 +38,13 @@ function ArchivePage() {
         <p className="text-sm text-muted-foreground">Restore or permanently review past work.</p>
       </header>
       {drafts.isPending ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">Loading…</div>
+        <ListSkeleton count={4} />
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-surface p-6 text-center text-sm text-muted-foreground">
-          Nothing archived.
-        </div>
+        <EmptyState
+          icon={<ArchiveIcon className="h-5 w-5" />}
+          title="Nothing archived"
+          description="Restored drafts return to your library. Anything you archive later shows up here."
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((d) => (
