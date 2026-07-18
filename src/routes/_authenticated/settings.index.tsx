@@ -51,6 +51,8 @@ const SECTIONS: Section[] = [
   { to: "/settings/appearance", icon: SunMoon, label: "Appearance", hint: "Light or dark theme" },
   { to: "/settings/content-ops", icon: Zap, label: "Content Ops", hint: "Templates, presets, tuning" },
   { to: "/settings/activity", icon: Activity, label: "Activity", hint: "Recent generations, research, and assistant runs" },
+  { to: "/settings/trash", icon: Trash2, label: "Trash", hint: "Restore drafts and media for 30 days after deletion" },
+  { to: "/settings/flags", icon: Flag, label: "Feature flags", hint: "Rollout toggles the team ships behind" },
 ];
 
 function SettingsIndex() {
