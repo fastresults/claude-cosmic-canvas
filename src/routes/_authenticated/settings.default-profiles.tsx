@@ -166,6 +166,14 @@ function DefaultProfilesPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setSheet({ mode: "edit", profile: p })}
+                className="rounded-md p-1 text-muted-foreground hover:text-accent"
+                aria-label={`Edit profile ${p.name}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setDefault.mutate(p.is_default ? null : p.id)}
                 className="rounded-md p-1 text-muted-foreground hover:text-accent"
                 aria-label={p.is_default ? "Clear active" : "Set as active"}
@@ -189,14 +197,20 @@ function DefaultProfilesPage() {
 
       <button
         type="button"
-        onClick={() => setCreating(true)}
+        onClick={() => setSheet({ mode: "create" })}
         aria-label="New profile"
         className="fixed bottom-24 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg transition-transform hover:scale-105 sm:right-8"
       >
         <Plus className="h-6 w-6" />
       </button>
 
-      <CreateProfileSheet open={creating} onOpenChange={setCreating} />
+      <ProfileSheet
+        open={sheet !== null}
+        onOpenChange={(v) => {
+          if (!v) setSheet(null);
+        }}
+        profile={sheet?.mode === "edit" ? sheet.profile : null}
+      />
     </div>
   );
 }
