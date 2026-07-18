@@ -354,8 +354,10 @@ function AudiencesSettings() {
                           </button>
                         </div>
                       </div>
+                    </div>
 
                     {isOpen && (
+
                       <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
                         {a.description && <p className="mb-2 text-foreground">{a.description}</p>}
                         <Field label="Persona" value={icp.persona} />
