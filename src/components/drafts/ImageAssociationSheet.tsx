@@ -606,7 +606,7 @@ function MediaThumb({
       className="group aspect-square overflow-hidden rounded-xl bg-surface"
     >
       {preview.data ? (
-        <img src={preview.data} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+        <img src={preview.data} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
       ) : (
         <div className="grid h-full place-items-center text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
