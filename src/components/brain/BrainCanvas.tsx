@@ -147,17 +147,27 @@ export function BrainCanvas() {
         </>
       )}
 
-      {view === "timeline" && (
-        <TimelineView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
-      )}
-      {view === "radial" && (
-        <RadialView nodes={filteredNodes} onPeek={setPeek} />
-      )}
-      {view === "list" && (
-        <ListView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
-      )}
-      {view === "health" && (
-        <HealthView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+      {view !== "constellation" && (
+        <Suspense
+          fallback={
+            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+              Loading view…
+            </div>
+          }
+        >
+          {view === "timeline" && (
+            <TimelineView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+          )}
+          {view === "radial" && (
+            <RadialView nodes={filteredNodes} onPeek={setPeek} />
+          )}
+          {view === "list" && (
+            <ListView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+          )}
+          {view === "health" && (
+            <HealthView nodes={filteredNodes} edges={filteredEdges} onPeek={setPeek} />
+          )}
+        </Suspense>
       )}
 
       <EveSheet
