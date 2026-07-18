@@ -48,7 +48,10 @@ function AudiencesSettings() {
     queryFn: () => listFn() as Promise<Audience[]>,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: KEY });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: KEY });
+    qc.invalidateQueries({ queryKey: ["default-profiles"] });
+  };
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -85,7 +88,26 @@ function AudiencesSettings() {
   });
   const setDefault = useMutation({
     mutationFn: (id: string) => setDefaultFn({ data: { id } }),
-    onSuccess: invalidate,
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: KEY });
+      const previous = qc.getQueryData<Audience[]>(KEY);
+      qc.setQueryData<Audience[]>(KEY, (old = []) =>
+        old.map((audience) => ({
+          ...audience,
+          is_default: audience.id === id,
+        })),
+      );
+      return { previous };
+    },
+    onError: (e: unknown, _id, context) => {
+      if (context?.previous) qc.setQueryData(KEY, context.previous);
+      toast.error(e instanceof Error ? e.message : "Could not switch audience");
+    },
+    onSuccess: (result, id) => {
+      const audienceName = result?.audience?.name ?? audiences.find((a) => a.id === id)?.name;
+      toast.success(audienceName ? `Now targeting ${audienceName}` : "Audience updated");
+    },
+    onSettled: invalidate,
   });
   const update = useMutation({
     mutationFn: (v: { id: string; name?: string; description?: string }) => updateFn({ data: v }),
@@ -279,11 +301,9 @@ function AudiencesSettings() {
                 const isActive = !!a.is_default;
                 const icp = (a.icp ?? {}) as Partial<Icp>;
                 const activate = () => {
-                  if (isActive) return;
+                  if (isActive || setDefault.isPending) return;
                   hapticTap();
-                  setDefault.mutate(a.id, {
-                    onSuccess: () => toast.success(`Now targeting ${a.name}`),
-                  });
+                  setDefault.mutate(a.id);
                 };
                 return (
                   <li key={a.id}>
@@ -301,7 +321,7 @@ function AudiencesSettings() {
                       className={`overflow-hidden rounded-lg border bg-card transition-colors ${
                         isActive
                           ? "border-accent bg-accent/5 ring-1 ring-accent/40"
-                          : "border-border cursor-pointer hover:border-accent/50 active:bg-surface-elev"
+                          : `border-border ${setDefault.isPending ? "opacity-70" : "cursor-pointer hover:border-accent/50 active:bg-surface-elev"}`
                       }`}
                     >
                       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-2">
