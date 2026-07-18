@@ -3,7 +3,7 @@
 // framer-motion.
 import { useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { triggerHaptic } from "@/lib/platform/haptics";
+import { hapticEnd } from "@/lib/platform/haptics";
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
