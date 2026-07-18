@@ -35,6 +35,8 @@ export type GenerateDraftResult =
       sections: Array<{ heading: string | null; body: string }>;
     };
 
+
+
 export async function runGenerateCreateDraft(
   data: GenerateDraftInput,
   ctx: { supabase: SupabaseClient<any>; userId: string },
