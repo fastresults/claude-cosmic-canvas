@@ -30,8 +30,14 @@ import {
   setDefaultVoiceProfile,
 } from "@/lib/voice/voice.functions";
 
+import { PillarLockGate } from "@/components/onboarding/PillarLockGate";
+
 export const Route = createFileRoute("/_authenticated/settings/voice")({
-  component: VoiceList,
+  component: () => (
+    <PillarLockGate pillar="voice">
+      <VoiceList />
+    </PillarLockGate>
+  ),
 });
 
 function VoiceList() {
