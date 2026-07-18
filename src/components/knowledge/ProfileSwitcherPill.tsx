@@ -5,9 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createProfile,
   listProfiles,
+  renameKnowledgeProfile,
   setDefaultKnowledgeProfile,
 } from "@/lib/knowledge/knowledge.functions";
-import { ChevronDown, Plus, User, Briefcase, Megaphone, Star } from "lucide-react";
+import { ChevronDown, Plus, User, Briefcase, Megaphone, Star, Pencil, Check, X } from "lucide-react";
 import { useState } from "react";
 import { KIND_LABELS, type KnowledgeProfile, saveActiveProfileId } from "./shared";
 
