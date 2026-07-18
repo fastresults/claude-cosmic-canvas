@@ -30,7 +30,9 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   return (
     <AppShell>
+      <KeyboardShortcuts />
       <Outlet />
     </AppShell>
+
   );
 }
