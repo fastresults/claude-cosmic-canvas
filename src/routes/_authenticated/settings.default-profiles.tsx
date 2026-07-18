@@ -244,14 +244,28 @@ function SlotChip({
   );
 }
 
-function CreateProfileSheet({
+type ProfileRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+  emoji?: string | null;
+  voice_id?: string | null;
+  knowledge_profile_id?: string | null;
+  domain_id?: string | null;
+  audience_id?: string | null;
+};
+
+function ProfileSheet({
   open,
   onOpenChange,
+  profile,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  profile?: ProfileRow | null;
 }) {
-  const { create } = useDefaultProfiles();
+  const { create, update } = useDefaultProfiles();
+  const isEdit = !!profile;
   const qc = useQueryClient();
   const listVoicesFn = useServerFn(listVoiceProfiles);
   const listSystemVoicesFn = useServerFn(listSystemVoices);
