@@ -383,7 +383,7 @@ function MediaDetailSheet({
           <div className="overflow-hidden rounded-md border border-border bg-surface-elev">
             {preview ? (
               asset.kind === "image" ? (
-                <img src={preview} alt={title} className="max-h-[45dvh] w-full object-contain" />
+                <img src={preview} alt={title} loading="lazy" decoding="async" className="max-h-[45dvh] w-full object-contain" />
               ) : asset.kind === "video" ? (
                 <video src={preview} controls className="max-h-[45dvh] w-full" />
               ) : asset.kind === "audio" ? (
