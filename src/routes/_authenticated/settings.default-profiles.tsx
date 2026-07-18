@@ -77,7 +77,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 function DefaultProfilesPage() {
   const { profiles, isLoading, remove, favorite, setDefault, apply } =
     useDefaultProfiles();
-  const [creating, setCreating] = useState(false);
+  const [sheet, setSheet] = useState<
+    { mode: "create" } | { mode: "edit"; profile: (typeof profiles)[number] } | null
+  >(null);
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4">
