@@ -134,13 +134,13 @@ export function Orb({ node, position, dim, focused, onHover, onClick, isYou }: P
           onClick?.(node);
         }}
       >
-        <sphereGeometry args={[baseRadius, 32, 32]} />
+        <sphereGeometry args={[baseRadius, 20, 20]} />
         <meshBasicMaterial color={colorObj} transparent opacity={opacity} />
       </mesh>
 
       {/* Specular highlight */}
       <mesh position={[-baseRadius * 0.3, baseRadius * 0.3, baseRadius * 0.6]}>
-        <sphereGeometry args={[baseRadius * 0.35, 16, 16]} />
+        <sphereGeometry args={[baseRadius * 0.35, 10, 10]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={opacity * 0.55} depthWrite={false} />
       </mesh>
 
