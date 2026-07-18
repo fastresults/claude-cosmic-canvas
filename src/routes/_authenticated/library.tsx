@@ -435,10 +435,10 @@ function Library() {
       </div>
 
       {/* Results */}
-      {query.isLoading && <ListSkeleton rows={5} />}
+      {query.isLoading && <ListSkeleton count={5} />}
       {!query.isLoading && drafts.length === 0 && (
         <EmptyState
-          icon={Sparkles}
+          icon={<Sparkles className="h-5 w-5" />}
           title="Nothing matches"
           description={
             q || activeChips.length > 0
@@ -447,6 +447,7 @@ function Library() {
           }
         />
       )}
+
 
 
       <div className="space-y-4">
