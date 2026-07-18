@@ -128,8 +128,9 @@ export function Scene({ nodes, edges, onPeek, focusNodeId, zoomRef }: Props) {
 
   return (
     <Canvas
-      dpr={[1, 2]}
-      gl={{ antialias: true, alpha: false }}
+      dpr={[1, 1.75]}
+      performance={{ min: 0.5 }}
+      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       style={{ background: "radial-gradient(circle at 50% 55%, #1a1208 0%, #050303 60%, #000 100%)" }}
     >
       <PerspectiveCamera makeDefault position={[0, 2, 22]} fov={55} />
