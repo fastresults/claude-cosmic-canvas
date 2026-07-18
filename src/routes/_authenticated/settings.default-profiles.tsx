@@ -374,7 +374,7 @@ function ProfileSheet({
 
   async function save() {
     if (!name.trim()) return;
-    await create.mutateAsync({
+    const payload = {
       name: name.trim(),
       description: description.trim() || null,
       emoji: emoji.trim() || null,
@@ -382,10 +382,15 @@ function ProfileSheet({
       knowledge_profile_id: knowledgeId || null,
       domain_id: domainId || null,
       audience_id: audienceId || null,
-    });
-    reset();
+    };
+    if (isEdit && profile) {
+      await update.mutateAsync({ id: profile.id, ...payload });
+    } else {
+      await create.mutateAsync(payload);
+    }
     onOpenChange(false);
   }
+
 
   return (
     <EveSheet
