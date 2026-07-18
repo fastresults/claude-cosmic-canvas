@@ -78,7 +78,14 @@ export const getWorkspace = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    return { workspace: ws, items: items ?? [], strategy: strategy ?? null };
+    const itemList = items ?? [];
+    const DONE = new Set(["ready", "scheduled", "published", "completed"]);
+    const wsWithProgress = {
+      ...ws,
+      total_items: itemList.length,
+      completed_items: itemList.filter((i) => DONE.has(i.status as string)).length,
+    };
+    return { workspace: wsWithProgress, items: itemList, strategy: strategy ?? null };
   });
 
 // ---- Milestone interview -------------------------------------------------
