@@ -1,34 +1,29 @@
-## Add "Create new" shortcut to every pillar picker
+## Problem
+Profile cards in `/settings/default-profiles` show Apply, Set-default, and Delete — but no way to edit name, description, emoji, or the four pillar slots (Voice / Knowledge / Domain / Audience). Users can only recreate from scratch.
 
-Right now the Voice, Domain, Knowledge, and Audience selectors on `/settings/default-profiles` are plain native `<select>` menus (except Voice, which is the new `VoicePicker` dialog). If a user doesn't see the option they want, there's no path forward from inside the picker — they have to know to navigate to the correct settings page themselves.
+## Plan
 
-### Goal
-Every pillar picker exposes a clear "Add / build new" affordance that deep-links to the correct settings screen.
+**1. Add a Pencil (Edit) button to each profile row**
+In `src/routes/_authenticated/settings.default-profiles.tsx`, next to the Apply / Check / Trash controls, add a `Pencil` icon button that opens the same profile sheet in edit mode for that profile.
 
-### Changes
+**2. Generalize `CreateProfileSheet` → `ProfileSheet`**
+Refactor the existing sheet so it accepts an optional `profile` prop:
+- No `profile` → "New profile" (existing behavior, calls `create`).
+- With `profile` → "Edit profile", pre-fills name / description / emoji / voice_id / knowledge_profile_id / domain_id / audience_id, and Save calls `update.mutateAsync({ id, ...fields })`.
+- Preserve reset-on-close and the "must have name" guard.
+- Use `useEffect` to sync state when the `profile` prop changes so switching which row is being edited repopulates fields.
 
-1. **Replace remaining native selects with a consistent `PillarPicker` dialog** (same pattern as `VoicePicker`) for Domain, Knowledge, and Audience on `settings.default-profiles.tsx`. Each picker:
-   - Search + list of existing items (deduped case-insensitively)
-   - Sticky footer row: **"+ Create new [Domain/Knowledge/Audience]"** → navigates to the matching settings route and closes the dialog
-   - Empty-state variant: when no items exist, the primary CTA is the same "Create new" link with helper copy
+**3. Wire up the existing `update` mutation**
+`useDefaultProfiles()` already exposes `update` backed by `updateDefaultProfile` — no server or schema changes needed. Add it to the sheet's hook destructure and use it in the edit branch.
 
-2. **Update `VoicePicker`** to add the same sticky footer row: **"+ Create a new Voice"** → `/settings/voices` (or wherever voice creation lives). Keeps the existing "Add + use" inline adoption for system voices.
+**4. Page state**
+Replace `creating: boolean` with `editing: { mode: "create" } | { mode: "edit"; profile } | null` (or two states) so the FAB opens create mode and the pencil opens edit mode targeting a specific row.
 
-3. **Route mapping** used by the shortcut:
-   - Voice → `/settings/voices`
-   - Domain → `/settings/domains`
-   - Knowledge → `/settings/knowledge`
-   - Audience → `/settings/audiences`
-   (Verify exact paths during implementation; use the ones already registered.)
+**5. No changes to**
+Server functions, database schema, `useDefaultProfiles`, or the SlotSelect/VoicePicker internals.
 
-4. **Return behavior**: after creating a new item in settings and returning to the profile screen, the picker's list refreshes (invalidate the relevant query) so the new item is immediately selectable.
+## Files touched
+- `src/routes/_authenticated/settings.default-profiles.tsx` (only)
 
-### Out of scope
-- No changes to the settings pages themselves.
-- No changes to how profiles are saved.
-- No new pillars.
-
-### Files touched
-- `src/routes/_authenticated/settings.default-profiles.tsx`
-- `src/components/pickers/VoicePicker.tsx`
-- New: `src/components/pickers/PillarPicker.tsx` (shared shell for Domain/Knowledge/Audience)
+## Out of scope
+Inline rename in the card (kept in the sheet so all four pillar slots are editable together with the same rich picker UX as create).
