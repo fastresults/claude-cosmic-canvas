@@ -510,7 +510,7 @@ function LibraryTab({ draftId, role, onDone }: { draftId: string; role: Role; on
           }}
           className="group aspect-square overflow-hidden rounded-xl bg-surface"
         >
-          <img src={it.url} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+          <img src={it.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
         </ThumbPeek>
       ))}
     </div>
