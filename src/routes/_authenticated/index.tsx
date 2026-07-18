@@ -57,15 +57,7 @@ function Home() {
               Say one sentence. Eve does the rest.
             </p>
           </div>
-          <div className="flex max-w-md flex-wrap items-center justify-center gap-2">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} onClick={() => generate(s)}>
-                <Pill variant="ghost" size="sm">
-                  {s}
-                </Pill>
-              </button>
-            ))}
-          </div>
+          <CyclingSuggestion suggestions={SUGGESTIONS} onPick={generate} />
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Link
               to="/create"
