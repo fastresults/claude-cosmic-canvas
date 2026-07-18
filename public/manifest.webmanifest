@@ -3,11 +3,15 @@
   "short_name": "Eve",
   "description": "Voice-first AI content OS with a living Second Brain.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#08060f",
   "theme_color": "#08060f",
   "orientation": "portrait",
+  "categories": ["productivity", "business"],
   "icons": [
-    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
