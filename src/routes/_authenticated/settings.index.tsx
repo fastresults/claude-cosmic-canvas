@@ -17,6 +17,7 @@ import {
   AlertCircle,
   FolderOpen,
   Users,
+  Activity,
 } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 import { listProfiles, setDefaultKnowledgeProfile } from "@/lib/knowledge/knowledge.functions";
