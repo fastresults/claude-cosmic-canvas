@@ -26,6 +26,7 @@ export type GenerateDraftResult =
       pendingTitle: true;
       suggestedTitle: string;
       sections: Array<{ heading: string | null; body: string }>;
+      briefSnapshot: Record<string, unknown> | null;
     }
   | {
       fallback: false;
@@ -34,6 +35,7 @@ export type GenerateDraftResult =
       title: string;
       sections: Array<{ heading: string | null; body: string }>;
     };
+
 
 export async function runGenerateCreateDraft(
   data: GenerateDraftInput,
