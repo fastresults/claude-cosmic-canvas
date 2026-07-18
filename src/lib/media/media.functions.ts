@@ -47,6 +47,7 @@ export const listMediaAssets = createServerFn({ method: "GET" })
       .select(
         "id, filename, mime_type, size_bytes, storage_path, kind, title, description, tags, width, height, duration_seconds, created_at, updated_at",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (data.kind) q = q.eq("kind", data.kind);
