@@ -32,7 +32,25 @@ export const listWorkspaces = createServerFn({ method: "POST" })
     if (!data.includeArchived) q = q.neq("status", "archived");
     const { data: rows, error } = await q;
     if (error) throw error;
-    return rows ?? [];
+    const list = rows ?? [];
+    if (list.length === 0) return list;
+    const ids = list.map((r) => r.id);
+    const { data: itemRows } = await context.supabase
+      .from("workspace_items")
+      .select("workspace_id, status")
+      .in("workspace_id", ids);
+    const DONE = new Set(["ready", "scheduled", "published", "completed"]);
+    const totals = new Map<string, { total: number; done: number }>();
+    for (const it of itemRows ?? []) {
+      const t = totals.get(it.workspace_id) ?? { total: 0, done: 0 };
+      t.total += 1;
+      if (DONE.has(it.status as string)) t.done += 1;
+      totals.set(it.workspace_id, t);
+    }
+    return list.map((r) => {
+      const t = totals.get(r.id);
+      return t ? { ...r, total_items: t.total, completed_items: t.done } : r;
+    });
   });
 
 export const getWorkspace = createServerFn({ method: "POST" })
