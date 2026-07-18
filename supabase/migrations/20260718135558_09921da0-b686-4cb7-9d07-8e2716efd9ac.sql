@@ -1,0 +1,1 @@
+CREATE POLICY "audit_log self read" ON public.audit_log FOR SELECT TO authenticated USING (actor_user_id = auth.uid());
