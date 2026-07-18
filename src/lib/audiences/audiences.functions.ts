@@ -39,8 +39,7 @@ export const listAudiences = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("audiences")
       .select(SELECT_COLS)
-      .order("is_default", { ascending: false })
-      .order("updated_at", { ascending: false });
+      .order("created_at", { ascending: true });
     if (error) throw error;
     return data ?? [];
   });

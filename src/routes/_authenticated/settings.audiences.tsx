@@ -31,7 +31,14 @@ type Audience = {
   is_ai_generated?: boolean;
 };
 
+type DefaultProfileCacheRow = {
+  id: string;
+  audience_id?: string | null;
+  is_default?: boolean;
+};
+
 const KEY = ["audiences"] as const;
+const DEFAULT_PROFILES_KEY = ["default-profiles"] as const;
 
 function AudiencesSettings() {
   const qc = useQueryClient();
@@ -49,8 +56,10 @@ function AudiencesSettings() {
   });
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: KEY });
-    qc.invalidateQueries({ queryKey: ["default-profiles"] });
+    return Promise.all([
+      qc.invalidateQueries({ queryKey: KEY }),
+      qc.invalidateQueries({ queryKey: DEFAULT_PROFILES_KEY }),
+    ]);
   };
 
   const [name, setName] = useState("");
@@ -89,18 +98,28 @@ function AudiencesSettings() {
   const setDefault = useMutation({
     mutationFn: (id: string) => setDefaultFn({ data: { id } }),
     onMutate: async (id: string) => {
-      await qc.cancelQueries({ queryKey: KEY });
+      await Promise.all([
+        qc.cancelQueries({ queryKey: KEY }),
+        qc.cancelQueries({ queryKey: DEFAULT_PROFILES_KEY }),
+      ]);
       const previous = qc.getQueryData<Audience[]>(KEY);
+      const previousProfiles = qc.getQueryData<DefaultProfileCacheRow[]>(DEFAULT_PROFILES_KEY);
       qc.setQueryData<Audience[]>(KEY, (old = []) =>
         old.map((audience) => ({
           ...audience,
           is_default: audience.id === id,
         })),
       );
-      return { previous };
+      qc.setQueryData<DefaultProfileCacheRow[]>(DEFAULT_PROFILES_KEY, (old = []) =>
+        old.map((profile) =>
+          profile.is_default ? { ...profile, audience_id: id } : profile,
+        ),
+      );
+      return { previous, previousProfiles };
     },
     onError: (e: unknown, _id, context) => {
       if (context?.previous) qc.setQueryData(KEY, context.previous);
+      if (context?.previousProfiles) qc.setQueryData(DEFAULT_PROFILES_KEY, context.previousProfiles);
       toast.error(e instanceof Error ? e.message : "Could not switch audience");
     },
     onSuccess: (result, id) => {
