@@ -124,18 +124,37 @@ export const setDefaultAudience = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    await context.supabase
+    const { data: selected, error: selectedError } = await context.supabase
+      .from("audiences")
+      .select("id, name")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (selectedError) throw selectedError;
+    if (!selected) throw new Error("Audience not found");
+
+    const { error: clearError } = await context.supabase
       .from("audiences")
       .update({ is_default: false })
       .eq("user_id", context.userId)
       .eq("is_default", true);
-    const { error } = await context.supabase
+    if (clearError) throw clearError;
+
+    const { error: setError } = await context.supabase
       .from("audiences")
       .update({ is_default: true })
       .eq("id", data.id)
       .eq("user_id", context.userId);
-    if (error) throw error;
-    return { ok: true };
+    if (setError) throw setError;
+
+    const { error: profileError } = await context.supabase
+      .from("default_profiles")
+      .update({ audience_id: selected.id })
+      .eq("user_id", context.userId)
+      .eq("is_default", true);
+    if (profileError) throw profileError;
+
+    return { ok: true, audience: selected };
   });
 
 // ---------- AI suggester ----------
