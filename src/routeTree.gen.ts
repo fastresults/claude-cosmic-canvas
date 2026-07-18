@@ -38,6 +38,7 @@ import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './rout
 import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
 import { Route as AuthenticatedSettingsAudiencesRouteImport } from './routes/_authenticated/settings.audiences'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings.appearance'
+import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
 import { Route as AuthenticatedContentArchiveRouteImport } from './routes/_authenticated/content.archive'
@@ -203,6 +204,12 @@ const AuthenticatedSettingsAppearanceRoute =
     path: '/appearance',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsActivityRoute =
+  AuthenticatedSettingsActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 const AuthenticatedSettingsAccountRoute =
   AuthenticatedSettingsAccountRouteImport.update({
     id: '/account',
@@ -257,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/content/archive': typeof AuthenticatedContentArchiveRoute
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -290,6 +298,7 @@ export interface FileRoutesByTo {
   '/content/archive': typeof AuthenticatedContentArchiveRoute
   '/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -328,6 +337,7 @@ export interface FileRoutesById {
   '/_authenticated/content/archive': typeof AuthenticatedContentArchiveRoute
   '/_authenticated/create/$formatId': typeof AuthenticatedCreateFormatIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/audiences': typeof AuthenticatedSettingsAudiencesRoute
   '/_authenticated/settings/content-ops': typeof AuthenticatedSettingsContentOpsRoute
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/content/archive'
     | '/create/$formatId'
     | '/settings/account'
+    | '/settings/activity'
     | '/settings/appearance'
     | '/settings/audiences'
     | '/settings/content-ops'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/content/archive'
     | '/create/$formatId'
     | '/settings/account'
+    | '/settings/activity'
     | '/settings/appearance'
     | '/settings/audiences'
     | '/settings/content-ops'
@@ -436,6 +448,7 @@ export interface FileRouteTypes {
     | '/_authenticated/content/archive'
     | '/_authenticated/create/$formatId'
     | '/_authenticated/settings/account'
+    | '/_authenticated/settings/activity'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/audiences'
     | '/_authenticated/settings/content-ops'
@@ -669,6 +682,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/settings/activity': {
+      id: '/_authenticated/settings/activity'
+      path: '/activity'
+      fullPath: '/settings/activity'
+      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
     '/_authenticated/settings/account': {
       id: '/_authenticated/settings/account'
       path: '/account'
@@ -759,6 +779,7 @@ const AuthenticatedSettingsVoiceRouteWithChildren =
 
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
+  AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
   AuthenticatedSettingsAudiencesRoute: typeof AuthenticatedSettingsAudiencesRoute
   AuthenticatedSettingsContentOpsRoute: typeof AuthenticatedSettingsContentOpsRoute
@@ -774,6 +795,7 @@ interface AuthenticatedSettingsRouteChildren {
 
 const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
+  AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAppearanceRoute: AuthenticatedSettingsAppearanceRoute,
   AuthenticatedSettingsAudiencesRoute: AuthenticatedSettingsAudiencesRoute,
   AuthenticatedSettingsContentOpsRoute: AuthenticatedSettingsContentOpsRoute,
