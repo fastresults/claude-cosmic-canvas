@@ -95,6 +95,7 @@ export function ProfileSwitcherPill({ activeId, onChange }: Props) {
             const Icon = KIND_ICON[p.kind as keyof typeof KIND_ICON] ?? User;
             const isActive = p.id === activeId;
             const isDefault = (p as { is_default?: boolean }).is_default === true;
+            const isRenaming = renamingId === p.id;
             return (
               <div
                 key={p.id}
@@ -104,43 +105,92 @@ export function ProfileSwitcherPill({ activeId, onChange }: Props) {
                     : "border-border bg-surface hover:bg-surface-elev"
                 }`}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(p.id);
-                    saveActiveProfileId(p.id);
-                    setOpen(false);
-                  }}
-                  className="flex flex-1 items-center gap-3 rounded-lg px-2 py-3 text-left"
-                >
-                  <Icon className="h-4 w-4 text-accent" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      {p.name}
-                      {isDefault && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                          <Star className="h-2.5 w-2.5" /> default
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {KIND_LABELS[p.kind] ?? p.kind}
-                    </div>
+                {isRenaming ? (
+                  <div className="flex flex-1 items-center gap-2 px-2 py-2">
+                    <Icon className="h-4 w-4 text-accent" />
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && renameValue.trim())
+                          rename.mutate({ id: p.id, name: renameValue.trim() });
+                        if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-sm"
+                      placeholder="Profile name"
+                    />
+                    <button
+                      type="button"
+                      disabled={!renameValue.trim() || rename.isPending}
+                      onClick={() => rename.mutate({ id: p.id, name: renameValue.trim() })}
+                      className="rounded-md p-1 text-accent hover:bg-accent/10 disabled:opacity-40"
+                      aria-label="Save name"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRenamingId(null)}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-surface-elev"
+                      aria-label="Cancel rename"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                </button>
-                {!isDefault && (
-                  <button
-                    type="button"
-                    onClick={() => setDefault.mutate(p.id)}
-                    disabled={setDefault.isPending}
-                    className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-surface px-2 py-1 text-[11px] font-display text-accent hover:bg-accent/10 disabled:opacity-50"
-                    title="Make this the global default knowledge profile"
-                    aria-pressed={false}
-                    aria-label="Set as default profile"
-                  >
-                    <Star className="h-3 w-3" />
-                    Set default
-                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(p.id);
+                        saveActiveProfileId(p.id);
+                        setOpen(false);
+                      }}
+                      className="flex flex-1 items-center gap-3 rounded-lg px-2 py-3 text-left"
+                    >
+                      <Icon className="h-4 w-4 text-accent" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          {p.name}
+                          {isDefault && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                              <Star className="h-2.5 w-2.5" /> default
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {KIND_LABELS[p.kind] ?? p.kind}
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenameValue(p.name);
+                        setRenamingId(p.id);
+                      }}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-elev hover:text-foreground"
+                      aria-label={`Rename ${p.name}`}
+                      title="Rename"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    {!isDefault && (
+                      <button
+                        type="button"
+                        onClick={() => setDefault.mutate(p.id)}
+                        disabled={setDefault.isPending}
+                        className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-surface px-2 py-1 text-[11px] font-display text-accent hover:bg-accent/10 disabled:opacity-50"
+                        title="Make this the global default knowledge profile"
+                        aria-pressed={false}
+                        aria-label="Set as default profile"
+                      >
+                        <Star className="h-3 w-3" />
+                        Set default
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             );
