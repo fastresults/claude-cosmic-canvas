@@ -25,6 +25,9 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
     const startedAt = Date.now();
 
     try {
+      const { enforceRateLimit, RATE_LIMITS } = await import("@/lib/rate-limit/rate-limit.server");
+      await enforceRateLimit(supabase, RATE_LIMITS.orchestrator);
+
       const { loadOrchestratorContext, composeOrchestratorSystem } = await import("./system.server");
       const loaded = await loadOrchestratorContext(supabase, userId, {
         voiceId: data.voiceOverrideId ?? null,

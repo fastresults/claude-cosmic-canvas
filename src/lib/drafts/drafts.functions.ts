@@ -49,6 +49,7 @@ export const listDrafts = createServerFn({ method: "POST" })
         "id, format_id, title, sections, status, archived, quality_score, virality_score, authenticity_score, platform, scheduled_date, published_at, workspace_id, campaign_id, updated_at, created_at",
       )
       .eq("user_id", context.userId)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false })
       .limit(data.limit);
 
@@ -727,3 +728,47 @@ function splitPolished(body: string): Array<{ heading: string | null; body: stri
     return { heading: firstLine.trim(), body: rest.join("\n").trim() };
   });
 }
+
+// -------- Soft delete / trash --------------------------------------------
+
+export const softDeleteDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("create_drafts")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const restoreDraftFromTrash = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => IdInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("create_drafts")
+      .update({ deleted_at: null })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const listTrashedDrafts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await context.supabase
+      .from("create_drafts")
+      .select("id, title, format_id, deleted_at")
+      .eq("user_id", context.userId)
+      .not("deleted_at", "is", null)
+      .gt("deleted_at", cutoff)
+      .order("deleted_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return data ?? [];
+  });

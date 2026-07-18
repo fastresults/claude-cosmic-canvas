@@ -254,6 +254,7 @@ export type Database = {
           brief_snapshot: Json | null
           campaign_id: string | null
           created_at: string
+          deleted_at: string | null
           distribution_channel: string | null
           domain: string | null
           factor_weights: Json | null
@@ -284,6 +285,7 @@ export type Database = {
           brief_snapshot?: Json | null
           campaign_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           distribution_channel?: string | null
           domain?: string | null
           factor_weights?: Json | null
@@ -314,6 +316,7 @@ export type Database = {
           brief_snapshot?: Json | null
           campaign_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           distribution_channel?: string | null
           domain?: string | null
           factor_weights?: Json | null
@@ -597,6 +600,7 @@ export type Database = {
           body: string
           campaign_id: string | null
           created_at: string
+          deleted_at: string | null
           format: string
           hooks: Json
           id: string
@@ -612,6 +616,7 @@ export type Database = {
           body?: string
           campaign_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           format: string
           hooks?: Json
           id?: string
@@ -627,6 +632,7 @@ export type Database = {
           body?: string
           campaign_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           format?: string
           hooks?: Json
           id?: string
@@ -671,6 +677,56 @@ export type Database = {
           meta?: Json
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      feature_flag_overrides: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled: boolean
+          key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flag_overrides_key_fkey"
+            columns: ["key"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          description: string | null
+          enabled: boolean
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          description?: string | null
+          enabled?: boolean
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -945,6 +1001,7 @@ export type Database = {
         Row: {
           checksum: string | null
           created_at: string
+          deleted_at: string | null
           description: string | null
           duration_seconds: number | null
           filename: string
@@ -963,6 +1020,7 @@ export type Database = {
         Insert: {
           checksum?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           duration_seconds?: number | null
           filename: string
@@ -981,6 +1039,7 @@ export type Database = {
         Update: {
           checksum?: string | null
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           duration_seconds?: number | null
           filename?: string
@@ -1301,6 +1360,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limits: {
+        Row: {
+          count: number
+          created_at: string
+          endpoint: string
+          id: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          endpoint: string
+          id?: string
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          endpoint?: string
+          id?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
       }
       scheduled_content: {
         Row: {
@@ -1821,6 +1907,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_rate_limit: {
+        Args: { p_endpoint: string; p_limit: number; p_window_seconds?: number }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          reset_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

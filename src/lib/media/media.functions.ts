@@ -47,6 +47,7 @@ export const listMediaAssets = createServerFn({ method: "GET" })
       .select(
         "id, filename, mime_type, size_bytes, storage_path, kind, title, description, tags, width, height, duration_seconds, created_at, updated_at",
       )
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (data.kind) q = q.eq("kind", data.kind);
@@ -102,26 +103,47 @@ export const updateMediaAsset = createServerFn({ method: "POST" })
     return row;
   });
 
+// Soft delete: hides from lists and keeps the storage object for 30 days
+// so accidental deletions can be recovered from Settings → Trash.
 export const deleteMediaAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { data: row, error: rErr } = await context.supabase
-      .from("media_assets")
-      .select("storage_path")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (rErr) throw rErr;
-    if (row?.storage_path) {
-      await context.supabase.storage.from("media-hub").remove([row.storage_path]);
-    }
     const { error } = await context.supabase
       .from("media_assets")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", data.id);
     if (error) throw error;
     return { ok: true };
   });
+
+export const restoreMediaAsset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("media_assets")
+      .update({ deleted_at: null })
+      .eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const listTrashedMedia = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await context.supabase
+      .from("media_assets")
+      .select("id, filename, kind, deleted_at")
+      .not("deleted_at", "is", null)
+      .gt("deleted_at", cutoff)
+      .order("deleted_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return data ?? [];
+  });
+
 
 export const signMediaUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
