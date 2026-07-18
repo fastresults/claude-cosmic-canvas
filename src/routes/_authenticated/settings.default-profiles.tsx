@@ -106,7 +106,7 @@ function DefaultProfilesPage() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : profiles.length === 0 ? (
-        <EmptyProfileGuide onStart={() => setCreating(true)} />
+        <EmptyProfileGuide onStart={() => setSheet({ mode: "create" })} />
       ) : (
         <ul className="space-y-2">
           {profiles.map((p) => (
