@@ -1,72 +1,91 @@
-## The bottleneck
+## Goal
 
-Confirmed from AI Gateway logs: recent `openai/gpt-5.6-sol` `chat_completions` runs are taking **104s and 108s** (log_ids `019f7596-…f906`, `019f7593-…2e1b`, both 2026-07-18). Those are the writer model calls that generate a draft.
+Make Eve idiot-proof for Gen Z / millennial users: they cannot reach content creation, drafts, brain, library, or media without completing the four foundational pillars — **Voice → Knowledge → Domain → Audience** — in that exact order. Every step is guided, visual, celebratory, and impossible to skip or complete out of sequence.
 
-That would be tolerable for the initial generation. It's **not** tolerable for "Save draft" — but that's exactly what's happening today.
+## Current state (verified)
 
-### Why "Save" is slow
+- `src/routes/_authenticated/onboarding.tsx` captures persona + domains + tone samples only — it does NOT set Voice, Knowledge Profile, Domain default, or Audience as first-class pillars. After finishing, the user lands on `/` with `missing: [voice, knowledge, domain, audience]`.
+- `RequireDefaultsGate` exists but is only used by content-generation surfaces. Users can still browse Library, Media, Brain, Drafts, etc. without any pillars set, then hit a wall later.
+- `useUserDefaults` already exposes the four pillars and `missing` — reuse everywhere.
+- No enforced ordering: today a user could set Domain before Voice.
+- No visible progress meter that persists in-shell.
 
-Flow in `src/routes/_authenticated/create.$formatId.tsx`:
+## Plan
 
-1. User generates content → server returns `pendingTitle: true` with `sections` already in memory on the client.
-2. User types a title, clicks **Save draft** → `confirmTitle()` calls `runGenerate(next)` (line 242).
-3. `runGenerate` re-invokes `generateCreateDraft` on the server, passing the title.
-4. `runGenerateCreateDraft` in `src/lib/create/create.server.ts` (lines 158–163) unconditionally calls `callAnthropic(...)` **again** with the same prompt before persisting.
+### 1. Rebuild `/onboarding` as a strict 4-step wizard (the "Setup Journey")
 
-So every "Save" pays for a full second LLM round-trip (~100s on gpt-5.6-sol) purely to re-produce content the browser is already holding. The DB insert at the end takes milliseconds; the model call is 99% of the wait.
+Replace the current 3-step persona/domains/tone flow with a 4-pillar guided setup, one pillar per step, in this locked order:
 
-Secondary friction:
-- No optimistic UI on the Save button beyond "Saving…" — user has no ETA and nothing appears in the drafts list until the round-trip returns.
-- On failure the in-memory sections stay, but the user has to click Save again and re-pay the round-trip.
+1. **Voice** — record 30-sec sample OR pick a system voice OR paste 3 writing samples. Creates + activates a voice.
+2. **Knowledge** — upload 1+ document / paste bio / import LinkedIn / connect resume. Creates default `knowledge_profile`.
+3. **Domain** — pick or type 1-3 expertise domains. Marks one as default.
+4. **Audience** — AI-drafted ICP based on the previous 3 steps; user confirms or edits. Marks as default.
 
-## Fix
+Each step:
+- Big illustrated header + one-line "why this matters" explanation.
+- Cannot advance until the pillar is actually saved server-side (verified via `useUserDefaults` invalidation, not local state).
+- "Back" allowed; "Skip" removed entirely.
+- Celebration micro-animation + haptic on completion.
+- Progress bar shows `1 of 4 · Voice`.
 
-Split "generate" from "persist". Save should never call the model.
+### 2. Global route gate — no pillar, no app
 
-### 1. Client — `create.$formatId.tsx`
+Extend `src/routes/_authenticated/route.tsx` `beforeLoad`:
 
-Replace `confirmTitle()` so that when we already have `sections` in memory (the `pendingTitle` case), it calls `saveCreateDraft` directly with those sections + the user's title, instead of `runGenerate(next)`:
+- Currently redirects to `/onboarding` only if `profiles.onboarded_at` is null.
+- Add: if `onboarded_at` is set BUT any of the 4 pillars are missing (query the same 4 tables the client hook uses), redirect to `/onboarding?resume=<first-missing-slot>` — deep-linked to the exact incomplete step.
+- Exceptions: `/onboarding`, `/settings/*`, `/auth`, `/terms`, `/privacy` remain reachable so users can fix defaults.
 
-```text
-confirmTitle()
-  if titlePending && sections.length:
-     saveCreateDraft({ formatId, title, sections, briefSnapshot, workspaceId, workspaceItemId })
-     → setCurrentDraftId, setTitle, clear titlePending
-     → qc.invalidateQueries(["create-drafts"], ["workspace", …])
-  else:
-     runGenerate(next)   // only when there's genuinely nothing to persist
-```
+This closes the loophole where a user completed the old onboarding but never set the four pillars.
 
-`saveCreateDraft` already exists in `src/lib/create/create.functions.ts` and accepts exactly this shape (title required, sections, briefSnapshot, workspaceId, workspaceItemId). No server change needed for the hot path.
+### 3. Persistent "Setup Journey" strip in the app shell
 
-### 2. Keep `briefSnapshot` around
+Add a slim, dismissible-only-when-complete progress strip at the top of `AppShell` (above `TopBar` on mobile, inline on desktop):
 
-Today `runGenerate` builds `briefSnapshot` on the server and doesn't return it. Add it to the `pendingTitle` response from `runGenerateCreateDraft` (`src/lib/create/create.server.ts`, both the generic path ~line 180 and the milestone-arc path ~line 356) so the client can pass it back to `saveCreateDraft`. Fallback: `null` — the column is nullable.
+- Renders only while `useUserDefaults().ready === false`.
+- Shows 4 dots labeled Voice · Knowledge · Domain · Audience with check/lock icons.
+- Locked steps (out of order) are visibly greyed with a padlock — tapping shows a toast: "Finish {previous step} first."
+- Tapping the active step deep-links to `/onboarding?resume=<slot>`.
 
-### 3. Guardrail on the server (defense in depth)
+### 4. Enforce ordering inside Settings too
 
-In `runGenerateCreateDraft`, if `data.title` is provided AND `data.draftId` is set AND the caller also sent `sections` — short-circuit before `callAnthropic`. Not required for the client fix above, but prevents any future caller from paying the model cost just to rename/persist. (Optional; can defer.)
+The Settings pillar pages (`settings.voice`, `settings.knowledge`, `settings.domains`, `settings.audiences`) currently let a user open Audience before Voice.
 
-### 4. UX polish (small)
+- Add a lightweight `PillarLockGate` that wraps each pillar settings page: if any earlier pillar is unset, render a friendly redirect card ("Set your Voice first — takes 30 seconds") with a big CTA button, instead of the page contents.
+- Order enforced: Voice → Knowledge → Domain → Audience.
+- Once all four are set, the gate becomes a no-op and users can edit pillars in any order.
 
-- Disable the Save button and show a spinner immediately on click (already partly there via `savingTitle`).
-- On success, keep the composed sections rendered so the transition to the saved state is instant instead of a flash of empty state.
-- Toast "Draft saved" and route stays on the same URL with `currentDraftId` set.
+### 5. Upgrade `RequireDefaultsGate` copy + affordances
 
-## Expected impact
+- Replace the checklist with the same 4-dot journey UI used in the shell strip (visual consistency).
+- Primary CTA: **"Continue setup"** → `/onboarding?resume=<first-missing>`.
+- Remove the current "jump to any settings page" links so users can't skip ahead.
 
-- Save latency drops from **~100s → ~200–400ms** (single Postgres insert + provenance edge write).
-- No change to first-generation latency (that's the model's actual work).
-- No schema changes. No new server functions required for the hot path.
+### 6. Server-side belt-and-suspenders
 
-## Files touched
+- Extend `assertUserDefaults` (`src/lib/defaults/assert.server.ts`) to include `audience` and to return the *ordered* first-missing pillar in the error, so any direct server-fn call also enforces the sequence.
+- Every content-generating server function already calls this — just adding audience + order.
 
-- `src/routes/_authenticated/create.$formatId.tsx` — swap `runGenerate(next)` for `saveCreateDraft` in `confirmTitle`; thread `briefSnapshot` through local state.
-- `src/lib/create/create.server.ts` — include `briefSnapshot` in the `pendingTitle` return payload (both generic and milestone branches).
-- `src/lib/create/create.server.ts` (optional guardrail) — short-circuit when title+draftId+sections all present.
+### 7. Small UX polish
 
-## Verification
+- Autosave each onboarding step on blur so a refresh never loses work.
+- Add a "You're 3/4 done — 45 seconds left" nudge on step 4.
+- Confetti + haptic on final completion, then route to `/create`.
 
-- Generate a whitepaper → click Save with a title → confirm one insert row in `create_drafts`, no new AI Gateway `chat_completions` entry for that click, save completes sub-second.
-- Confirm workspace-scoped saves still land with the right `workspace_id` / `workspace_item_id`.
-- Confirm existing draft (currentDraftId set) rename path via `DraftTitleHeader` still works unchanged.
+## Files to edit
+
+- `src/routes/_authenticated/onboarding.tsx` — full rewrite as 4-step pillar wizard with `?resume=` deep link.
+- `src/routes/_authenticated/route.tsx` — extend `beforeLoad` to enforce pillar completion.
+- `src/components/shell/AppShell.tsx` — mount new `SetupJourneyStrip`.
+- `src/components/onboarding/SetupJourneyStrip.tsx` — new persistent progress component.
+- `src/components/onboarding/PillarLockGate.tsx` — new gate for settings pillar pages.
+- `src/routes/_authenticated/settings.voice.tsx`, `settings.knowledge.tsx`, `settings.domains.tsx`, `settings.audiences.tsx` — wrap contents in `PillarLockGate`.
+- `src/components/settings/RequireDefaultsGate.tsx` — swap to journey UI + single "Continue setup" CTA.
+- `src/lib/defaults/assert.server.ts` — include audience + ordered missing.
+- `src/lib/onboarding/onboarding.functions.ts` — split into per-pillar save functions (`saveOnboardingVoice`, `…Knowledge`, `…Domain`, `…Audience`) so each step commits independently.
+
+## Out of scope
+
+- Redesigning individual pillar capture UIs (voice recorder, upload sheet, etc.) — reuse existing ones.
+- Changing the pillar data model.
+- Editing anything about content generation or drafts beyond the gates already in place.
