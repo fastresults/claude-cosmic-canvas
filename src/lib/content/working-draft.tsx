@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -14,6 +15,28 @@ import {
   saveDraft,
 } from "@/lib/content/content.functions";
 import type { RefineKind } from "@/components/primitives/DraftCard";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
+
+const DRAFT_STORAGE_KEY = "eve-working-draft-v1";
+
+function readStoredDraft(): WorkingDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WorkingDraft;
+    if (typeof parsed?.body === "string" && typeof parsed?.format === "string") return parsed;
+  } catch { /* ignore malformed */ }
+  return null;
+}
+
+function writeStoredDraft(draft: WorkingDraft | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (draft) window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    else window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch { /* quota / disabled — best-effort */ }
+}
 
 export type WorkingDraft = {
   body: string;
@@ -50,6 +73,21 @@ export function WorkingDraftProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Recover any in-progress draft on mount so a refresh/tab-restore doesn't lose work.
+  useEffect(() => {
+    const restored = readStoredDraft();
+    if (restored) setDraft(restored);
+  }, []);
+
+  // Mirror draft state to sessionStorage so refresh recovers it.
+  useEffect(() => {
+    writeStoredDraft(draft);
+  }, [draft]);
+
+  // Warn on tab close/refresh while an unsaved draft is in memory.
+  useUnsavedChangesGuard(draft !== null && !saving);
+
 
   const generate = useCallback(
     async (prompt: string) => {
