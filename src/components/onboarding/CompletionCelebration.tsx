@@ -16,7 +16,7 @@ export function CompletionCelebration() {
   useEffect(() => {
     if (!reduced) {
       try {
-        triggerHaptic("success");
+        hapticEnd();
       } catch {
         // haptic not supported — no-op
       }
