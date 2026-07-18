@@ -70,19 +70,66 @@ export const finishOnboarding = createServerFn({ method: "POST" })
       .single();
     if (voiceErr) throw voiceErr;
 
-    // 4. Domains
-    const domainRows = data.domains.map((name) => ({ user_id: userId, name }));
+    // 4. Domains — first one becomes the default so the Domain pillar is satisfied.
+    const domainRows = data.domains.map((name, i) => ({
+      user_id: userId,
+      name,
+      is_default: i === 0,
+    }));
     const { data: domains, error: domainErr } = await supabase
       .from("domains")
       .insert(domainRows)
       .select("id, name");
     if (domainErr) throw domainErr;
 
-    // 5. Mark profile onboarded + active persona
+    // 4b. Default knowledge profile (Knowledge pillar).
+    const { data: existingKp } = await supabase
+      .from("knowledge_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_default", true)
+      .maybeSingle();
+    if (!existingKp) {
+      await supabase
+        .from("knowledge_profiles")
+        .insert({ user_id: userId, name: "Personal", kind: "personal", is_default: true });
+    }
+
+    // 4c. Default audience (Audience pillar) — seed a placeholder ICP the user can refine later.
+    const { data: existingAud } = await supabase
+      .from("audiences")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_default", true)
+      .maybeSingle();
+    if (!existingAud) {
+      const primaryDomain = data.domains[0] ?? "your field";
+      await supabase.from("audiences").insert({
+        user_id: userId,
+        name: `${primaryDomain} audience`,
+        description: `People who care about ${data.domains.join(", ")}.`,
+        icp: {
+          persona: `Someone interested in ${primaryDomain}.`,
+          role_titles: [],
+          industries: [],
+          goals: data.goals ? [data.goals] : [],
+          pains: [],
+          channels: [],
+          tone_preference: "",
+          objections: [],
+          success_metrics: [],
+        } as never,
+        is_default: true,
+        is_ai_generated: false,
+      });
+    }
+
+    // 5. Mark profile onboarded, active persona, and active voice (Voice pillar).
     await supabase
       .from("profiles")
       .update({
         persona_active_id: persona.id,
+        active_voice_id: voice?.id ?? null,
         onboarded_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
