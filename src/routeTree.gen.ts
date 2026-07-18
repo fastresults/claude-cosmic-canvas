@@ -29,9 +29,11 @@ import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenti
 import { Route as ApiDraftsGenerateImageRouteImport } from './routes/api/drafts/generate-image'
 import { Route as AuthenticatedWorkspacesIdRouteImport } from './routes/_authenticated/workspaces.$id'
 import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
+import { Route as AuthenticatedSettingsTrashRouteImport } from './routes/_authenticated/settings.trash'
 import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
 import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
+import { Route as AuthenticatedSettingsFlagsRouteImport } from './routes/_authenticated/settings.flags'
 import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_authenticated/settings.domains'
 import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
 import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './routes/_authenticated/settings.default-profiles'
@@ -150,6 +152,12 @@ const AuthenticatedSettingsVoiceRoute =
     path: '/voice',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsTrashRoute =
+  AuthenticatedSettingsTrashRouteImport.update({
+    id: '/trash',
+    path: '/trash',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 const AuthenticatedSettingsPresetsRoute =
   AuthenticatedSettingsPresetsRouteImport.update({
     id: '/presets',
@@ -166,6 +174,12 @@ const AuthenticatedSettingsKnowledgeRoute =
   AuthenticatedSettingsKnowledgeRouteImport.update({
     id: '/knowledge',
     path: '/knowledge',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsFlagsRoute =
+  AuthenticatedSettingsFlagsRouteImport.update({
+    id: '/flags',
+    path: '/flags',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
 const AuthenticatedSettingsDomainsRoute =
@@ -271,9 +285,11 @@ export interface FileRoutesByFullPath {
   '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
+  '/settings/flags': typeof AuthenticatedSettingsFlagsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
+  '/settings/trash': typeof AuthenticatedSettingsTrashRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
@@ -305,9 +321,11 @@ export interface FileRoutesByTo {
   '/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/settings/domains': typeof AuthenticatedSettingsDomainsRoute
+  '/settings/flags': typeof AuthenticatedSettingsFlagsRoute
   '/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/presets': typeof AuthenticatedSettingsPresetsRoute
+  '/settings/trash': typeof AuthenticatedSettingsTrashRoute
   '/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
@@ -344,9 +362,11 @@ export interface FileRoutesById {
   '/_authenticated/settings/default-profiles': typeof AuthenticatedSettingsDefaultProfilesRoute
   '/_authenticated/settings/distribution': typeof AuthenticatedSettingsDistributionRoute
   '/_authenticated/settings/domains': typeof AuthenticatedSettingsDomainsRoute
+  '/_authenticated/settings/flags': typeof AuthenticatedSettingsFlagsRoute
   '/_authenticated/settings/knowledge': typeof AuthenticatedSettingsKnowledgeRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/presets': typeof AuthenticatedSettingsPresetsRoute
+  '/_authenticated/settings/trash': typeof AuthenticatedSettingsTrashRoute
   '/_authenticated/settings/voice': typeof AuthenticatedSettingsVoiceRouteWithChildren
   '/_authenticated/workspaces/$id': typeof AuthenticatedWorkspacesIdRoute
   '/api/drafts/generate-image': typeof ApiDraftsGenerateImageRoute
@@ -383,9 +403,11 @@ export interface FileRouteTypes {
     | '/settings/default-profiles'
     | '/settings/distribution'
     | '/settings/domains'
+    | '/settings/flags'
     | '/settings/knowledge'
     | '/settings/notifications'
     | '/settings/presets'
+    | '/settings/trash'
     | '/settings/voice'
     | '/workspaces/$id'
     | '/api/drafts/generate-image'
@@ -417,9 +439,11 @@ export interface FileRouteTypes {
     | '/settings/default-profiles'
     | '/settings/distribution'
     | '/settings/domains'
+    | '/settings/flags'
     | '/settings/knowledge'
     | '/settings/notifications'
     | '/settings/presets'
+    | '/settings/trash'
     | '/settings/voice'
     | '/workspaces/$id'
     | '/api/drafts/generate-image'
@@ -455,9 +479,11 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/default-profiles'
     | '/_authenticated/settings/distribution'
     | '/_authenticated/settings/domains'
+    | '/_authenticated/settings/flags'
     | '/_authenticated/settings/knowledge'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/presets'
+    | '/_authenticated/settings/trash'
     | '/_authenticated/settings/voice'
     | '/_authenticated/workspaces/$id'
     | '/api/drafts/generate-image'
@@ -619,6 +645,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/settings/trash': {
+      id: '/_authenticated/settings/trash'
+      path: '/trash'
+      fullPath: '/settings/trash'
+      preLoaderRoute: typeof AuthenticatedSettingsTrashRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
     '/_authenticated/settings/presets': {
       id: '/_authenticated/settings/presets'
       path: '/presets'
@@ -638,6 +671,13 @@ declare module '@tanstack/react-router' {
       path: '/knowledge'
       fullPath: '/settings/knowledge'
       preLoaderRoute: typeof AuthenticatedSettingsKnowledgeRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/flags': {
+      id: '/_authenticated/settings/flags'
+      path: '/flags'
+      fullPath: '/settings/flags'
+      preLoaderRoute: typeof AuthenticatedSettingsFlagsRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
     '/_authenticated/settings/domains': {
@@ -786,9 +826,11 @@ interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsDefaultProfilesRoute: typeof AuthenticatedSettingsDefaultProfilesRoute
   AuthenticatedSettingsDistributionRoute: typeof AuthenticatedSettingsDistributionRoute
   AuthenticatedSettingsDomainsRoute: typeof AuthenticatedSettingsDomainsRoute
+  AuthenticatedSettingsFlagsRoute: typeof AuthenticatedSettingsFlagsRoute
   AuthenticatedSettingsKnowledgeRoute: typeof AuthenticatedSettingsKnowledgeRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsPresetsRoute: typeof AuthenticatedSettingsPresetsRoute
+  AuthenticatedSettingsTrashRoute: typeof AuthenticatedSettingsTrashRoute
   AuthenticatedSettingsVoiceRoute: typeof AuthenticatedSettingsVoiceRouteWithChildren
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
@@ -804,10 +846,12 @@ const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsDistributionRoute:
     AuthenticatedSettingsDistributionRoute,
   AuthenticatedSettingsDomainsRoute: AuthenticatedSettingsDomainsRoute,
+  AuthenticatedSettingsFlagsRoute: AuthenticatedSettingsFlagsRoute,
   AuthenticatedSettingsKnowledgeRoute: AuthenticatedSettingsKnowledgeRoute,
   AuthenticatedSettingsNotificationsRoute:
     AuthenticatedSettingsNotificationsRoute,
   AuthenticatedSettingsPresetsRoute: AuthenticatedSettingsPresetsRoute,
+  AuthenticatedSettingsTrashRoute: AuthenticatedSettingsTrashRoute,
   AuthenticatedSettingsVoiceRoute: AuthenticatedSettingsVoiceRouteWithChildren,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }
