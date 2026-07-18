@@ -486,10 +486,10 @@ function ProfileSheet({
         <button
           type="button"
           onClick={save}
-          disabled={!name.trim() || create.isPending}
+          disabled={!name.trim() || create.isPending || update.isPending}
           className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground disabled:opacity-50"
         >
-          {create.isPending ? "Saving…" : "Save profile"}
+          {(create.isPending || update.isPending) ? "Saving…" : isEdit ? "Save changes" : "Save profile"}
         </button>
       </div>
     </EveSheet>
