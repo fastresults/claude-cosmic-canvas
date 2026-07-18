@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Users, Plus, X, Sparkles, Star, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Plus, X, Sparkles, Star, Loader2, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { toast } from "sonner";
+import { hapticTap } from "@/lib/platform/haptics";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import {
   listAudiences,
