@@ -15,8 +15,14 @@ import {
 } from "@/lib/settings/settings.functions";
 import { countEntriesByDomain } from "@/lib/knowledge/knowledge.functions";
 
+import { PillarLockGate } from "@/components/onboarding/PillarLockGate";
+
 export const Route = createFileRoute("/_authenticated/settings/domains")({
-  component: DomainsSettings,
+  component: () => (
+    <PillarLockGate pillar="domain">
+      <DomainsSettings />
+    </PillarLockGate>
+  ),
 });
 
 const SUGGESTIONS = [
