@@ -395,11 +395,9 @@ function ProfileSheet({
   return (
     <EveSheet
       open={open}
-      onOpenChange={(v) => {
-        if (!v) reset();
-        onOpenChange(v);
-      }}
-      title="New profile"
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Edit profile" : "New profile"}
+
     >
       <div className="space-y-4">
         <div className="flex gap-2">
