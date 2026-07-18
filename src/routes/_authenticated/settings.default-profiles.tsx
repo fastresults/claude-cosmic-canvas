@@ -317,15 +317,28 @@ function ProfileSheet({
   });
 
   function reset() {
-    setName("");
-    setDescription("");
-    setEmoji("");
-    setVoiceId("");
-    setKnowledgeId("");
-    setDomainId("");
-    setAudienceId("");
+    setName(profile?.name ?? "");
+    setDescription(profile?.description ?? "");
+    setEmoji(profile?.emoji ?? "");
+    setVoiceId(profile?.voice_id ?? "");
+    setKnowledgeId(profile?.knowledge_profile_id ?? "");
+    setDomainId(profile?.domain_id ?? "");
+    setAudienceId(profile?.audience_id ?? "");
     setVoicePickerOpen(false);
   }
+
+  useEffect(() => {
+    if (!open) return;
+    setName(profile?.name ?? "");
+    setDescription(profile?.description ?? "");
+    setEmoji(profile?.emoji ?? "");
+    setVoiceId(profile?.voice_id ?? "");
+    setKnowledgeId(profile?.knowledge_profile_id ?? "");
+    setDomainId(profile?.domain_id ?? "");
+    setAudienceId(profile?.audience_id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, profile?.id]);
+
 
   const dedupeByName = <T extends { id: string; name: string }>(items: T[]): T[] => {
     const seen = new Set<string>();
