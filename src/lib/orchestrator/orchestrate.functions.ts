@@ -21,6 +21,9 @@ export const orchestrate = createServerFn({ method: "POST" })
     const startedAt = Date.now();
 
     try {
+      const { enforceRateLimit, RATE_LIMITS } = await import("@/lib/rate-limit/rate-limit.server");
+      await enforceRateLimit(supabase, RATE_LIMITS.orchestrator);
+
       async function pick(id: string) {
         const { data: v } = await supabase
           .from("voice_profiles")
