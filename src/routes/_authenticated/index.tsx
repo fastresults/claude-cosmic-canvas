@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { Sparkles, Target } from "lucide-react";
 import { Orb } from "@/components/primitives/Orb";
-import { Pill } from "@/components/primitives/Pill";
+
 import { DraftCard } from "@/components/primitives/DraftCard";
 import { useWorkingDraft } from "@/lib/content/working-draft";
 
