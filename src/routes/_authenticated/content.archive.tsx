@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useDrafts, useDraftMutations } from "@/hooks/useDrafts";
 import { DraftCard, type DraftListItem } from "@/components/drafts/DraftCard";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Archive as ArchiveIcon } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 
 export const Route = createFileRoute("/_authenticated/content/archive")({
   head: () => ({
