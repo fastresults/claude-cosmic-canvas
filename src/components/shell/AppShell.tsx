@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
 import { DefaultsStrip } from "@/components/settings/DefaultsStrip";
+import { SetupJourneyStrip } from "@/components/onboarding/SetupJourneyStrip";
 import { ComposerBar } from "./ComposerBar";
 import { VoiceScopeProvider } from "@/lib/voice/voice-scope";
 import {
