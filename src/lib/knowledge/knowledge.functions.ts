@@ -49,6 +49,21 @@ export const setDefaultKnowledgeProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const renameKnowledgeProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(80) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("knowledge_profiles")
+      .update({ name: data.name })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 const CreateProfileInput = z.object({
   name: z.string().min(1).max(80),
   kind: z.enum(["personal", "client", "campaign"]),
