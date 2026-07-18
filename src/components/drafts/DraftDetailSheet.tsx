@@ -335,7 +335,7 @@ function ImageRow({
                 alt={`${role} image`}
                 className="h-full w-full overflow-hidden rounded-xl bg-surface"
               >
-                <img src={m.url} alt="" className="h-full w-full object-cover" />
+                <img src={m.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               </ThumbPeek>
               <button
                 onClick={() => onRemove(m.id)}

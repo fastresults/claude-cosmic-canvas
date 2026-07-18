@@ -86,7 +86,7 @@ export function DraftCard({
 
       {imageUrl && (
         <ThumbPeek src={imageUrl} alt="" className="mb-3 block h-32 w-full overflow-hidden rounded-md">
-          <img src={imageUrl} alt="" className="h-32 w-full object-cover" />
+          <img src={imageUrl} alt="" loading="lazy" decoding="async" className="h-32 w-full object-cover" />
         </ThumbPeek>
       )}
 

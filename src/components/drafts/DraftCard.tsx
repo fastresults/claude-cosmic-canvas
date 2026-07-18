@@ -37,7 +37,7 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
           onConfirm={openDraft}
           className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-background"
         >
-          <img src={cover.url} alt="" className="h-full w-full object-cover" />
+          <img src={cover.url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         </ThumbPeek>
       ) : (
         <button
