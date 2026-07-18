@@ -173,18 +173,24 @@ function CreateHub() {
             <section>
               <h2 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Recent drafts</h2>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {recent.slice(0, 8).map((d) => (
-                  <Link
-                    key={d.id}
-                    to="/create/$formatId"
-                    params={{ formatId: d.format_id }}
-                    search={{ draftId: d.id }}
-                    className="min-w-[180px] max-w-[220px] shrink-0 rounded-2xl border border-border bg-surface p-3"
-                  >
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{d.format_id}</div>
-                    <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title}</div>
-                  </Link>
-                ))}
+                {recent.slice(0, 8).map((d) => {
+                  const tint = getFormatTint(d.format_id);
+                  return (
+                    <Link
+                      key={d.id}
+                      to="/create/$formatId"
+                      params={{ formatId: d.format_id }}
+                      search={{ draftId: d.id }}
+                      className={`min-w-[180px] max-w-[220px] shrink-0 rounded-2xl border p-3 transition-colors ${tint.bg} ${tint.border} hover:brightness-110`}
+                    >
+                      <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wide ${tint.label}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${tint.dot}`} aria-hidden />
+                        <span>{d.format_id}</span>
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-sm text-foreground">{d.title}</div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
