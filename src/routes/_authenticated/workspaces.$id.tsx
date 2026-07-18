@@ -19,6 +19,7 @@ import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
 import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
+import { KeyValueList } from "@/components/ui/key-value-list";
 
 export const Route = createFileRoute("/_authenticated/workspaces/$id")({
   component: WorkspaceDetail,
@@ -153,10 +154,8 @@ function WorkspaceDetail() {
 
       {curation && (
         <div className="rounded-2xl border border-accent/30 bg-accent/5 p-3 text-xs text-foreground">
-          <div className="mb-1 font-medium">Curation notes</div>
-          <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
-            {JSON.stringify(curation, null, 2)}
-          </pre>
+          <div className="mb-2 font-medium">Curation notes</div>
+          <KeyValueList data={curation} />
         </div>
       )}
 

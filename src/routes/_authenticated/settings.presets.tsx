@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { KeyValueList } from "@/components/ui/key-value-list";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -555,9 +556,7 @@ function PresetDetailSheet({
           </DetailSection>
 
           <DetailSection icon={<FileText className="h-3.5 w-3.5" />} label="Brief">
-            <pre className="whitespace-pre-wrap rounded-md bg-surface-elev p-3 text-[11px] text-muted-foreground">
-              {JSON.stringify(preset.brief_config, null, 2)}
-            </pre>
+            <KeyValueList data={preset.brief_config} empty="No brief configured." />
           </DetailSection>
 
           <DetailSection icon={<Layers className="h-3.5 w-3.5" />} label="Brain links">
