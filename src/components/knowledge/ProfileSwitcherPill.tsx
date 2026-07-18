@@ -55,6 +55,18 @@ export function ProfileSwitcherPill({ activeId, onChange }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] }),
   });
 
+  const renameFn = useServerFn(renameKnowledgeProfile);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const rename = useMutation({
+    mutationFn: (v: { id: string; name: string }) => renameFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["knowledge", "profiles"] });
+      qc.invalidateQueries({ queryKey: ["default-profiles"] });
+      setRenamingId(null);
+    },
+  });
+
   const active = profiles.find((p) => p.id === activeId) ?? profiles[0] ?? null;
   const ActiveIcon = active ? KIND_ICON[active.kind as keyof typeof KIND_ICON] : User;
 
