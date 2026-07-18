@@ -186,6 +186,17 @@ html.light {
   }
 }
 
+/* Global focus-visible ring — keyboard users must always see focus. */
+:where(button, a, [role="button"], [role="link"], [role="tab"], [role="menuitem"], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid oklch(0.82 0.14 82 / 0.9);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+:where(button, a, [role="button"], [role="link"]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
