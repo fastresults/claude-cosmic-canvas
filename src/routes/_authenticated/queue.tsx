@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, AlertCircle, SkipForward, Loader2 } from "lucide-react";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
+
+
 import { useMemo, useState } from "react";
 import {
   listReleaseQueue,
@@ -76,11 +79,8 @@ function QueuePage() {
         </p>
       </header>
 
-      {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading queue…
-        </div>
-      )}
+      {isLoading && <ListSkeleton count={4} />}
+
 
       <Section
         title="Today · needs approval"

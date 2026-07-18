@@ -1,6 +1,8 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/shell/AppShell";
+import { KeyboardShortcuts } from "@/components/shell/KeyboardShortcuts";
+
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -28,7 +30,9 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   return (
     <AppShell>
+      <KeyboardShortcuts />
       <Outlet />
     </AppShell>
+
   );
 }
