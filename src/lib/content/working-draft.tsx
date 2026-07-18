@@ -74,6 +74,21 @@ export function WorkingDraftProvider({ children }: { children: ReactNode }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Recover any in-progress draft on mount so a refresh/tab-restore doesn't lose work.
+  useEffect(() => {
+    const restored = readStoredDraft();
+    if (restored) setDraft(restored);
+  }, []);
+
+  // Mirror draft state to sessionStorage so refresh recovers it.
+  useEffect(() => {
+    writeStoredDraft(draft);
+  }, [draft]);
+
+  // Warn on tab close/refresh while an unsaved draft is in memory.
+  useUnsavedChangesGuard(draft !== null && !saving);
+
+
   const generate = useCallback(
     async (prompt: string) => {
       setBusy(true);
