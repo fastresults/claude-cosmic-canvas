@@ -121,3 +121,69 @@ function Home() {
     </div>
   );
 }
+
+function CyclingSuggestion({
+  suggestions,
+  onPick,
+}: {
+  suggestions: readonly string[];
+  onPick: (s: string) => void;
+}) {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduce = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    reduce.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setI((v) => (v + 1) % suggestions.length), 3500);
+    return () => clearInterval(t);
+  }, [paused, suggestions.length]);
+
+  const current = suggestions[i];
+  const next = () => setI((v) => (v + 1) % suggestions.length);
+
+  return (
+    <div
+      className="flex items-center gap-1"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <button
+        type="button"
+        onClick={() => onPick(current)}
+        aria-label={`Try: ${current}. Tap to use.`}
+        className="group relative overflow-hidden rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground transition-colors hover:border-accent/40"
+      >
+        <span aria-live="polite" className="block min-w-[14rem] text-center">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, y: reduce.current ? 0 : 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reduce.current ? 0 : -6 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="inline-block"
+            >
+              {current}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={next}
+        aria-label="Next idea"
+        className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
