@@ -326,6 +326,7 @@ function ProfileSheet({
     setKnowledgeId(profile?.knowledge_profile_id ?? "");
     setDomainId(profile?.domain_id ?? "");
     setAudienceId(profile?.audience_id ?? "");
+    setVoicePickerOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, profile?.id]);
 
