@@ -76,6 +76,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function DefaultProfilesPage() {
+  const confirm = useConfirm();
   const { profiles, isLoading, remove, favorite, setDefault, apply } =
     useDefaultProfiles();
   const [sheet, setSheet] = useState<
