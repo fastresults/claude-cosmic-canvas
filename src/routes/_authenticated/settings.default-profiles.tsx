@@ -184,8 +184,8 @@ function DefaultProfilesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`Delete profile "${p.name}"?`)) remove.mutate(p.id);
+                onClick={async () => {
+                  if (await confirm({ title: `Delete profile "${p.name}"?`, destructive: true })) remove.mutate(p.id);
                 }}
                 className="rounded-md p-1 text-muted-foreground hover:text-destructive"
                 aria-label="Delete profile"
