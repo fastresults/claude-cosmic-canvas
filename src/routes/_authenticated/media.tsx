@@ -27,6 +27,7 @@ import {
 } from "@/lib/media/media.functions";
 import { uploadMediaFile } from "@/lib/media/upload";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/media")({
   component: MediaHubPage,
