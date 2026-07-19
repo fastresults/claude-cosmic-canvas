@@ -22,6 +22,7 @@ type RecStatus = "idle" | "recording" | "transcribing" | "error";
 /** Seed input: paste · URL · upload · voice. Native pickers on mobile. */
 export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or paste what you want…", busy }: Props) {
   useVoiceScopeOwner("seed-input");
+  const promptUrl = usePrompt();
   const transcribe = useServerFn(aiTranscribe);
   const [status, setStatus] = useState<RecStatus>("idle");
   const [elapsed, setElapsed] = useState(0);
