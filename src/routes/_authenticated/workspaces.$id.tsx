@@ -82,7 +82,7 @@ function WorkspaceDetail() {
     void navigate({ to: "/workspaces" });
   }
   async function onDelete() {
-    if (!confirm("Delete this workspace? Drafts will unlink but stay in your Library.")) return;
+    if (!(await confirm({ title: "Delete this workspace?", description: "Drafts will unlink but stay in your Library.", destructive: true }))) return;
     await deleteFn({ data: { id } });
     qc.invalidateQueries({ queryKey: ["workspaces"] });
     void navigate({ to: "/workspaces" });
