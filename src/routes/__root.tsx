@@ -168,7 +168,9 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <ConfirmDialogProvider>
-          <Outlet />
+          <PromptDialogProvider>
+            <Outlet />
+          </PromptDialogProvider>
         </ConfirmDialogProvider>
       </ThemeProvider>
     </QueryClientProvider>
