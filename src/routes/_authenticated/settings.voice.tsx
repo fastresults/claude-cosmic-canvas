@@ -268,8 +268,15 @@ function VoiceList() {
       {openSheet === "menu" && (
         <NewVoiceSheet
           onClose={() => setOpenSheet(null)}
-          onScratch={() => {
-            const name = prompt("Name this voice");
+          onScratch={async () => {
+            const name = await promptText({
+              title: "Name this voice",
+              label: "Voice name",
+              placeholder: "e.g. Boardroom Voice",
+              required: true,
+              maxLength: 60,
+              confirmLabel: "Create",
+            });
             if (name?.trim()) {
               setOpenSheet(null);
               create.mutate(name.trim());
