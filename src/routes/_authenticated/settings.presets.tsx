@@ -214,8 +214,8 @@ function PresetsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`Delete preset "${p.name}"? This also removes its Brain edges.`)) {
+                onClick={async () => {
+                  if (await confirm({ title: `Delete preset "${p.name}"?`, description: "This also removes its Brain edges.", destructive: true })) {
                     remove.mutate(p.id);
                   }
                 }}
