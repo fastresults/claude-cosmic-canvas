@@ -500,8 +500,8 @@ function MediaDetailSheet({
             )}
             <button
               type="button"
-              onClick={() => {
-                if (confirm(`Delete "${asset.title}"? This can't be undone.`)) onDelete(asset.id);
+              onClick={async () => {
+                if (await confirm({ title: `Delete "${asset.title}"?`, description: "This can't be undone.", destructive: true })) onDelete(asset.id);
               }}
               className="ml-auto inline-flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive hover:bg-destructive/20"
             >
