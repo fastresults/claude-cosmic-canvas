@@ -163,8 +163,16 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
           <input ref={fileRef} type="file" accept=".txt,.md,.pdf,image/*" className="hidden" onChange={handleFile} />
           <button
             type="button"
-            onClick={() => {
-              const url = window.prompt("Paste URL");
+            onClick={async () => {
+              const url = await promptUrl({
+                title: "Add link",
+                label: "Paste URL",
+                placeholder: "https://…",
+                required: true,
+                inputType: "url",
+                confirmLabel: "Add",
+                validate: (v) => (/^https?:\/\/\S+/i.test(v) ? null : "Enter a valid URL"),
+              });
               if (url) onChange(value ? `${value}\n${url}` : url);
             }}
             aria-label="Add URL"
