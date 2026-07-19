@@ -18,6 +18,7 @@ import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { fileToBase64 } from "./shared";
 import { ResumeConfirmSheet } from "./ResumeConfirmSheet";
 import { YouTubeSheet } from "./capture/YouTubeSheet";
+import { usePrompt } from "@/components/prompt-dialog";
 import { ResearchSheet } from "./capture/ResearchSheet";
 import { PasteSheet } from "./capture/PasteSheet";
 import type { StructuredProfile } from "@/lib/knowledge/extract.functions";
