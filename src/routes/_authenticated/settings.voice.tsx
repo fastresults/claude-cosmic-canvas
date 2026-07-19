@@ -6,6 +6,7 @@ import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/primitives/Pill";
 import { useConfirm } from "@/components/confirm-dialog";
+import { usePrompt } from "@/components/prompt-dialog";
 import {
   Check,
   Copy,
