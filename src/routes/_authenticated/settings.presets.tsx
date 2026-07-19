@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/settings/presets")({
 type Filter = "all" | "favorites" | "used" | "recent";
 
 function PresetsPage() {
+  const confirm = useConfirm();
   const { presets, isLoading, remove, favorite, setDefault } = usePresets();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
