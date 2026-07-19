@@ -30,6 +30,7 @@ function WorkspaceDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data, isLoading, error } = useWorkspace(id);
   const archiveFn = useServerFn(archiveWorkspace);
   const deleteFn = useServerFn(deleteWorkspace);
