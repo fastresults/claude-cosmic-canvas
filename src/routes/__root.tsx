@@ -20,6 +20,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
+import { PromptDialogProvider } from "@/components/prompt-dialog";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { themeBootScript } from "@/lib/theme/theme";
 
