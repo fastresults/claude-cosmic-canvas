@@ -33,6 +33,7 @@ const YT_RE = /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-
 
 export function DomainIngestZone({ domainId, domainName, profileId = null }: Props) {
   const qc = useQueryClient();
+  const promptUrl = usePrompt();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [smartValue, setSmartValue] = useState("");
