@@ -7,6 +7,7 @@ import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Paperclip, Link as LinkIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { usePrompt } from "@/components/prompt-dialog";
 
 type Props = {
   value: string;
