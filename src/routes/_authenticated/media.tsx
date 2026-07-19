@@ -352,6 +352,7 @@ function MediaDetailSheet({
   signFn: (id: string) => Promise<{ url: string }>;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   void router;
   const [preview, setPreview] = useState<string | null>(null);
   const [title, setTitle] = useState("");
