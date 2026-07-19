@@ -240,8 +240,16 @@ export function DomainIngestZone({ domainId, domainName, profileId = null }: Pro
         <TileButton
           icon={<LinkIcon className="h-4 w-4" />}
           label="URL"
-          onClick={() => {
-            const v = window.prompt("Paste a URL");
+          onClick={async () => {
+            const v = await promptUrl({
+              title: "Add URL",
+              label: "Paste a URL",
+              placeholder: "https://…",
+              required: true,
+              inputType: "url",
+              confirmLabel: "Add",
+              validate: (val) => (/^https?:\/\/\S+/i.test(val) ? null : "Enter a valid URL"),
+            });
             if (v) smartPaste.mutate(v);
           }}
         />
