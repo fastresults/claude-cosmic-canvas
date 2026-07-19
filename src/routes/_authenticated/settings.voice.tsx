@@ -65,6 +65,7 @@ function VoiceList() {
   const [openSheet, setOpenSheet] = useState<null | "menu" | "analyze">(null);
 
   const confirm = useConfirm();
+  const promptText = usePrompt();
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["voice-profiles"] });
