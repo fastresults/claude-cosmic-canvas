@@ -18,6 +18,7 @@ import { scheduleWorkspaceItemInQueue } from "@/lib/workspaces/pipeline.function
 import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
 import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
+import { useConfirm } from "@/components/confirm-dialog";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 import { KeyValueList } from "@/components/ui/key-value-list";
 
