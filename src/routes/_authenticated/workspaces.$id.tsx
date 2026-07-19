@@ -18,6 +18,7 @@ import { scheduleWorkspaceItemInQueue } from "@/lib/workspaces/pipeline.function
 import { useMilestoneAutoDraft } from "@/hooks/useMilestoneAutoDraft";
 import { CREATE_FORMATS, normalizeCreateFormatId } from "@/config/createFormats";
 import { PHASE_ORDER, PHASE_LABELS, type WorkspacePhase } from "@/lib/workspaces/phase";
+import { useConfirm } from "@/components/confirm-dialog";
 import type { MilestoneStrategy } from "@/lib/workspaces/strategy";
 import { KeyValueList } from "@/components/ui/key-value-list";
 
@@ -29,6 +30,7 @@ function WorkspaceDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const { data, isLoading, error } = useWorkspace(id);
   const archiveFn = useServerFn(archiveWorkspace);
   const deleteFn = useServerFn(deleteWorkspace);
@@ -80,7 +82,7 @@ function WorkspaceDetail() {
     void navigate({ to: "/workspaces" });
   }
   async function onDelete() {
-    if (!confirm("Delete this workspace? Drafts will unlink but stay in your Library.")) return;
+    if (!(await confirm({ title: "Delete this workspace?", description: "Drafts will unlink but stay in your Library.", destructive: true }))) return;
     await deleteFn({ data: { id } });
     qc.invalidateQueries({ queryKey: ["workspaces"] });
     void navigate({ to: "/workspaces" });

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   Plus,
   Pencil,
@@ -75,6 +76,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function DefaultProfilesPage() {
+  const confirm = useConfirm();
   const { profiles, isLoading, remove, favorite, setDefault, apply } =
     useDefaultProfiles();
   const [sheet, setSheet] = useState<
@@ -182,8 +184,8 @@ function DefaultProfilesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`Delete profile "${p.name}"?`)) remove.mutate(p.id);
+                onClick={async () => {
+                  if (await confirm({ title: `Delete profile "${p.name}"?`, destructive: true })) remove.mutate(p.id);
                 }}
                 className="rounded-md p-1 text-muted-foreground hover:text-destructive"
                 aria-label="Delete profile"

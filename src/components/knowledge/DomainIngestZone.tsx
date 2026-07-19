@@ -18,6 +18,7 @@ import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { fileToBase64 } from "./shared";
 import { ResumeConfirmSheet } from "./ResumeConfirmSheet";
 import { YouTubeSheet } from "./capture/YouTubeSheet";
+import { usePrompt } from "@/components/prompt-dialog";
 import { ResearchSheet } from "./capture/ResearchSheet";
 import { PasteSheet } from "./capture/PasteSheet";
 import type { StructuredProfile } from "@/lib/knowledge/extract.functions";
@@ -32,6 +33,7 @@ const YT_RE = /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-
 
 export function DomainIngestZone({ domainId, domainName, profileId = null }: Props) {
   const qc = useQueryClient();
+  const promptUrl = usePrompt();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [smartValue, setSmartValue] = useState("");
@@ -238,8 +240,16 @@ export function DomainIngestZone({ domainId, domainName, profileId = null }: Pro
         <TileButton
           icon={<LinkIcon className="h-4 w-4" />}
           label="URL"
-          onClick={() => {
-            const v = window.prompt("Paste a URL");
+          onClick={async () => {
+            const v = await promptUrl({
+              title: "Add URL",
+              label: "Paste a URL",
+              placeholder: "https://…",
+              required: true,
+              inputType: "url",
+              confirmLabel: "Add",
+              validate: (val) => (/^https?:\/\/\S+/i.test(val) ? null : "Enter a valid URL"),
+            });
             if (v) smartPaste.mutate(v);
           }}
         />

@@ -7,6 +7,7 @@ import { aiTranscribe } from "@/lib/ai/ai.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { Paperclip, Link as LinkIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { usePrompt } from "@/components/prompt-dialog";
 
 type Props = {
   value: string;
@@ -21,6 +22,7 @@ type RecStatus = "idle" | "recording" | "transcribing" | "error";
 /** Seed input: paste · URL · upload · voice. Native pickers on mobile. */
 export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or paste what you want…", busy }: Props) {
   useVoiceScopeOwner("seed-input");
+  const promptUrl = usePrompt();
   const transcribe = useServerFn(aiTranscribe);
   const [status, setStatus] = useState<RecStatus>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -161,8 +163,16 @@ export function SeedInput({ value, onChange, onSubmit, placeholder = "Say or pas
           <input ref={fileRef} type="file" accept=".txt,.md,.pdf,image/*" className="hidden" onChange={handleFile} />
           <button
             type="button"
-            onClick={() => {
-              const url = window.prompt("Paste URL");
+            onClick={async () => {
+              const url = await promptUrl({
+                title: "Add link",
+                label: "Paste URL",
+                placeholder: "https://…",
+                required: true,
+                inputType: "url",
+                confirmLabel: "Add",
+                validate: (v) => (/^https?:\/\/\S+/i.test(v) ? null : "Enter a valid URL"),
+              });
               if (url) onChange(value ? `${value}\n${url}` : url);
             }}
             aria-label="Add URL"

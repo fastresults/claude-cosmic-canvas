@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { KeyValueList } from "@/components/ui/key-value-list";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_authenticated/settings/presets")({
 type Filter = "all" | "favorites" | "used" | "recent";
 
 function PresetsPage() {
+  const confirm = useConfirm();
   const { presets, isLoading, remove, favorite, setDefault } = usePresets();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -212,8 +214,8 @@ function PresetsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`Delete preset "${p.name}"? This also removes its Brain edges.`)) {
+                onClick={async () => {
+                  if (await confirm({ title: `Delete preset "${p.name}"?`, description: "This also removes its Brain edges.", destructive: true })) {
                     remove.mutate(p.id);
                   }
                 }}

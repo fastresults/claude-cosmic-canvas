@@ -6,6 +6,7 @@ import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/primitives/Pill";
 import { useConfirm } from "@/components/confirm-dialog";
+import { usePrompt } from "@/components/prompt-dialog";
 import {
   Check,
   Copy,
@@ -64,6 +65,7 @@ function VoiceList() {
   const [openSheet, setOpenSheet] = useState<null | "menu" | "analyze">(null);
 
   const confirm = useConfirm();
+  const promptText = usePrompt();
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["voice-profiles"] });
@@ -266,8 +268,15 @@ function VoiceList() {
       {openSheet === "menu" && (
         <NewVoiceSheet
           onClose={() => setOpenSheet(null)}
-          onScratch={() => {
-            const name = prompt("Name this voice");
+          onScratch={async () => {
+            const name = await promptText({
+              title: "Name this voice",
+              label: "Voice name",
+              placeholder: "e.g. Boardroom Voice",
+              required: true,
+              maxLength: 60,
+              confirmLabel: "Create",
+            });
             if (name?.trim()) {
               setOpenSheet(null);
               create.mutate(name.trim());
