@@ -5,10 +5,21 @@ import { streamText } from "ai";
 
 type StreamArgs = Parameters<typeof streamText>[0];
 
-export async function runStreamed(args: StreamArgs) {
+export async function runStreamed(
+  args: StreamArgs,
+  opts: { onTextDelta?: (text: string) => void } = {},
+) {
   let streamError: unknown = null;
+  const { onTextDelta } = opts;
   const stream = streamText({
     ...args,
+    ...(onTextDelta
+      ? {
+          onChunk: ({ chunk }: { chunk: { type: string; text?: string } }) => {
+            if (chunk.type === "text-delta" && chunk.text) onTextDelta(chunk.text);
+          },
+        }
+      : {}),
     onError: ({ error }) => {
       streamError ??= error;
     },

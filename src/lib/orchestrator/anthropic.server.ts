@@ -12,6 +12,7 @@ type OrchestratorCallInput = {
   maxTokens: number;
   prompt: string;
   system?: string;
+  onTextDelta?: (text: string) => void;
 };
 
 export async function callAnthropic({
@@ -19,13 +20,17 @@ export async function callAnthropic({
   maxTokens,
   prompt,
   system,
+  onTextDelta,
 }: OrchestratorCallInput) {
-  const result = await runStreamed({
-    model: resolveGatewayModel(model),
-    system,
-    prompt,
-    ...modelCallOptions(model, maxTokens),
-  });
+  const result = await runStreamed(
+    {
+      model: resolveGatewayModel(model),
+      system,
+      prompt,
+      ...modelCallOptions(model, maxTokens),
+    },
+    { onTextDelta },
+  );
 
   return {
     text: result.text,
