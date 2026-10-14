@@ -173,6 +173,7 @@ const FRAG = /* glsl */ `
     float spark = clamp(v1 * v2 * v3, 0.0, 1.0);
     float la = clamp(body * 0.95 + spark * 0.55, 0.0, 1.0);
     la = la * la * (3.0 - 2.0 * la); // gentler halo, crisp body
+    la *= smoothstep(0.02, 0.08, la); // drop near-zero alpha: no 8-bit banding rings
     vec3 lrgb = mix(ring, mix(ring, vec3(1.0, 0.93, 0.8), 0.45), spark);
     vec4 lightOut = vec4(lrgb, la);
 
