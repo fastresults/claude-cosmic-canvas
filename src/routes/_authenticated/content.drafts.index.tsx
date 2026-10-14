@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/content/drafts/")({
   validateSearch: searchSchema,
   component: DraftsHub,
   errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-destructive">Couldn't load drafts: {error.message}</div>
+    <div className="p-6 text-sm text-destructive">Couldn't load drafts: {error instanceof Error ? error.message : String(error)}</div>
   ),
   notFoundComponent: () => <div className="p-6 text-sm text-muted-foreground">Not found.</div>,
 });
