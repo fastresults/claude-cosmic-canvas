@@ -6,7 +6,7 @@ import { MODELS } from "@/lib/ai/models";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-const IMAGE_ROUTE_TIMEOUT_MS = 120_000;
+const IMAGE_ROUTE_TIMEOUT_MS = 300_000; // 5 min safety net only — image models can take minutes; never cut off billed work early.
 const ALLOWED_ASPECTS = new Set(["1:1", "16:9", "9:16", "4:5", "3:4"]);
 
 const GenerateImageInput = z.object({
