@@ -11,7 +11,8 @@
 
 ## AI calls
 - Model IDs live only in `src/lib/ai/models.ts`; why: one place to upgrade models.
-- Token caps and reasoning options go through `modelCallOptions()` in `src/lib/orchestrator/config.ts`; why: GPT-5.x rejects `max_tokens`.
+- Token caps and reasoning options go through `modelCallOptions()` in `src/lib/orchestrator/config.ts`; why: GPT-5.x rejects `max_tokens`, GPT-6 requires reasoning and no temperature.
+- Resolve models with `resolveGatewayModel()` in `src/lib/ai/gateway.server.ts`, never `provider(model)` directly; why: GPT-6 tool calls only work on the Responses API.
 - Long or tool-loop calls use `runStreamed()` (`src/lib/ai/stream.server.ts`), not `generateText`; why: buffered runs time out and get billed again.
 - Structured AI output uses `generateStructuredJson()` with a zod schema, never regex JSON parsing; why: chatty replies crashed steps.
 - Gateway failures surface through `GatewayError`/`friendlyGatewayMessage` (mapped in `server-fn-sanitize.ts`); why: users never see raw upstream errors.
