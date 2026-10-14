@@ -19,6 +19,7 @@ type OrbProps = {
  */
 export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProps) {
   const [pressed, setPressed] = useState(false);
+  const [glReady, setGlReady] = useState(false);
   const reduced = useReducedMotion();
 
   function handleDown() {

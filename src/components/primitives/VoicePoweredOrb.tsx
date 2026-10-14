@@ -9,6 +9,8 @@ type VoicePoweredOrbProps = {
   hue?: number;
   /** Freeze animation (reduced motion). */
   still?: boolean;
+  /** Fires once the WebGL renderer has painted its first frame. */
+  onReady?: () => void;
 };
 
 const VERT = /* glsl */ `
