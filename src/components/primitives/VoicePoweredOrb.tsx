@@ -117,35 +117,47 @@ const FRAG = /* glsl */ `
     return intensity / (1.0 + dist * dist * attenuation);
   }
 
+  // Time-looped noise: crossfade two phases so the hash input never grows
+  // large (no blocky precision loss) and the loop has no visible seam.
+  float loopNoise(vec2 p) {
+    const float P = 300.0;
+    float z = mod(iTime * 0.5, P);
+    float w = z / P;
+    return mix(snoise3(vec3(p, z)), snoise3(vec3(p, z - P)), w);
+  }
+
   vec4 draw(vec2 uv, float px) {
     vec3 color1 = adjustHue(baseColor1, hue);
     vec3 color2 = adjustHue(baseColor2, hue);
     vec3 color3 = adjustHue(baseColor3, hue);
 
-    float len = length(uv);
     float ang = atan(uv.y, uv.x);
-    const float R = 0.78;
-    float d = len - R;              // signed distance to ring centerline
-    float ad = abs(d);
+    float len = length(uv);
+    float invLen = len > 0.0 ? 1.0 / len : 0.0;
+    float aa = px * 2.0;
 
-    // Crisp anti-aliased core line (width scales gently with voice)
-    float w = 0.008 + hover * 0.008;
-    float core = 1.0 - smoothstep(w - px, w + px, ad);
-    // Soft halos: wide outside, short inside fading to clean center
-    float outer = exp(-max(d, 0.0) * (7.0 - hover * 2.0)) * step(0.0, d);
-    float inner = exp(-max(-d, 0.0) * 5.0) * (1.0 - step(0.0, d));
-    float glow = max(outer, inner) * (0.8 + hover * 0.3) * smoothstep(1.0, 0.82, len);
+    float n0 = loopNoise(uv * noiseScale) * 0.5 + 0.5;
+    float swell = hover * 0.03;
+    float r0 = mix(mix(innerRadius, 1.0, 0.45), mix(innerRadius, 1.0, 0.55), n0) + swell;
+    float d0 = distance(uv, (r0 * invLen) * uv);
+    float v0 = light1(1.0, 10.0, d0);
+    v0 *= smoothstep(r0 + 0.05 + aa, r0 - aa, len);
+    float cl = cos(ang + iTime * 2.0) * 0.5 + 0.5;
 
-    // Color gradient around the ring
-    float cl = cos(ang) * 0.5 + 0.5;
-    vec3 col = mix(color2, color1, cl);
-    col = mix(color3, col, clamp(glow + core, 0.0, 1.0));
+    float a = -iTime;
+    vec2 pos = vec2(cos(a), sin(a)) * r0;
+    float d = distance(uv, pos);
+    float v1 = light2(1.5 + hover * 0.8, 5.0, d);
+    v1 *= light1(1.0, 50.0, d0);
 
-    // Traveling highlight arc
-    float hl = pow(cos(ang - 0.6) * 0.5 + 0.5, 6.0);
-    vec3 c = col * (glow + core * 0.9) + vec3(1.0) * hl * (core * 0.8 + glow * 0.35);
-    c = clamp(c, 0.0, 1.0);
-    return extractAlpha(c);
+    float v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5) - aa, len);
+    float v3 = smoothstep(innerRadius - aa, mix(innerRadius, 1.0, 0.5) + aa, len);
+
+    vec3 col = mix(color1, color2, cl);
+    col = mix(color3, col, v0);
+    col = (col + v1) * v2 * v3;
+    col = clamp(col * 1.15, 0.0, 1.0);
+    return extractAlpha(col);
   }
 
   vec4 mainImage(vec2 fragCoord) {
@@ -258,7 +270,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
         }
         const dt = (t - lastTime) * 0.001;
         lastTime = t;
-        program.uniforms.iTime.value = t * 0.001;
+        program.uniforms.iTime.value = (t * 0.001 + (window as unknown as { __orbTimeOffset?: number }).__orbTimeOffset! || 0) % 3600;
         program.uniforms.hue.value = hue;
 
         if (still) {
@@ -281,7 +293,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
         smoothed += (target - smoothed) * 0.12;
 
         const voiceRotationSpeed = baseRotationSpeed + smoothed * maxRotationSpeed * 2.0;
-        currentRot += dt * voiceRotationSpeed;
+        currentRot = (currentRot + dt * voiceRotationSpeed) % (Math.PI * 2);
 
         program.uniforms.hover.value = Math.min(smoothed * 2.0, 1.0);
         program.uniforms.hoverIntensity.value = Math.min(
