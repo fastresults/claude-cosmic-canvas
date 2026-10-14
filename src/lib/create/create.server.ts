@@ -290,8 +290,10 @@ function splitSections(body: string, formatId: string): Array<{ heading: string 
 function deriveTitle(body: string, seed: string): string {
   const firstLine = body.split("\n").find((l) => l.trim().length > 0)?.trim() ?? "";
   const stripped = firstLine.replace(/^#+\s*/, "").replace(/^["'*]+|["'*]+$/g, "");
-  if (stripped.length > 0 && stripped.length <= 120) return stripped;
-  return seed.slice(0, 80);
+  // A short heading-like first line makes a good name; a long opening
+  // sentence doesn't — fall back to the user's topic, cut on a word boundary.
+  if (stripped.length > 0 && stripped.split(/\s+/).length <= 10) return stripped;
+  return seed.trim().split(/\s+/).slice(0, 10).join(" ").slice(0, 80);
 }
 
 /**
