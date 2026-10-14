@@ -129,12 +129,12 @@ const FRAG = /* glsl */ `
     float ad = abs(d);
 
     // Crisp anti-aliased core line (width scales gently with voice)
-    float w = 0.012 + hover * 0.01;
+    float w = 0.008 + hover * 0.008;
     float core = 1.0 - smoothstep(w - px, w + px, ad);
     // Soft halos: wide outside, short inside fading to clean center
-    float outer = exp(-max(d, 0.0) * (14.0 - hover * 4.0)) * step(0.0, d);
-    float inner = exp(-max(-d, 0.0) * 9.0) * (1.0 - step(0.0, d));
-    float glow = max(outer, inner) * (0.55 + hover * 0.35);
+    float outer = exp(-max(d, 0.0) * (7.0 - hover * 2.0)) * step(0.0, d);
+    float inner = exp(-max(-d, 0.0) * 5.0) * (1.0 - step(0.0, d));
+    float glow = max(outer, inner) * (0.8 + hover * 0.3);
 
     // Color gradient around the ring
     float cl = cos(ang) * 0.5 + 0.5;
