@@ -9,65 +9,49 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authenticated/workspaces'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
-import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
-import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
-import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
 import { Route as AuthenticatedArcsRouteImport } from './routes/_authenticated/arcs'
-import { Route as AuthenticatedWorkspacesIndexRouteImport } from './routes/_authenticated/workspaces.index'
-import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
-import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenticated/create.index'
-import { Route as ApiDraftsGenerateImageRouteImport } from './routes/api/drafts/generate-image'
-import { Route as AuthenticatedWorkspacesIdRouteImport } from './routes/_authenticated/workspaces.$id'
-import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
-import { Route as AuthenticatedSettingsTrashRouteImport } from './routes/_authenticated/settings.trash'
-import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
-import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
-import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
-import { Route as AuthenticatedSettingsFlagsRouteImport } from './routes/_authenticated/settings.flags'
-import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_authenticated/settings.domains'
-import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
-import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './routes/_authenticated/settings.default-profiles'
-import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
-import { Route as AuthenticatedSettingsAudiencesRouteImport } from './routes/_authenticated/settings.audiences'
-import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings.appearance'
-import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
-import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
-import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
+import { Route as AuthenticatedBrainRouteImport } from './routes/_authenticated/brain'
+import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
+import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
+import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authenticated/workspaces'
 import { Route as AuthenticatedContentArchiveRouteImport } from './routes/_authenticated/content.archive'
+import { Route as AuthenticatedCreateIndexRouteImport } from './routes/_authenticated/create.index'
+import { Route as AuthenticatedCreateFormatIdRouteImport } from './routes/_authenticated/create.$formatId'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
+import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
+import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
+import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings.appearance'
+import { Route as AuthenticatedSettingsAudiencesRouteImport } from './routes/_authenticated/settings.audiences'
+import { Route as AuthenticatedSettingsContentOpsRouteImport } from './routes/_authenticated/settings.content-ops'
+import { Route as AuthenticatedSettingsDefaultProfilesRouteImport } from './routes/_authenticated/settings.default-profiles'
+import { Route as AuthenticatedSettingsDistributionRouteImport } from './routes/_authenticated/settings.distribution'
+import { Route as AuthenticatedSettingsDomainsRouteImport } from './routes/_authenticated/settings.domains'
+import { Route as AuthenticatedSettingsFlagsRouteImport } from './routes/_authenticated/settings.flags'
+import { Route as AuthenticatedSettingsKnowledgeRouteImport } from './routes/_authenticated/settings.knowledge'
+import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings.notifications'
+import { Route as AuthenticatedSettingsPresetsRouteImport } from './routes/_authenticated/settings.presets'
+import { Route as AuthenticatedSettingsTrashRouteImport } from './routes/_authenticated/settings.trash'
+import { Route as AuthenticatedSettingsVoiceRouteImport } from './routes/_authenticated/settings.voice'
+import { Route as AuthenticatedWorkspacesIndexRouteImport } from './routes/_authenticated/workspaces.index'
+import { Route as AuthenticatedWorkspacesIdRouteImport } from './routes/_authenticated/workspaces.$id'
+import { Route as ApiDraftsGenerateImageRouteImport } from './routes/api/drafts/generate-image'
 import { Route as AuthenticatedContentDraftsIndexRouteImport } from './routes/_authenticated/content.drafts.index'
 import { Route as AuthenticatedSettingsVoiceIdRouteImport } from './routes/_authenticated/settings.voice.$id'
 import { Route as AuthenticatedSettingsVoiceIdLearnedRouteImport } from './routes/_authenticated/settings.voice.$id.learned'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -75,8 +59,24 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -84,39 +84,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedWorkspacesRoute = AuthenticatedWorkspacesRouteImport.update({
-  id: '/workspaces',
-  path: '/workspaces',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
-  id: '/media',
-  path: '/media',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
-  id: '/library',
-  path: '/library',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
+const AuthenticatedArcsRoute = AuthenticatedArcsRouteImport.update({
+  id: '/arcs',
+  path: '/arcs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
@@ -124,22 +94,46 @@ const AuthenticatedBrainRoute = AuthenticatedBrainRouteImport.update({
   path: '/brain',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedArcsRoute = AuthenticatedArcsRouteImport.update({
-  id: '/arcs',
-  path: '/arcs',
+const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedWorkspacesIndexRoute =
-  AuthenticatedWorkspacesIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedWorkspacesRoute,
-  } as any)
-const AuthenticatedSettingsIndexRoute =
-  AuthenticatedSettingsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedSettingsRoute,
+const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWorkspacesRoute = AuthenticatedWorkspacesRouteImport.update({
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContentArchiveRoute =
+  AuthenticatedContentArchiveRouteImport.update({
+    id: '/content/archive',
+    path: '/content/archive',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCreateIndexRoute =
   AuthenticatedCreateIndexRouteImport.update({
@@ -147,93 +141,16 @@ const AuthenticatedCreateIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedCreateRoute,
   } as any)
-const ApiDraftsGenerateImageRoute = ApiDraftsGenerateImageRouteImport.update({
-  id: '/api/drafts/generate-image',
-  path: '/api/drafts/generate-image',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedWorkspacesIdRoute =
-  AuthenticatedWorkspacesIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedWorkspacesRoute,
+const AuthenticatedCreateFormatIdRoute =
+  AuthenticatedCreateFormatIdRouteImport.update({
+    id: '/$formatId',
+    path: '/$formatId',
+    getParentRoute: () => AuthenticatedCreateRoute,
   } as any)
-const AuthenticatedSettingsVoiceRoute =
-  AuthenticatedSettingsVoiceRouteImport.update({
-    id: '/voice',
-    path: '/voice',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsTrashRoute =
-  AuthenticatedSettingsTrashRouteImport.update({
-    id: '/trash',
-    path: '/trash',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsPresetsRoute =
-  AuthenticatedSettingsPresetsRouteImport.update({
-    id: '/presets',
-    path: '/presets',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsNotificationsRoute =
-  AuthenticatedSettingsNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsKnowledgeRoute =
-  AuthenticatedSettingsKnowledgeRouteImport.update({
-    id: '/knowledge',
-    path: '/knowledge',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsFlagsRoute =
-  AuthenticatedSettingsFlagsRouteImport.update({
-    id: '/flags',
-    path: '/flags',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsDomainsRoute =
-  AuthenticatedSettingsDomainsRouteImport.update({
-    id: '/domains',
-    path: '/domains',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsDistributionRoute =
-  AuthenticatedSettingsDistributionRouteImport.update({
-    id: '/distribution',
-    path: '/distribution',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsDefaultProfilesRoute =
-  AuthenticatedSettingsDefaultProfilesRouteImport.update({
-    id: '/default-profiles',
-    path: '/default-profiles',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsContentOpsRoute =
-  AuthenticatedSettingsContentOpsRouteImport.update({
-    id: '/content-ops',
-    path: '/content-ops',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsAudiencesRoute =
-  AuthenticatedSettingsAudiencesRouteImport.update({
-    id: '/audiences',
-    path: '/audiences',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsAppearanceRoute =
-  AuthenticatedSettingsAppearanceRouteImport.update({
-    id: '/appearance',
-    path: '/appearance',
-    getParentRoute: () => AuthenticatedSettingsRoute,
-  } as any)
-const AuthenticatedSettingsActivityRoute =
-  AuthenticatedSettingsActivityRouteImport.update({
-    id: '/activity',
-    path: '/activity',
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
 const AuthenticatedSettingsAccountRoute =
@@ -242,18 +159,101 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
-const AuthenticatedCreateFormatIdRoute =
-  AuthenticatedCreateFormatIdRouteImport.update({
-    id: '/$formatId',
-    path: '/$formatId',
-    getParentRoute: () => AuthenticatedCreateRoute,
+const AuthenticatedSettingsActivityRoute =
+  AuthenticatedSettingsActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
-const AuthenticatedContentArchiveRoute =
-  AuthenticatedContentArchiveRouteImport.update({
-    id: '/content/archive',
-    path: '/content/archive',
-    getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedSettingsAppearanceRoute =
+  AuthenticatedSettingsAppearanceRouteImport.update({
+    id: '/appearance',
+    path: '/appearance',
+    getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsAudiencesRoute =
+  AuthenticatedSettingsAudiencesRouteImport.update({
+    id: '/audiences',
+    path: '/audiences',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsContentOpsRoute =
+  AuthenticatedSettingsContentOpsRouteImport.update({
+    id: '/content-ops',
+    path: '/content-ops',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsDefaultProfilesRoute =
+  AuthenticatedSettingsDefaultProfilesRouteImport.update({
+    id: '/default-profiles',
+    path: '/default-profiles',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsDistributionRoute =
+  AuthenticatedSettingsDistributionRouteImport.update({
+    id: '/distribution',
+    path: '/distribution',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsDomainsRoute =
+  AuthenticatedSettingsDomainsRouteImport.update({
+    id: '/domains',
+    path: '/domains',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsFlagsRoute =
+  AuthenticatedSettingsFlagsRouteImport.update({
+    id: '/flags',
+    path: '/flags',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsKnowledgeRoute =
+  AuthenticatedSettingsKnowledgeRouteImport.update({
+    id: '/knowledge',
+    path: '/knowledge',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsNotificationsRoute =
+  AuthenticatedSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsPresetsRoute =
+  AuthenticatedSettingsPresetsRouteImport.update({
+    id: '/presets',
+    path: '/presets',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsTrashRoute =
+  AuthenticatedSettingsTrashRouteImport.update({
+    id: '/trash',
+    path: '/trash',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsVoiceRoute =
+  AuthenticatedSettingsVoiceRouteImport.update({
+    id: '/voice',
+    path: '/voice',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedWorkspacesIndexRoute =
+  AuthenticatedWorkspacesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedWorkspacesRoute,
+  } as any)
+const AuthenticatedWorkspacesIdRoute =
+  AuthenticatedWorkspacesIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedWorkspacesRoute,
+  } as any)
+const ApiDraftsGenerateImageRoute = ApiDraftsGenerateImageRouteImport.update({
+  id: '/api/drafts/generate-image',
+  path: '/api/drafts/generate-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedContentDraftsIndexRoute =
   AuthenticatedContentDraftsIndexRouteImport.update({
     id: '/content/drafts/',
@@ -531,32 +531,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -566,11 +545,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -580,53 +580,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/workspaces': {
-      id: '/_authenticated/workspaces'
-      path: '/workspaces'
-      fullPath: '/workspaces'
-      preLoaderRoute: typeof AuthenticatedWorkspacesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/queue': {
-      id: '/_authenticated/queue'
-      path: '/queue'
-      fullPath: '/queue'
-      preLoaderRoute: typeof AuthenticatedQueueRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/media': {
-      id: '/_authenticated/media'
-      path: '/media'
-      fullPath: '/media'
-      preLoaderRoute: typeof AuthenticatedMediaRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/library': {
-      id: '/_authenticated/library'
-      path: '/library'
-      fullPath: '/library'
-      preLoaderRoute: typeof AuthenticatedLibraryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/create': {
-      id: '/_authenticated/create'
-      path: '/create'
-      fullPath: '/create'
-      preLoaderRoute: typeof AuthenticatedCreateRouteImport
+    '/_authenticated/arcs': {
+      id: '/_authenticated/arcs'
+      path: '/arcs'
+      fullPath: '/arcs'
+      preLoaderRoute: typeof AuthenticatedArcsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/brain': {
@@ -636,26 +594,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrainRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/arcs': {
-      id: '/_authenticated/arcs'
-      path: '/arcs'
-      fullPath: '/arcs'
-      preLoaderRoute: typeof AuthenticatedArcsRouteImport
+    '/_authenticated/create': {
+      id: '/_authenticated/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof AuthenticatedCreateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/workspaces/': {
-      id: '/_authenticated/workspaces/'
-      path: '/'
-      fullPath: '/workspaces/'
-      preLoaderRoute: typeof AuthenticatedWorkspacesIndexRouteImport
-      parentRoute: typeof AuthenticatedWorkspacesRoute
+    '/_authenticated/library': {
+      id: '/_authenticated/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof AuthenticatedLibraryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/settings/': {
-      id: '/_authenticated/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
+    '/_authenticated/media': {
+      id: '/_authenticated/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AuthenticatedMediaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/queue': {
+      id: '/_authenticated/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof AuthenticatedQueueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workspaces': {
+      id: '/_authenticated/workspaces'
+      path: '/workspaces'
+      fullPath: '/workspaces'
+      preLoaderRoute: typeof AuthenticatedWorkspacesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/content/archive': {
+      id: '/_authenticated/content/archive'
+      path: '/content/archive'
+      fullPath: '/content/archive'
+      preLoaderRoute: typeof AuthenticatedContentArchiveRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/create/': {
       id: '/_authenticated/create/'
@@ -664,109 +657,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreateIndexRouteImport
       parentRoute: typeof AuthenticatedCreateRoute
     }
-    '/api/drafts/generate-image': {
-      id: '/api/drafts/generate-image'
-      path: '/api/drafts/generate-image'
-      fullPath: '/api/drafts/generate-image'
-      preLoaderRoute: typeof ApiDraftsGenerateImageRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/create/$formatId': {
+      id: '/_authenticated/create/$formatId'
+      path: '/$formatId'
+      fullPath: '/create/$formatId'
+      preLoaderRoute: typeof AuthenticatedCreateFormatIdRouteImport
+      parentRoute: typeof AuthenticatedCreateRoute
     }
-    '/_authenticated/workspaces/$id': {
-      id: '/_authenticated/workspaces/$id'
-      path: '/$id'
-      fullPath: '/workspaces/$id'
-      preLoaderRoute: typeof AuthenticatedWorkspacesIdRouteImport
-      parentRoute: typeof AuthenticatedWorkspacesRoute
-    }
-    '/_authenticated/settings/voice': {
-      id: '/_authenticated/settings/voice'
-      path: '/voice'
-      fullPath: '/settings/voice'
-      preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/trash': {
-      id: '/_authenticated/settings/trash'
-      path: '/trash'
-      fullPath: '/settings/trash'
-      preLoaderRoute: typeof AuthenticatedSettingsTrashRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/presets': {
-      id: '/_authenticated/settings/presets'
-      path: '/presets'
-      fullPath: '/settings/presets'
-      preLoaderRoute: typeof AuthenticatedSettingsPresetsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/notifications': {
-      id: '/_authenticated/settings/notifications'
-      path: '/notifications'
-      fullPath: '/settings/notifications'
-      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/knowledge': {
-      id: '/_authenticated/settings/knowledge'
-      path: '/knowledge'
-      fullPath: '/settings/knowledge'
-      preLoaderRoute: typeof AuthenticatedSettingsKnowledgeRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/flags': {
-      id: '/_authenticated/settings/flags'
-      path: '/flags'
-      fullPath: '/settings/flags'
-      preLoaderRoute: typeof AuthenticatedSettingsFlagsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/domains': {
-      id: '/_authenticated/settings/domains'
-      path: '/domains'
-      fullPath: '/settings/domains'
-      preLoaderRoute: typeof AuthenticatedSettingsDomainsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/distribution': {
-      id: '/_authenticated/settings/distribution'
-      path: '/distribution'
-      fullPath: '/settings/distribution'
-      preLoaderRoute: typeof AuthenticatedSettingsDistributionRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/default-profiles': {
-      id: '/_authenticated/settings/default-profiles'
-      path: '/default-profiles'
-      fullPath: '/settings/default-profiles'
-      preLoaderRoute: typeof AuthenticatedSettingsDefaultProfilesRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/content-ops': {
-      id: '/_authenticated/settings/content-ops'
-      path: '/content-ops'
-      fullPath: '/settings/content-ops'
-      preLoaderRoute: typeof AuthenticatedSettingsContentOpsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/audiences': {
-      id: '/_authenticated/settings/audiences'
-      path: '/audiences'
-      fullPath: '/settings/audiences'
-      preLoaderRoute: typeof AuthenticatedSettingsAudiencesRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/appearance': {
-      id: '/_authenticated/settings/appearance'
-      path: '/appearance'
-      fullPath: '/settings/appearance'
-      preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
-      parentRoute: typeof AuthenticatedSettingsRoute
-    }
-    '/_authenticated/settings/activity': {
-      id: '/_authenticated/settings/activity'
-      path: '/activity'
-      fullPath: '/settings/activity'
-      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
     '/_authenticated/settings/account': {
@@ -776,19 +678,117 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
-    '/_authenticated/create/$formatId': {
-      id: '/_authenticated/create/$formatId'
-      path: '/$formatId'
-      fullPath: '/create/$formatId'
-      preLoaderRoute: typeof AuthenticatedCreateFormatIdRouteImport
-      parentRoute: typeof AuthenticatedCreateRoute
+    '/_authenticated/settings/activity': {
+      id: '/_authenticated/settings/activity'
+      path: '/activity'
+      fullPath: '/settings/activity'
+      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
     }
-    '/_authenticated/content/archive': {
-      id: '/_authenticated/content/archive'
-      path: '/content/archive'
-      fullPath: '/content/archive'
-      preLoaderRoute: typeof AuthenticatedContentArchiveRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/_authenticated/settings/appearance': {
+      id: '/_authenticated/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/audiences': {
+      id: '/_authenticated/settings/audiences'
+      path: '/audiences'
+      fullPath: '/settings/audiences'
+      preLoaderRoute: typeof AuthenticatedSettingsAudiencesRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/content-ops': {
+      id: '/_authenticated/settings/content-ops'
+      path: '/content-ops'
+      fullPath: '/settings/content-ops'
+      preLoaderRoute: typeof AuthenticatedSettingsContentOpsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/default-profiles': {
+      id: '/_authenticated/settings/default-profiles'
+      path: '/default-profiles'
+      fullPath: '/settings/default-profiles'
+      preLoaderRoute: typeof AuthenticatedSettingsDefaultProfilesRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/distribution': {
+      id: '/_authenticated/settings/distribution'
+      path: '/distribution'
+      fullPath: '/settings/distribution'
+      preLoaderRoute: typeof AuthenticatedSettingsDistributionRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/domains': {
+      id: '/_authenticated/settings/domains'
+      path: '/domains'
+      fullPath: '/settings/domains'
+      preLoaderRoute: typeof AuthenticatedSettingsDomainsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/flags': {
+      id: '/_authenticated/settings/flags'
+      path: '/flags'
+      fullPath: '/settings/flags'
+      preLoaderRoute: typeof AuthenticatedSettingsFlagsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/knowledge': {
+      id: '/_authenticated/settings/knowledge'
+      path: '/knowledge'
+      fullPath: '/settings/knowledge'
+      preLoaderRoute: typeof AuthenticatedSettingsKnowledgeRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/notifications': {
+      id: '/_authenticated/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/presets': {
+      id: '/_authenticated/settings/presets'
+      path: '/presets'
+      fullPath: '/settings/presets'
+      preLoaderRoute: typeof AuthenticatedSettingsPresetsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/trash': {
+      id: '/_authenticated/settings/trash'
+      path: '/trash'
+      fullPath: '/settings/trash'
+      preLoaderRoute: typeof AuthenticatedSettingsTrashRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/settings/voice': {
+      id: '/_authenticated/settings/voice'
+      path: '/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AuthenticatedSettingsVoiceRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/workspaces/': {
+      id: '/_authenticated/workspaces/'
+      path: '/'
+      fullPath: '/workspaces/'
+      preLoaderRoute: typeof AuthenticatedWorkspacesIndexRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesRoute
+    }
+    '/_authenticated/workspaces/$id': {
+      id: '/_authenticated/workspaces/$id'
+      path: '/$id'
+      fullPath: '/workspaces/$id'
+      preLoaderRoute: typeof AuthenticatedWorkspacesIdRouteImport
+      parentRoute: typeof AuthenticatedWorkspacesRoute
+    }
+    '/api/drafts/generate-image': {
+      id: '/api/drafts/generate-image'
+      path: '/api/drafts/generate-image'
+      fullPath: '/api/drafts/generate-image'
+      preLoaderRoute: typeof ApiDraftsGenerateImageRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/content/drafts/': {
       id: '/_authenticated/content/drafts/'
