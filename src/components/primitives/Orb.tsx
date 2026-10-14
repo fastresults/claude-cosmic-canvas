@@ -87,10 +87,11 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         className="absolute rounded-full"
         style={{
           inset: s * 0.16,
-          background:
-            "radial-gradient(circle at 32% 28%, oklch(0.97 0.09 85) 0%, oklch(0.85 0.15 82) 38%, oklch(0.58 0.14 62) 82%, oklch(0.38 0.10 50) 100%)",
-          opacity: glReady ? 0 : 1,
-          transition: "opacity 600ms ease-out",
+          background: glReady
+            ? "radial-gradient(circle at 50% 45%, oklch(0.30 0.06 55) 0%, oklch(0.24 0.05 50) 70%, oklch(0.20 0.04 45) 100%)"
+            : "radial-gradient(circle at 32% 28%, oklch(0.97 0.09 85) 0%, oklch(0.85 0.15 82) 38%, oklch(0.58 0.14 62) 82%, oklch(0.38 0.10 50) 100%)",
+          opacity: glReady ? 0.9 : 1,
+          transition: "opacity 600ms ease-out, background 600ms ease-out",
         }}
       />
 
