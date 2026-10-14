@@ -15,7 +15,7 @@ export async function generateStructuredJson<T extends z.ZodTypeAny>(args: {
   const { generateText, Output, NoObjectGeneratedError } = await import("ai");
   const { modelCallOptions } = await import("@/lib/orchestrator/config");
   const provider = createLovableAiGatewayProvider(getGatewayKey(), undefined, {
-    structuredOutputs: args.model.startsWith("openai/"),
+    structuredOutputs: true,
   });
   try {
     const { output } = await generateText({
