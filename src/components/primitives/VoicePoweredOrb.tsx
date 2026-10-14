@@ -162,7 +162,7 @@ const FRAG = /* glsl */ `
   void main() {
     vec2 fragCoord = vUv * iResolution.xy;
     vec4 col = mainImage(fragCoord);
-    gl_FragColor = vec4(col.rgb * col.a, col.a);
+    gl_FragColor = vec4(col.rgb, col.a);
   }
 `;
 
