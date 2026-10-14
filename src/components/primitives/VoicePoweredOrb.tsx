@@ -117,53 +117,46 @@ const FRAG = /* glsl */ `
     return intensity / (1.0 + dist * dist * attenuation);
   }
 
-  vec4 draw(vec2 uv) {
+  vec4 draw(vec2 uv, float px) {
     vec3 color1 = adjustHue(baseColor1, hue);
     vec3 color2 = adjustHue(baseColor2, hue);
     vec3 color3 = adjustHue(baseColor3, hue);
 
-    float ang = atan(uv.y, uv.x);
     float len = length(uv);
-    float invLen = len > 0.0 ? 1.0 / len : 0.0;
+    float ang = atan(uv.y, uv.x);
+    const float R = 0.78;
+    float d = len - R;              // signed distance to ring centerline
+    float ad = abs(d);
 
-    float n0 = snoise3(vec3(uv * noiseScale, iTime * 0.5)) * 0.5 + 0.5;
-    float r0 = mix(mix(innerRadius, 1.0, 0.4), mix(innerRadius, 1.0, 0.6), n0);
-    float d0 = distance(uv, (r0 * invLen) * uv);
-    float v0 = light1(1.0, 10.0, d0);
-    v0 *= smoothstep(r0 * 1.05, r0, len);
-    float cl = cos(ang + iTime * 2.0) * 0.5 + 0.5;
+    // Crisp anti-aliased core line (width scales gently with voice)
+    float w = 0.012 + hover * 0.01;
+    float core = 1.0 - smoothstep(w - px, w + px, ad);
+    // Soft halos: wide outside, short inside fading to clean center
+    float outer = exp(-max(d, 0.0) * (14.0 - hover * 4.0)) * step(0.0, d);
+    float inner = exp(-max(-d, 0.0) * 9.0) * (1.0 - step(0.0, d));
+    float glow = max(outer, inner) * (0.55 + hover * 0.35);
 
-    float a = iTime * -1.0;
-    vec2 pos = vec2(cos(a), sin(a)) * r0;
-    float d = distance(uv, pos);
-    float v1 = light2(1.5, 5.0, d);
-    v1 *= light1(1.0, 50.0, d0);
+    // Color gradient around the ring
+    float cl = cos(ang) * 0.5 + 0.5;
+    vec3 col = mix(color2, color1, cl);
+    col = mix(color3, col, clamp(glow + core, 0.0, 1.0));
 
-    float v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5), len);
-    float v3 = smoothstep(innerRadius, mix(innerRadius, 1.0, 0.5), len);
-
-    vec3 col = mix(color1, color2, cl);
-    col = mix(color3, col, v0);
-    col = (col + v1) * v2 * v3;
-    col = clamp(col * 1.25, 0.0, 1.0);
-
-    return extractAlpha(col);
+    // Traveling highlight arc
+    float hl = pow(cos(ang - 0.6) * 0.5 + 0.5, 6.0);
+    vec3 c = col * (glow + core * 0.9) + vec3(1.0) * hl * (core * 0.8 + glow * 0.35);
+    c = clamp(c, 0.0, 1.0);
+    return extractAlpha(c);
   }
 
   vec4 mainImage(vec2 fragCoord) {
     vec2 center = iResolution.xy * 0.5;
     float size = min(iResolution.x, iResolution.y);
     vec2 uv = (fragCoord - center) / size * 2.0;
-
-    float angle = rot;
-    float s = sin(angle);
-    float c = cos(angle);
+    float px = 2.0 / size;
+    float s = sin(rot);
+    float c = cos(rot);
     uv = vec2(c * uv.x - s * uv.y, s * uv.x + c * uv.y);
-
-    uv.x += hover * hoverIntensity * 0.1 * sin(uv.y * 10.0 + iTime);
-    uv.y += hover * hoverIntensity * 0.1 * sin(uv.x * 10.0 + iTime);
-
-    return draw(uv);
+    return draw(uv, px);
   }
 
   void main() {
@@ -228,13 +221,10 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
       const mesh = new Mesh(gl, { geometry, program });
 
       const resize = () => {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const width = container.clientWidth;
         const height = container.clientHeight;
         if (width === 0 || height === 0) return;
-        renderer.setSize(width * dpr, height * dpr);
-        gl.canvas.style.width = `${width}px`;
-        gl.canvas.style.height = `${height}px`;
+        renderer.setSize(width, height);
         program.uniforms.iResolution.value.set(
           gl.canvas.width,
           gl.canvas.height,
