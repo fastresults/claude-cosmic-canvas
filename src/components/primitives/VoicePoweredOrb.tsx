@@ -71,30 +71,31 @@ const FRAG = /* glsl */ `
     ) * p3.zyx);
   }
 
+  // Smooth 3D value noise (quintic interpolation). Continuous everywhere —
+  // no simplex cell seams, which caused the jagged straight-line artifacts.
+  float hash13(vec3 p3) {
+    p3 = fract(p3 * 0.1031);
+    p3 += dot(p3, p3.zyx + 31.32);
+    return fract((p3.x + p3.y) * p3.z);
+  }
   float snoise3(vec3 p) {
-    const float K1 = 0.333333333;
-    const float K2 = 0.166666667;
-    vec3 i = floor(p + (p.x + p.y + p.z) * K1);
-    vec3 d0 = p - (i - (i.x + i.y + i.z) * K2);
-    vec3 e = step(vec3(0.0), d0 - d0.yzx);
-    vec3 i1 = e * (1.0 - e.zxy);
-    vec3 i2 = e - e.zxy * (1.0 - e);
-    vec3 d1 = d0 - (i1 - K2);
-    vec3 d2 = d0 - (i2 - K1);
-    vec3 d3 = d0 - 0.5;
-    vec4 h = max(0.5 - vec4(
-      dot(d0, d0),
-      dot(d1, d1),
-      dot(d2, d2),
-      dot(d3, d3)
-    ), 0.0);
-    vec4 n = h * h * h * h * vec4(
-      dot(d0, hash33(i)),
-      dot(d1, hash33(i + i1)),
-      dot(d2, hash33(i + i2)),
-      dot(d3, hash33(i + 1.0))
-    );
-    return dot(vec4(64.0), n);
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    vec3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float n000 = hash13(i);
+    float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+    float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+    float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+    float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+    float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+    float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+    float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+    float x00 = mix(n000, n100, u.x);
+    float x10 = mix(n010, n110, u.x);
+    float x01 = mix(n001, n101, u.x);
+    float x11 = mix(n011, n111, u.x);
+    float v = mix(mix(x00, x10, u.y), mix(x01, x11, u.y), u.z);
+    return v * 2.0 - 1.0; // -1..1
   }
 
   vec4 extractAlpha(vec3 colorIn) {
