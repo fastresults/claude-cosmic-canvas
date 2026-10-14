@@ -39,7 +39,7 @@ export type GenerateDraftResult =
 
 export async function runGenerateCreateDraft(
   data: GenerateDraftInput,
-  ctx: { supabase: SupabaseClient<any>; userId: string },
+  ctx: { supabase: SupabaseClient<any>; userId: string; onTextDelta?: (text: string) => void },
 ): Promise<GenerateDraftResult> {
   const { supabase, userId } = ctx;
 
@@ -162,6 +162,7 @@ export async function runGenerateCreateDraft(
       maxTokens: MAX_TOKENS,
       prompt: blocks.join("\n\n"),
       system,
+      onTextDelta: ctx.onTextDelta,
     });
     bodyText = result.text.trim();
     usage = result.usage;
