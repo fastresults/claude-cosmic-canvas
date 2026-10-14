@@ -95,16 +95,15 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
       surfaceInstructions,
     });
 
-    const { createOrchestratorProvider } = await import("@/lib/orchestrator/gateway.server");
+    const { resolveGatewayModel } = await import("@/lib/ai/gateway.server");
     const { buildOrchestratorTools } = await import("@/lib/orchestrator/tools");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, modelCallOptions } = await import("@/lib/orchestrator/config");
 
-    const gateway = createOrchestratorProvider();
     const tools = buildOrchestratorTools({ supabase, userId });
 
     const { runStreamed } = await import("@/lib/ai/stream.server");
     const result = await runStreamed({
-      model: gateway(ORCHESTRATOR_MODEL),
+      model: resolveGatewayModel(ORCHESTRATOR_MODEL),
       system,
       prompt,
       tools,

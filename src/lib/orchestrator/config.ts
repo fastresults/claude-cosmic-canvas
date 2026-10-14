@@ -1,6 +1,7 @@
 // Orchestrator model config. Verified against the Lovable AI Gateway.
 // Fable 5 is Lovable's Claude alias; the gateway resolves it directly.
 import { stepCountIs } from "ai";
+import type { ProviderOptions } from "@ai-sdk/provider-utils";
 
 import { MODELS } from "@/lib/ai/models";
 
@@ -18,8 +19,28 @@ export const REASONING_EFFORT: "none" | "low" | "medium" | "high" = "none";
  * Token-limit + reasoning options for a model. GPT-5.6 rejects `max_tokens`
  * and needs reasoning_effort "none" with tools, so the cap goes through
  * providerOptions as `max_completion_tokens` instead of `maxOutputTokens`.
+ * GPT-6 (Responses API) requires reasoning (low+) and rejects temperature/
+ * top_p; per the upgrade policy its optional output cap is omitted.
  */
-export function modelCallOptions(model: string, maxTokens: number) {
+type ModelCallOptions = {
+  providerOptions?: ProviderOptions;
+  maxOutputTokens?: number;
+};
+
+export function modelCallOptions(model: string, maxTokens: number): ModelCallOptions {
+  if (/^openai\/gpt-6/.test(model)) {
+    return {
+      providerOptions: {
+        openai: {
+          store: false,
+          forceReasoning: true,
+          reasoningEffort: "low",
+          reasoningSummary: "auto",
+          include: ["reasoning.encrypted_content"],
+        },
+      },
+    };
+  }
   if (/^openai\/gpt-5\.6/.test(model)) {
     return {
       providerOptions: {

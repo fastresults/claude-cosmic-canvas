@@ -52,16 +52,15 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
         surfaceInstructions: data.surfaceInstructions,
       });
 
-      const { createOrchestratorProvider } = await import("./gateway.server");
+      const { resolveGatewayModel } = await import("@/lib/ai/gateway.server");
       const { buildOrchestratorTools } = await import("./tools");
       const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, modelCallOptions } = await import("./config");
 
-      const gateway = createOrchestratorProvider();
       const tools = buildOrchestratorTools({ supabase, userId });
 
       const { runStreamed } = await import("@/lib/ai/stream.server");
     const result = await runStreamed({
-        model: gateway(ORCHESTRATOR_MODEL),
+        model: resolveGatewayModel(ORCHESTRATOR_MODEL),
         system,
         prompt: data.prompt,
         tools,

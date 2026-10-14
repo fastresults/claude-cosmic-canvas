@@ -1,5 +1,7 @@
 // Server-only Lovable AI Gateway provider helper.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModel } from "ai";
 import { GatewayError, isRetryableStatus, retryDelayMs } from "./gateway-errors";
 
 const LOVABLE_AIG_RUN_ID_HEADER = "X-Lovable-AIG-Run-ID";
@@ -67,6 +69,48 @@ export function getGatewayKey() {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("LOVABLE_API_KEY is not configured");
   return key;
+}
+
+/**
+ * OpenAI Responses provider. GPT-6 models (e.g. openai/gpt-6-astra) only
+ * support tool calling on /v1/responses, so they must go through this
+ * provider's `.responses(model)` instead of the openai-compatible one.
+ */
+export function createLovableAiGatewayResponsesProvider(
+  lovableApiKey: string,
+  initialRunId?: string,
+) {
+  const runIdFetch = createLovableAiGatewayRunIdFetch(initialRunId);
+  const provider = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey: lovableApiKey,
+    headers: {
+      "Lovable-API-Key": lovableApiKey,
+      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+    },
+    fetch: runIdFetch.fetch,
+  });
+  return Object.assign(provider, {
+    getRunId: runIdFetch.getRunId,
+    waitForRunId: runIdFetch.waitForRunId,
+  });
+}
+
+/** True for models that must be called via the Responses API. */
+export function requiresResponsesApi(model: string) {
+  return /^openai\/gpt-6/.test(model);
+}
+
+/**
+ * Resolves the right LanguageModel for a model id: GPT-6 via Responses,
+ * everything else via the openai-compatible chat-completions provider.
+ */
+export function resolveGatewayModel(model: string, initialRunId?: string): LanguageModel {
+  const key = getGatewayKey();
+  if (requiresResponsesApi(model)) {
+    return createLovableAiGatewayResponsesProvider(key, initialRunId).responses(model);
+  }
+  return createLovableAiGatewayProvider(key, initialRunId)(model);
 }
 
 /**
