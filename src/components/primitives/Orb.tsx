@@ -81,24 +81,23 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         }}
       />
 
-      {/* Static amber core — SSR/fallback paint under the WebGL canvas */}
+      {/* Faint ring fallback — visible until WebGL paints */}
       <span
         aria-hidden
         className="absolute rounded-full"
         style={{
-          inset: s * 0.16,
-          background: glReady
-            ? "radial-gradient(circle at 50% 45%, oklch(0.30 0.06 55) 0%, oklch(0.24 0.05 50) 70%, oklch(0.20 0.04 45) 100%)"
-            : "radial-gradient(circle at 32% 28%, oklch(0.97 0.09 85) 0%, oklch(0.85 0.15 82) 38%, oklch(0.58 0.14 62) 82%, oklch(0.38 0.10 50) 100%)",
-          opacity: glReady ? 0.9 : 1,
-          transition: "opacity 600ms ease-out, background 600ms ease-out",
+          inset: s * 0.11,
+          border: "2px solid oklch(0.82 0.14 82 / 0.7)",
+          boxShadow: "0 0 24px 2px oklch(0.65 0.20 295 / 0.35)",
+          opacity: glReady ? 0 : 1,
+          transition: "opacity 600ms ease-out",
         }}
       />
 
       {/* WebGL plasma orb */}
       <span
         aria-hidden
-        className="absolute inset-0 overflow-hidden rounded-full"
+        className="absolute inset-0 rounded-full"
         style={{
           transform: pressed ? "scale(1.06)" : "scale(1)",
           transition: "transform 300ms ease-out",
