@@ -354,44 +354,40 @@ Return a JSON object with these sections. Every text field should be DETAILED an
 
 Be EXHAUSTIVE. This is a high-stakes executive briefing. Return ONLY the JSON.`;
 
-  const aiRes = await fetch(AI_GATEWAY, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${lovableKey}`,
-      "Content-Type": "application/json",
-      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
-    },
-    body: JSON.stringify({
-      model: MODELS.dossier,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.15,
-      response_format: { type: "json_object" },
+  const { z } = await import("zod");
+  const { generateStructuredJson } = await import("@/lib/ai/structured.server");
+  const s = z.string();
+  const ns = z.string().nullable();
+  const DossierSchema = z.object({
+    company: z.object({
+      name: s, description: ns, website: s, founded: ns, headquarters: ns,
+      employeeCount: ns, logoUrl: ns, industry: ns, tagline: ns,
     }),
+    founders: z.array(z.object({ name: s, role: s, background: s, linkedin: ns })),
+    boardAndAdvisors: z.array(z.object({ name: s, role: s, affiliation: ns, background: ns })),
+    funding: z.object({ totalRaised: ns, latestRound: ns, latestValuation: ns, investors: z.array(s) }),
+    fundingRounds: z.array(z.object({ date: ns, type: s, amount: s, leadInvestor: ns })),
+    competitors: z.array(z.object({ name: s, description: s, differentiation: s })),
+    recentNews: z.array(z.object({ title: s, date: ns, source: ns, summary: s })),
+    techStack: z.array(s),
+    market: z.object({ targetMarket: ns, marketSize: ns, businessModel: ns }),
+    redFlags: z.array(s),
+    keyProducts: z.array(z.object({ name: s, description: s })),
+    partnerships: z.array(s),
+    awards: z.array(s),
+    customers: z.array(s),
+    strategicInsights: z.object({ growthTrajectory: ns, competitiveAdvantage: ns, risks: ns, opportunities: ns }),
   });
 
-  if (!aiRes.ok) {
-    const body = await aiRes.text();
-    console.error(`[research] AI Gateway ${aiRes.status}: ${body.slice(0, 300)}`);
-    throw new Error(`AI synthesis failed (${aiRes.status})`);
-  }
-
-  const aiData = (await aiRes.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = aiData.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("AI synthesis returned no content");
-
-  let parsed: CompanyDossier;
-  try {
-    parsed = JSON.parse(content) as CompanyDossier;
-  } catch {
-    const match = content.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("AI response was not JSON");
-    parsed = JSON.parse(match[0]) as CompanyDossier;
-  }
+  const result = await generateStructuredJson({
+    model: MODELS.dossier,
+    system: systemPrompt,
+    prompt: userPrompt,
+    schema: DossierSchema,
+    maxTokens: 16000,
+  });
+  if (!result) throw new Error("AI synthesis returned an unreadable dossier");
+  const parsed = result as CompanyDossier;
 
   // Ensure basics
   if (parsed.company) {
