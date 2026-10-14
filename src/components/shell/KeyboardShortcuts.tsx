@@ -45,7 +45,7 @@ export function KeyboardShortcuts() {
       // ⌘K / Ctrl+K — global search (always, even while typing)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        navigate({ to: "/library", search: { scope: "general" } });
+        navigate({ to: "/library", search: { scope: "general", workspaceId: undefined } });
         return;
       }
 
