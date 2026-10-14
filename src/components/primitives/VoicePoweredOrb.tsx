@@ -296,6 +296,10 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         renderer.render({ scene: mesh });
+        if (!readyFired) {
+          readyFired = true;
+          onReady?.();
+        }
       };
       rafId = requestAnimationFrame(update);
 
