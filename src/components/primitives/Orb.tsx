@@ -59,7 +59,7 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         className="absolute inset-0 rounded-full"
         animate={
           reduced
-            ? { boxShadow: "0 0 40px 6px oklch(0.82 0.14 82 / 0.22)" }
+            ? { boxShadow: "0 0 0px 0px oklch(0 0 0 / 0)" }
             : {
                 boxShadow: pressed
                   ? [
@@ -67,11 +67,7 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
                       "0 0 90px 24px oklch(0.65 0.20 295 / 0.55), 0 0 140px 40px oklch(0.74 0.17 355 / 0.25)",
                       "0 0 60px 14px oklch(0.82 0.14 82 / 0.6), 0 0 120px 30px oklch(0.65 0.20 295 / 0.25)",
                     ]
-                  : [
-                      "0 0 30px 4px oklch(0.82 0.14 82 / 0.22), 0 0 80px 16px oklch(0.65 0.20 295 / 0.12)",
-                      "0 0 60px 12px oklch(0.65 0.20 295 / 0.28), 0 0 110px 26px oklch(0.82 0.14 82 / 0.14)",
-                      "0 0 30px 4px oklch(0.82 0.14 82 / 0.22), 0 0 80px 16px oklch(0.65 0.20 295 / 0.12)",
-                    ],
+                  : "0 0 0px 0px oklch(0 0 0 / 0)",
               }
         }
         transition={{
