@@ -80,7 +80,7 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
       {/* Faint ring fallback — visible until WebGL paints */}
       <span
         aria-hidden
-        className="absolute rounded-full"
+        className="absolute rounded-full [.light_&]:hidden"
         style={{
           inset: s * 0.11,
           border: "2px solid oklch(0.82 0.14 82 / 0.7)",
@@ -96,6 +96,7 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         className="absolute inset-0 rounded-full"
         style={{
           transform: pressed ? "scale(1.06)" : "scale(1)",
+          filter: "var(--orb-lift)",
           transition: "transform 300ms ease-out",
         }}
       >
