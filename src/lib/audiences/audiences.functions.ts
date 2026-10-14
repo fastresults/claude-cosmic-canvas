@@ -257,7 +257,7 @@ async function runSuggestion(params: {
   const { generateText, Output, NoObjectGeneratedError } = await import("ai");
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("LOVABLE_API_KEY is not configured");
-  const gateway = createLovableAiGatewayProvider(key);
+  const gateway = createLovableAiGatewayProvider(key, undefined, { structuredOutputs: true });
 
   const system = `You define Ideal Customer Profiles (ICPs) for a content creator.
 Propose the NEXT most valuable ICP for this creator, ranked by addressable size, buying intent, and fit with the domain and knowledge context.
