@@ -1,6 +1,6 @@
 // Orchestrator model config. Verified against the Lovable AI Gateway.
 // Fable 5 is Lovable's Claude alias; the gateway resolves it directly.
-import { stepCountIs } from "ai";
+import { stepCountIs, type ProviderOptions } from "ai";
 
 import { MODELS } from "@/lib/ai/models";
 
@@ -22,7 +22,7 @@ export const REASONING_EFFORT: "none" | "low" | "medium" | "high" = "none";
  * top_p; per the upgrade policy its optional output cap is omitted.
  */
 type ModelCallOptions = {
-  providerOptions?: Record<string, Record<string, unknown>>;
+  providerOptions?: ProviderOptions;
   maxOutputTokens?: number;
 };
 
