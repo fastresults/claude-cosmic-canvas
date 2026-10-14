@@ -72,6 +72,48 @@ export function getGatewayKey() {
 }
 
 /**
+ * OpenAI Responses provider. GPT-6 models (e.g. openai/gpt-6-astra) only
+ * support tool calling on /v1/responses, so they must go through this
+ * provider's `.responses(model)` instead of the openai-compatible one.
+ */
+export function createLovableAiGatewayResponsesProvider(
+  lovableApiKey: string,
+  initialRunId?: string,
+) {
+  const runIdFetch = createLovableAiGatewayRunIdFetch(initialRunId);
+  const provider = createOpenAI({
+    baseURL: "https://ai.gateway.lovable.dev/v1",
+    apiKey: lovableApiKey,
+    headers: {
+      "Lovable-API-Key": lovableApiKey,
+      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
+    },
+    fetch: runIdFetch.fetch,
+  });
+  return Object.assign(provider, {
+    getRunId: runIdFetch.getRunId,
+    waitForRunId: runIdFetch.waitForRunId,
+  });
+}
+
+/** True for models that must be called via the Responses API. */
+export function requiresResponsesApi(model: string) {
+  return /^openai\/gpt-6/.test(model);
+}
+
+/**
+ * Resolves the right LanguageModel for a model id: GPT-6 via Responses,
+ * everything else via the openai-compatible chat-completions provider.
+ */
+export function resolveGatewayModel(model: string, initialRunId?: string): LanguageModel {
+  const key = getGatewayKey();
+  if (requiresResponsesApi(model)) {
+    return createLovableAiGatewayResponsesProvider(key, initialRunId).responses(model);
+  }
+  return createLovableAiGatewayProvider(key, initialRunId)(model);
+}
+
+/**
  * Raw gateway fetch for endpoints not covered by AI SDK (STT, image gen).
  * Retries 429/5xx up to 2 times (honouring Retry-After); other failures are
  * terminal. Throws a GatewayError with a safe, human-readable message — the
