@@ -20,10 +20,8 @@ export async function callAnthropic({
   prompt,
   system,
 }: OrchestratorCallInput) {
-  const gateway = createOrchestratorProvider();
-
   const result = await runStreamed({
-    model: gateway(model),
+    model: resolveGatewayModel(model),
     system,
     prompt,
     ...modelCallOptions(model, maxTokens),
