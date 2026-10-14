@@ -5,7 +5,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { runStreamed } from "@/lib/ai/stream.server";
 
 const OrchestrateWithToolsInput = z.object({
   prompt: z.string().min(1),
@@ -60,7 +59,8 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
       const gateway = createOrchestratorProvider();
       const tools = buildOrchestratorTools({ supabase, userId });
 
-      const result = await runStreamed({
+      const { runStreamed } = await import("@/lib/ai/stream.server");
+    const result = await runStreamed({
         model: gateway(ORCHESTRATOR_MODEL),
         system,
         prompt: data.prompt,
