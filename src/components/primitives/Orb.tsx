@@ -89,6 +89,8 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
           inset: s * 0.16,
           background:
             "radial-gradient(circle at 32% 28%, oklch(0.97 0.09 85) 0%, oklch(0.85 0.15 82) 38%, oklch(0.58 0.14 62) 82%, oklch(0.38 0.10 50) 100%)",
+          opacity: glReady ? 0 : 1,
+          transition: "opacity 600ms ease-out",
         }}
       />
 

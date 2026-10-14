@@ -178,7 +178,7 @@ const FRAG = /* glsl */ `
  * inside a mount effect so the module is safe to import during SSR.
  * No microphone access here — feed an external `level` instead.
  */
-export function VoicePoweredOrb({ className, level, hue = 0, still = false }: VoicePoweredOrbProps) {
+export function VoicePoweredOrb({ className, level, hue = 0, still = false, onReady }: VoicePoweredOrbProps) {
   const ctnDom = useRef<HTMLDivElement>(null);
   const levelRef = useRef(level);
   levelRef.current = level;
