@@ -4,7 +4,7 @@
 // existing caller (create, drafts, milestones, knowledge, onboarding, library,
 // content) keeps working without change.
 import { runStreamed } from "@/lib/ai/stream.server";
-import { createOrchestratorProvider } from "./gateway.server";
+import { resolveGatewayModel } from "@/lib/ai/gateway.server";
 import { modelCallOptions } from "./config";
 
 type OrchestratorCallInput = {
