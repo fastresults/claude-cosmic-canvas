@@ -54,7 +54,7 @@
 
 :root {
   /* All values in OKLCH for perceptual uniformity. Sourced from PRD §17 hex. */
-  --orb-lift: none;
+  --orb-lift: transparent;
   --background: oklch(0.13 0.03 285);         /* #08060f */
   --surface: oklch(0.19 0.04 285);            /* #1a1428 */
   --surface-elev: oklch(0.16 0.035 285);      /* #0f0c1a */
@@ -88,7 +88,7 @@
 
 /* Light theme — warm paper, deep plum-ink, same amber/violet identity */
 .light {
-  --orb-lift: drop-shadow(0 10px 22px oklch(0.55 0.12 60 / 0.16));
+  --orb-lift: radial-gradient(closest-side, oklch(0.55 0.12 60 / 0.22), transparent);
   --background: oklch(0.98 0.008 85);
   --surface: oklch(0.96 0.012 85);
   --surface-elev: oklch(0.93 0.015 85);

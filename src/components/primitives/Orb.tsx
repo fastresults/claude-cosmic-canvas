@@ -90,13 +90,25 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         }}
       />
 
+      {/* Light theme only: soft contact shadow that grounds the orb on paper */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full"
+        style={{
+          width: s * 0.7,
+          height: s * 0.12,
+          bottom: s * 0.02,
+          background: "var(--orb-lift)",
+          filter: `blur(${Math.max(6, s * 0.06)}px)`,
+        }}
+      />
+
       {/* WebGL plasma orb */}
       <span
         aria-hidden
         className="absolute inset-0 rounded-full"
         style={{
           transform: pressed ? "scale(1.06)" : "scale(1)",
-          filter: "var(--orb-lift)",
           transition: "transform 300ms ease-out",
         }}
       >
