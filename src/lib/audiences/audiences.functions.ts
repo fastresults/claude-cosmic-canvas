@@ -1,5 +1,6 @@
 // Audience — the fourth pillar alongside Voice, Knowledge, and Domain.
 // A robust ICP entity. CRUD + defaults + AI suggester.
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -303,7 +304,7 @@ Return concrete titles, industries, and pains. No filler, no generic phrasing.`;
   let raw: Record<string, unknown> = {};
   try {
     const { output } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
+      model: gateway(MODELS.research),
       system,
       prompt,
       output: Output.object({ schema: OutSchema }),

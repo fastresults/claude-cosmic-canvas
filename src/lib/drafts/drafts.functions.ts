@@ -3,6 +3,7 @@
  * Single-table (`create_drafts`) reads/writes plus per-draft image
  * association via `create_media`. Every mutation writes a Brain edge.
  */
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -602,7 +603,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: MODELS.fast,
           messages: [
             { role: "system", content: system },
             { role: "user", content: prompt },
