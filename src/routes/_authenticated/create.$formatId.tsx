@@ -199,17 +199,27 @@ function FormatPage() {
     try {
       // Read workspace context fresh (store + URL). Store is source of truth here.
       const ctx = readWorkspaceContext();
-      const res = await generateFn({
-        data: {
-          formatId,
-          seed: seed.trim(),
-          draftId: currentDraftId ?? undefined,
-          workspaceId: ctx.workspace_id ?? wsId ?? null,
-          workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
-          channels: requiresChannel ? channels : undefined,
-          title: providedTitle,
-        },
-      });
+      const input = {
+        formatId,
+        seed: seed.trim(),
+        draftId: currentDraftId ?? undefined,
+        workspaceId: ctx.workspace_id ?? wsId ?? null,
+        workspaceItemId: ctx.workspace_item_id ?? wsItemId ?? null,
+        channels: requiresChannel ? channels : undefined,
+        title: providedTitle,
+      };
+      // Company research is a multi-source pipeline with its own progress UI;
+      // every other format streams word by word onto the canvas.
+      const res =
+        formatId === "company-research"
+          ? await generateFn({ data: input })
+          : await (async () => {
+              setSections([]);
+              const { streamCreateDraft } = await import("@/lib/create/streamDraft");
+              return streamCreateDraft(input, (full) =>
+                setSections([{ heading: null, body: full }]),
+              );
+            })();
 
       if ("fallback" in res && res.fallback) {
         setError(res.message);
