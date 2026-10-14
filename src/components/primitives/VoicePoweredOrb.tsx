@@ -183,6 +183,11 @@ const FRAG = /* glsl */ `
  * inside a mount effect so the module is safe to import during SSR.
  * No microphone access here — feed an external `level` instead.
  */
+/** Test hook: window.__orbTimeOffset (seconds) jumps the clock forward. */
+function timeOffset(): number {
+  return (window as unknown as { __orbTimeOffset?: number }).__orbTimeOffset ?? 0;
+}
+
 export function VoicePoweredOrb({ className, level, hue = 0, still = false, onReady }: VoicePoweredOrbProps) {
   const ctnDom = useRef<HTMLDivElement>(null);
   const levelRef = useRef(level);
@@ -270,7 +275,8 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
         }
         const dt = (t - lastTime) * 0.001;
         lastTime = t;
-        program.uniforms.iTime.value = (t * 0.001 + (window as unknown as { __orbTimeOffset?: number }).__orbTimeOffset! || 0) % 3600;
+        // Loop period 600π: whole turns for every angular term and 3 noise loops → seamless.
+        program.uniforms.iTime.value = (t * 0.001 + timeOffset()) % (600 * Math.PI);
         program.uniforms.hue.value = hue;
 
         if (still) {
