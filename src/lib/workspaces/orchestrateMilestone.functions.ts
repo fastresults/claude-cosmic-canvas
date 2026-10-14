@@ -5,7 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateText } from "ai";
+import { streamText } from "ai";
 
 const Input = z.object({
   workspaceId: z.string().uuid(),
@@ -103,7 +103,7 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
     const gateway = createOrchestratorProvider();
     const tools = buildOrchestratorTools({ supabase, userId });
 
-    const result = await generateText({
+    const stream = streamText({
       model: gateway(ORCHESTRATOR_MODEL),
       system,
       prompt,
