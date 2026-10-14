@@ -1,4 +1,5 @@
 // Presets — server functions for CRUD, brain sync, seed-based auto-build, and apply.
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -353,11 +354,11 @@ export const buildPresetFromSeed = createServerFn({ method: "POST" })
       .join("\n\n");
 
     const { output } = await generateText({
-      model: provider("openai/gpt-5.5"),
+      model: provider(MODELS.analysis),
       system,
       prompt: userPrompt,
       output: Output.object({ schema }),
-      ...modelCallOptions("openai/gpt-5.5", 4096),
+      ...modelCallOptions(MODELS.analysis, 4096),
     });
 
     return output;

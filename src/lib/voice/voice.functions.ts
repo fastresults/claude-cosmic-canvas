@@ -1,5 +1,6 @@
 // Voice system server functions. All AI generation surfaces in this app
 // resolve through resolveActiveVoice + formatStyleContext.
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -640,7 +641,7 @@ export const analyzeOwnVoice = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await logAudit(context.supabase, context.userId, "voice.analyze_started");
     const out = await generateStructured({
-      model: "openai/gpt-5.5",
+      model: MODELS.analysis,
       system:
         "You extract a writer's voice signature from their samples. Sliders are 0-100 (higher = more of that trait). Return concise vocabulary lists (max 15 items each). Guidelines should be a bullet list.",
       prompt: `Analyze these samples and return a full voice profile:\n\n${data.samples
@@ -671,7 +672,7 @@ export const researchVoiceProfile = createServerFn({ method: "POST" })
       target: data.name,
       depth: data.depth,
     });
-    const model = data.depth === "deep" ? "openai/gpt-5.5" : "google/gemini-2.5-flash";
+    const model = data.depth === "deep" ? MODELS.analysis : MODELS.fast;
     const out = await generateStructured({
       model,
       system:
@@ -693,7 +694,7 @@ export const enrichVoiceProfile = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ partial: AiProfile.partial() }).parse(i))
   .handler(async ({ data }) => {
     const out = await generateStructured({
-      model: "google/gemini-2.5-flash",
+      model: MODELS.fast,
       system: "Fill missing fields in the given voice profile. Do not overwrite provided fields.",
       prompt: `Partial:\n${JSON.stringify(data.partial)}`,
       schema: AiProfile,
@@ -712,7 +713,7 @@ export const generateVoiceSamples = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!profile) throw new Error("Voice not found");
     const out = await generateStructured({
-      model: "google/gemini-2.5-flash",
+      model: MODELS.fast,
       system: "Write 3 short paragraphs (60-120 words each) in this voice.",
       prompt: `Voice profile:\n${JSON.stringify({
         tone: profile.tone,
@@ -754,7 +755,7 @@ export const validateVoice = createServerFn({ method: "POST" })
     const { formatStyleContext } = await import("./format-style-context.server");
     const context_str = formatStyleContext(profile, { activeDirectives: directives ?? [] });
     const out = await generateStructured({
-      model: "google/gemini-2.5-flash",
+      model: MODELS.fast,
       system:
         "Score how well a text matches a voice profile. Return score 0-100, up to 5 issues, up to 5 suggestions.",
       prompt: `VOICE PROFILE:\n${context_str}\n\nTEXT TO SCORE:\n${data.text}`,
@@ -786,7 +787,7 @@ export const distillVoiceDirectives = createServerFn({ method: "POST" })
       .limit(25);
     if (!signals?.length) return { promoted: 0 };
     const out = await generateStructured({
-      model: "google/gemini-2.5-flash",
+      model: MODELS.fast,
       system:
         "Distill 1-5 concrete writing directives from these user edits. Each: type (avoid_word, prefer_word, avoid_pattern, prefer_pattern, tone_shift, structural), and text (a short imperative rule).",
       prompt: `Signals:\n${JSON.stringify(signals)}`,

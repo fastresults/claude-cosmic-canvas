@@ -2,6 +2,7 @@
  * Streaming image generation for drafts.
  * Pass-through SSE from Lovable AI Gateway (Gemini image). No transformation.
  */
+import { MODELS } from "@/lib/ai/models";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -183,7 +184,7 @@ export const Route = createFileRoute("/api/drafts/generate-image")({
             headers: { "Content-Type": "application/json" },
             signal: controller.signal,
             body: JSON.stringify({
-              model: "google/gemini-3-pro-image",
+              model: MODELS.image,
               messages: [{ role: "user", content: finalPrompt }],
               modalities: ["image", "text"],
               stream: true,
