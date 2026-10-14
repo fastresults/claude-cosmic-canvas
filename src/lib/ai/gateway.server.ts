@@ -1,5 +1,7 @@
 // Server-only Lovable AI Gateway provider helper.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModel } from "ai";
 import { GatewayError, isRetryableStatus, retryDelayMs } from "./gateway-errors";
 
 const LOVABLE_AIG_RUN_ID_HEADER = "X-Lovable-AIG-Run-ID";
