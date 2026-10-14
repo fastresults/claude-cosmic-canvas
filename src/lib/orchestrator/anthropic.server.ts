@@ -3,7 +3,7 @@
 // original `callAnthropic({model, maxTokens, prompt, system})` shape so every
 // existing caller (create, drafts, milestones, knowledge, onboarding, library,
 // content) keeps working without change.
-import { streamText } from "ai";
+import { runStreamed } from "@/lib/ai/stream.server";
 import { createOrchestratorProvider } from "./gateway.server";
 import { modelCallOptions } from "./config";
 
@@ -22,7 +22,7 @@ export async function callAnthropic({
 }: OrchestratorCallInput) {
   const gateway = createOrchestratorProvider();
 
-  const stream = streamText({
+  const result = await runStreamed({
     model: gateway(model),
     system,
     prompt,
