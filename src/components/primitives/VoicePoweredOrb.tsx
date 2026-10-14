@@ -182,6 +182,8 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
   const ctnDom = useRef<HTMLDivElement>(null);
   const levelRef = useRef(level);
   levelRef.current = level;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     const container = ctnDom.current;
@@ -298,7 +300,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
         renderer.render({ scene: mesh });
         if (!readyFired) {
           readyFired = true;
-          onReady?.();
+          onReadyRef.current?.();
         }
       };
       rafId = requestAnimationFrame(update);
