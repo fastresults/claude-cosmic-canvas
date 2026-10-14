@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { VoicePoweredOrb } from "@/components/primitives/VoicePoweredOrb";
 
@@ -53,30 +53,6 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
       className="relative touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ width: s, height: s }}
     >
-      {/* Ambient outer glow — pulses harder while pressed */}
-      <motion.span
-        aria-hidden
-        className="absolute inset-0 rounded-full"
-        animate={
-          reduced
-            ? { boxShadow: "0 0 0px 0px oklch(0 0 0 / 0)" }
-            : {
-                boxShadow: pressed
-                  ? [
-                      "0 0 60px 14px oklch(0.82 0.14 82 / 0.6), 0 0 120px 30px oklch(0.65 0.20 295 / 0.25)",
-                      "0 0 90px 24px oklch(0.65 0.20 295 / 0.55), 0 0 140px 40px oklch(0.74 0.17 355 / 0.25)",
-                      "0 0 60px 14px oklch(0.82 0.14 82 / 0.6), 0 0 120px 30px oklch(0.65 0.20 295 / 0.25)",
-                    ]
-                  : "0 0 0px 0px oklch(0 0 0 / 0)",
-              }
-        }
-        transition={{
-          duration: pressed ? 3.3 : 8.7,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-
       {/* Faint ring fallback — visible until WebGL paints */}
       <span
         aria-hidden
@@ -84,21 +60,8 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
         style={{
           inset: s * 0.11,
           border: "2px solid oklch(0.82 0.14 82 / 0.7)",
-          boxShadow: "0 0 24px 2px oklch(0.65 0.20 295 / 0.35)",
           opacity: glReady ? 0 : 1,
           transition: "opacity 600ms ease-out",
-        }}
-      />
-
-      {/* Light theme only: soft contact shadow that grounds the orb on paper */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full"
-        style={{
-          width: s * 0.7,
-          height: s * 0.12,
-          bottom: s * 0.02,
-          background: "var(--orb-lift)",
         }}
       />
 
