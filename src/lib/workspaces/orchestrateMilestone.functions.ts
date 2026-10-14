@@ -98,7 +98,7 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
 
     const { createOrchestratorProvider } = await import("@/lib/orchestrator/gateway.server");
     const { buildOrchestratorTools } = await import("@/lib/orchestrator/tools");
-    const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT } = await import("@/lib/orchestrator/config");
+    const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, modelCallOptions } = await import("@/lib/orchestrator/config");
 
     const gateway = createOrchestratorProvider();
     const tools = buildOrchestratorTools({ supabase, userId });
@@ -109,7 +109,7 @@ export const orchestrateMilestone = createServerFn({ method: "POST" })
       prompt,
       tools,
       stopWhen: TOOL_STEP_LIMIT,
-      maxOutputTokens: MAX_TOKENS,
+      ...modelCallOptions(ORCHESTRATOR_MODEL, MAX_TOKENS),
     });
 
     const toolCalls: Array<{ tool: string; input: string }> = (result.steps ?? []).flatMap((s) =>

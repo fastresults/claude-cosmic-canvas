@@ -55,7 +55,7 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
 
       const { createOrchestratorProvider } = await import("./gateway.server");
       const { buildOrchestratorTools } = await import("./tools");
-      const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, REASONING_EFFORT } = await import("./config");
+      const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, modelCallOptions } = await import("./config");
 
       const gateway = createOrchestratorProvider();
       const tools = buildOrchestratorTools({ supabase, userId });
@@ -66,8 +66,7 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
         prompt: data.prompt,
         tools,
         stopWhen: TOOL_STEP_LIMIT,
-        maxOutputTokens: MAX_TOKENS,
-        providerOptions: { lovable: { reasoningEffort: REASONING_EFFORT } },
+        ...modelCallOptions(ORCHESTRATOR_MODEL, MAX_TOKENS),
       });
 
       const toolCalls: Array<{ tool: string; input: string }> = (result.steps ?? []).flatMap((s) =>
