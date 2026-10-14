@@ -1,4 +1,5 @@
 // AI-powered deep research — write a grounded brief for a domain, save as an entry.
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
@@ -41,7 +42,7 @@ Research topic: ${data.topic}
 Write a ~600-900 word brief following the required structure. Use only well-known, verifiable information. If uncertain, say so.`;
 
     const { text } = await generateText({
-      model: gateway("google/gemini-3-flash-preview"),
+      model: gateway(MODELS.research),
       system,
       prompt,
       maxOutputTokens: 4096,
@@ -64,7 +65,7 @@ Write a ~600-900 word brief following the required structure. Use only well-know
           meta: {
             topic: data.topic,
             domain: data.domain_name ?? null,
-            model: "google/gemini-3-flash-preview",
+            model: MODELS.research,
           },
         },
       });
