@@ -197,7 +197,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
       });
       const gl = renderer.gl;
       gl.clearColor(0, 0, 0, 0);
-      gl.enable(gl.BLEND);
+      gl.disable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
       while (container.firstChild) container.removeChild(container.firstChild);
