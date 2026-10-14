@@ -353,6 +353,12 @@ async function runCompanyResearchAsDraft(
   }
 
   const sections = dossierToSections(researchResult.dossier);
+  if (researchResult.missingSources.length > 0) {
+    sections.unshift({
+      heading: "Partial research",
+      body: `Some sources were unavailable (${researchResult.missingSources.join(" and ")}), so this dossier may be incomplete. Try again later for a fuller picture.`,
+    });
+  }
   const suggestedTitle = `${researchResult.dossier.company?.name ?? parsed.companyName} — Corporate Research`;
 
   if (!data.draftId && !data.title) {
