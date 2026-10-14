@@ -17,7 +17,6 @@ export const finishOnboarding = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => OnboardInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
     const { writeEdgesServer } = await import("@/lib/ai/provenance.server");
 
