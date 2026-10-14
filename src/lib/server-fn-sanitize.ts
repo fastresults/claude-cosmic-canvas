@@ -1,4 +1,14 @@
 import { createMiddleware } from "@tanstack/react-start";
+import { friendlyGatewayMessage } from "@/lib/ai/gateway-errors";
+
+function extractAiStatus(error: unknown): number | null {
+  if (error == null || typeof error !== "object") return null;
+  const e = error as { name?: string; status?: unknown; statusCode?: unknown; lastError?: unknown };
+  if (e.name === "GatewayError" && typeof e.status === "number") return e.status;
+  if (e.name === "AI_APICallError" && typeof e.statusCode === "number") return e.statusCode;
+  if (e.name === "AI_RetryError") return extractAiStatus(e.lastError);
+  return null;
+}
 
 /**
  * Server-function middleware that sanitizes thrown errors before they cross
@@ -20,6 +30,16 @@ export const sanitizeServerFnErrors = createMiddleware({ type: "function" }).ser
     } catch (error) {
       // Pass framework signals through untouched.
       if (error instanceof Response) throw error;
+
+      // AI Gateway failures (AI SDK APICallError / RetryError, or our
+      // GatewayError) carry an HTTP status — map to a friendly message and
+      // never forward the raw upstream body.
+      const aiStatus = extractAiStatus(error);
+      if (aiStatus != null) {
+        const traceId = shortTraceId();
+        console.error(`[server-fn] ai trace=${traceId}`, error);
+        throw new Error(`${friendlyGatewayMessage(aiStatus)} (trace: ${traceId})`);
+      }
       if (
         error != null &&
         typeof error === "object" &&

@@ -1,5 +1,6 @@
 // Server-only Lovable AI Gateway provider helper.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { GatewayError, isRetryableStatus, retryDelayMs } from "./gateway-errors";
 
 const LOVABLE_AIG_RUN_ID_HEADER = "X-Lovable-AIG-Run-ID";
 
@@ -68,19 +69,27 @@ export function getGatewayKey() {
   return key;
 }
 
-/** Raw gateway fetch for endpoints not covered by AI SDK (STT, image gen). */
+/**
+ * Raw gateway fetch for endpoints not covered by AI SDK (STT, image gen).
+ * Retries 429/5xx up to 2 times (honouring Retry-After); other failures are
+ * terminal. Throws a GatewayError with a safe, human-readable message — the
+ * upstream body is only logged server-side.
+ */
 export async function gatewayFetch(path: string, init: RequestInit) {
   const key = getGatewayKey();
   const headers = new Headers(init.headers);
   headers.set("Lovable-API-Key", key);
   headers.set("X-Lovable-AIG-SDK", "raw");
-  const res = await fetch(`https://ai.gateway.lovable.dev/v1${path}`, {
-    ...init,
-    headers,
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Lovable AI Gateway ${res.status}: ${text}`);
+  const MAX_RETRIES = 2;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`https://ai.gateway.lovable.dev/v1${path}`, { ...init, headers });
+    if (res.ok) return res;
+    const body = await res.text().catch(() => "");
+    console.error(`[gateway] ${path} ${res.status}: ${body.slice(0, 500)}`);
+    if (isRetryableStatus(res.status) && attempt < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, retryDelayMs(attempt, res.headers.get("retry-after"))));
+      continue;
+    }
+    throw new GatewayError(res.status);
   }
-  return res;
 }
