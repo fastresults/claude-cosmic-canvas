@@ -3,6 +3,7 @@
  * Single-table (`create_drafts`) reads/writes plus per-draft image
  * association via `create_media`. Every mutation writes a Brain edge.
  */
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -519,20 +520,6 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
         { prompt: `Abstract editorial composition for ${subject}: translate the article's thesis into a clear focal shape and supporting details from — ${contextLine}. Match ${styleName}; no readable text.`, style: styleName, aspect, rationale: "Flexible fallback while staying grounded." },
       ];
     };
-    const safeParseJson = (s: string): { [k: string]: unknown } | null => {
-      try {
-        const cleaned = s.replace(/^```json\s*|\s*```$/g, "").trim();
-        return JSON.parse(cleaned);
-      } catch {
-        const m = s.match(/\{[\s\S]*\}/);
-        if (!m) return null;
-        try {
-          return JSON.parse(m[0]);
-        } catch {
-          return null;
-        }
-      }
-    };
 
     const { data: draft, error } = await context.supabase
       .from("create_drafts")
@@ -593,40 +580,29 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
     ].join("\n");
 
     console.info("[draft-image] concepts:start", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null });
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
     try {
-      const { gatewayFetch } = await import("@/lib/ai/gateway.server");
-      const res = await gatewayFetch("/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: prompt },
-          ],
-        }),
+      const { generateStructuredJson } = await import("@/lib/ai/structured.server");
+      const ConceptsSchema = z.object({
+        concepts: z.array(
+          z.object({ prompt: z.string(), style: z.string(), aspect: z.string(), rationale: z.string() }),
+        ),
       });
-      const body = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-      const text = body.choices?.[0]?.message?.content ?? "";
-      const parsed = safeParseJson(text);
-      const concepts = Array.isArray(parsed?.concepts) ? parsed.concepts : [];
-      const clean = concepts
-        .map((c: unknown) => {
-          const o = c as Record<string, unknown>;
-          if (typeof o.prompt !== "string") return null;
-          return {
-            prompt: o.prompt,
-            style: typeof o.style === "string" ? o.style : "editorial",
-            aspect: typeof o.aspect === "string" ? o.aspect : "16:9",
-            rationale: typeof o.rationale === "string" ? o.rationale : "",
-          };
-        })
-        .filter((v: unknown): v is { prompt: string; style: string; aspect: string; rationale: string } => v !== null)
+      const out = await generateStructuredJson({
+        model: MODELS.fast,
+        system,
+        prompt,
+        schema: ConceptsSchema,
+        maxTokens: 2048,
+      });
+      const clean = (out?.concepts ?? [])
+        .filter((c) => c.prompt.trim().length > 0)
+        .map((c) => ({
+          prompt: c.prompt,
+          style: c.style || "editorial",
+          aspect: ["1:1", "16:9", "9:16"].includes(c.aspect) ? c.aspect : "16:9",
+          rationale: c.rationale,
+        }))
         .slice(0, 6);
-      clearTimeout(timeoutId);
       if (clean.length === 0) {
         console.warn("[draft-image] concepts:fallback_empty", { draftId: data.draftId, role: data.role });
         return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };
@@ -634,11 +610,9 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
       console.info("[draft-image] concepts:success", { draftId: data.draftId, role: data.role, styleId: data.styleId ?? null, count: clean.length });
       return { fallback: false as const, summary: summary.slice(0, 500), concepts: clean };
     } catch (e) {
-      clearTimeout(timeoutId);
       console.warn("[draft-image] concepts:fallback_error", {
         draftId: data.draftId,
         role: data.role,
-        timedOut: controller.signal.aborted,
         message: e instanceof Error ? e.message.slice(0, 240) : "Unknown error",
       });
       return { fallback: true as const, summary: summary.slice(0, 500), concepts: fallbackConcepts(draft.title, data.role, summary, style) };

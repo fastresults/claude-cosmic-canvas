@@ -17,3 +17,5 @@
 - Gateway failures surface through `GatewayError`/`friendlyGatewayMessage` (mapped in `server-fn-sanitize.ts`); why: users never see raw upstream errors.
 - Server functions that call a model use the `aiRateLimit` middleware instead of `requireSupabaseAuth`; why: shared per-user AI budget.
 - Routes without their own `errorComponent` fall back to `RouteError` via `defaultErrorComponent` in `src/router.tsx`.
+- Structured calls build the provider with `structuredOutputs: true` for every model; why: without it Gemini ignores the schema and returns unparseable text.
+- Unit tests live in `src/**/__tests__/*.test.ts` and run with `bunx vitest run`.

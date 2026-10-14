@@ -1,8 +1,9 @@
+import { MODELS } from "@/lib/ai/models";
 // Chunker + embedding dimension constant. Client-safe (no server imports).
 // NOTE: knowledge_entries.embedding and knowledge_chunks.embedding are vector(1536).
 // If you change EMBED_MODEL to a different-dim model, you MUST also resize
 // the columns and rebuild the HNSW index.
-export const EMBED_MODEL = "openai/text-embedding-3-small";
+export const EMBED_MODEL = MODELS.embedding;
 export const EMBED_DIM = 1536;
 
 const TARGET_CHARS = 3200; // ~800 tokens

@@ -1,5 +1,6 @@
 // Client-safe server function surface for Lovable AI Gateway (STT, embeddings, images)
 // plus Claude Fable 5 thinking calls. Every call records a Brain provenance edge.
+import { MODELS } from "@/lib/ai/models";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
@@ -54,7 +55,7 @@ export const aiThink = createServerFn({ method: "POST" })
 
 const EmbedInput = z.object({
   input: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
-  model: z.string().default("openai/text-embedding-3-small"),
+  model: z.string().default(MODELS.embedding),
 });
 
 export const aiEmbed = createServerFn({ method: "POST" })
@@ -84,7 +85,7 @@ const TranscribeInput = z.object({
   /** base64-encoded audio bytes */
   audioBase64: z.string().min(1),
   mimeType: z.string().default("audio/webm"),
-  model: z.string().default("openai/gpt-4o-transcribe"),
+  model: z.string().default(MODELS.transcribe),
 });
 
 export const aiTranscribe = createServerFn({ method: "POST" })
@@ -122,7 +123,7 @@ export const aiTranscribe = createServerFn({ method: "POST" })
 
 const ImageInput = z.object({
   prompt: z.string().min(1),
-  model: z.string().default("google/gemini-2.5-flash-image"),
+  model: z.string().default(MODELS.imageQuick),
   provenance: z
     .object({
       srcType: z.string(),
