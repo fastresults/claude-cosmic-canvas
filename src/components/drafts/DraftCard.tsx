@@ -25,7 +25,7 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
           (draft.sections[0] as { body?: string }).body ?? "",
         ).slice(0, 140)
       : "";
-  const openDraft = () => navigate({ to: "/content/drafts/$id", params: { id: draft.id } });
+  const openDraft = () => navigate({ to: "/create/$formatId", params: { formatId: draft.format_id }, search: { draftId: draft.id } });
   return (
     <div className="flex gap-3 rounded-2xl border border-border bg-surface p-3 hover:border-accent/60">
       {cover ? (
@@ -50,8 +50,9 @@ export function DraftCard({ draft }: { draft: DraftListItem }) {
         </button>
       )}
       <Link
-        to="/content/drafts/$id"
-        params={{ id: draft.id }}
+        to="/create/$formatId"
+        params={{ formatId: draft.format_id }}
+        search={{ draftId: draft.id }}
         className="flex min-w-0 flex-1 flex-col gap-1"
       >
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">

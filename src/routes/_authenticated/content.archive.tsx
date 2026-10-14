@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/content/archive")({
   }),
   component: ArchivePage,
   errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-destructive">Couldn't load archive: {error.message}</div>
+    <div className="p-6 text-sm text-destructive">Couldn't load archive: {error instanceof Error ? error.message : String(error)}</div>
   ),
   notFoundComponent: () => <div className="p-6 text-sm text-muted-foreground">Not found.</div>,
 });
