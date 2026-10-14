@@ -277,6 +277,10 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
           program.uniforms.rot.value = currentRot;
           gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
           renderer.render({ scene: mesh });
+          if (!readyFired) {
+            readyFired = true;
+            onReadyRef.current?.();
+          }
           return;
         }
 
