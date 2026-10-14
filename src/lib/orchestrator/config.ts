@@ -21,15 +21,20 @@ export const REASONING_EFFORT: "none" | "low" | "medium" | "high" = "none";
  * GPT-6 (Responses API) requires reasoning (low+) and rejects temperature/
  * top_p; per the upgrade policy its optional output cap is omitted.
  */
-export function modelCallOptions(model: string, maxTokens: number) {
+type ModelCallOptions = {
+  providerOptions?: Record<string, Record<string, unknown>>;
+  maxOutputTokens?: number;
+};
+
+export function modelCallOptions(model: string, maxTokens: number): ModelCallOptions {
   if (/^openai\/gpt-6/.test(model)) {
     return {
       providerOptions: {
         openai: {
           store: false,
           forceReasoning: true,
-          reasoningEffort: "low" as const,
-          reasoningSummary: "auto" as const,
+          reasoningEffort: "low",
+          reasoningSummary: "auto",
           include: ["reasoning.encrypted_content"],
         },
       },
