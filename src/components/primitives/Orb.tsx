@@ -80,13 +80,25 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
       {/* Faint ring fallback — visible until WebGL paints */}
       <span
         aria-hidden
-        className="absolute rounded-full"
+        className="absolute rounded-full [.light_&]:hidden"
         style={{
           inset: s * 0.11,
           border: "2px solid oklch(0.82 0.14 82 / 0.7)",
           boxShadow: "0 0 24px 2px oklch(0.65 0.20 295 / 0.35)",
           opacity: glReady ? 0 : 1,
           transition: "opacity 600ms ease-out",
+        }}
+      />
+
+      {/* Light theme only: soft contact shadow that grounds the orb on paper */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full"
+        style={{
+          width: s * 0.7,
+          height: s * 0.12,
+          bottom: s * 0.02,
+          background: "var(--orb-lift)",
         }}
       />
 

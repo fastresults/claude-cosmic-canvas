@@ -33,6 +33,7 @@ const FRAG = /* glsl */ `
   uniform float hover;
   uniform float rot;
   uniform float hoverIntensity;
+  uniform float uLight; // 0 = dark theme (emissive), 1 = light theme (tinted glass)
   varying vec2 vUv;
 
   vec3 rgb2yiq(vec3 c) {
@@ -107,6 +108,9 @@ const FRAG = /* glsl */ `
   const vec3 baseColor1 = vec3(0.956863, 0.729412, 0.298039);
   const vec3 baseColor2 = vec3(0.705882, 0.490196, 0.956863);
   const vec3 baseColor3 = vec3(0.298039, 0.160784, 0.501961);
+  // Light theme palette: honey amber + deep violet for contrast on cream.
+  const vec3 lightColor1 = vec3(0.85, 0.57, 0.12);
+  const vec3 lightColor2 = vec3(0.49, 0.29, 0.85);
   const float innerRadius = 0.6;
   const float noiseScale = 0.65;
 
@@ -158,7 +162,22 @@ const FRAG = /* glsl */ `
     col = mix(color3, col, v0);
     col = (col + v1) * v2 * v3;
     col = clamp(col * 1.15, 0.0, 1.0);
-    return extractAlpha(col);
+    vec4 darkOut = extractAlpha(col);
+
+    // Light theme: tinted glass on paper. Saturated color with straight
+    // alpha — faint glow fades to transparent, never to grey.
+    vec3 lc1 = adjustHue(lightColor1, hue);
+    vec3 lc2 = adjustHue(lightColor2, hue);
+    vec3 ring = mix(lc1, lc2, cl);
+    float body = v0 * v2 * v3;
+    float spark = clamp(v1 * v2 * v3, 0.0, 1.0);
+    float la = clamp(body * 0.95 + spark * 0.55, 0.0, 1.0);
+    la = la * la * (3.0 - 2.0 * la); // gentler halo, crisp body
+    la *= smoothstep(0.02, 0.08, la); // drop near-zero alpha: no 8-bit banding rings
+    vec3 lrgb = mix(ring, mix(ring, vec3(1.0, 0.93, 0.8), 0.45), spark);
+    vec4 lightOut = vec4(lrgb, la);
+
+    return mix(darkOut, lightOut, uLight);
   }
 
   vec4 mainImage(vec2 fragCoord) {
@@ -184,6 +203,11 @@ const FRAG = /* glsl */ `
  * inside a mount effect so the module is safe to import during SSR.
  * No microphone access here — feed an external `level` instead.
  */
+/** True when the app's light theme class is on <html>. */
+function isLightTheme(): boolean {
+  return document.documentElement.classList.contains("light");
+}
+
 /** Test hook: window.__orbTimeOffset (seconds) jumps the clock forward. */
 function timeOffset(): number {
   return (window as unknown as { __orbTimeOffset?: number }).__orbTimeOffset ?? 0;
@@ -234,6 +258,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
           hover: { value: 0 },
           rot: { value: 0 },
           hoverIntensity: { value: 0 },
+          uLight: { value: isLightTheme() ? 1 : 0 },
         },
       });
       const mesh = new Mesh(gl, { geometry, program });
@@ -251,6 +276,13 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
       };
       window.addEventListener("resize", resize);
       resize();
+
+      // Follow theme switches; uLight eases toward the target (~400ms).
+      let lightTarget = isLightTheme() ? 1 : 0;
+      const themeObserver = new MutationObserver(() => {
+        lightTarget = isLightTheme() ? 1 : 0;
+      });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
       // Pause rendering when scrolled out of view.
       let visible = true;
@@ -279,6 +311,11 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
         // Loop period 600π: whole turns for every angular term and 3 noise loops → seamless.
         program.uniforms.iTime.value = (t * 0.001 + timeOffset()) % (600 * Math.PI);
         program.uniforms.hue.value = hue;
+        {
+          const cur = program.uniforms.uLight.value as number;
+          const k = still ? 1 : 1 - Math.exp(-Math.max(dt, 0) * 10);
+          program.uniforms.uLight.value = cur + (lightTarget - cur) * k;
+        }
 
         if (still) {
           program.uniforms.hover.value = 0;
@@ -321,6 +358,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
       cleanup = () => {
         cancelAnimationFrame(rafId);
         observer.disconnect();
+        themeObserver.disconnect();
         window.removeEventListener("resize", resize);
         try {
           if (container.contains(gl.canvas)) container.removeChild(gl.canvas);
