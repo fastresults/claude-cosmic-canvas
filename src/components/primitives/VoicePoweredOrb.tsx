@@ -82,7 +82,7 @@ const FRAG = /* glsl */ `
     vec3 d1 = d0 - (i1 - K2);
     vec3 d2 = d0 - (i2 - K1);
     vec3 d3 = d0 - 0.5;
-    vec4 h = max(0.6 - vec4(
+    vec4 h = max(0.5 - vec4(
       dot(d0, d0),
       dot(d1, d1),
       dot(d2, d2),
@@ -94,7 +94,7 @@ const FRAG = /* glsl */ `
       dot(d2, hash33(i + i2)),
       dot(d3, hash33(i + 1.0))
     );
-    return dot(vec4(31.316), n);
+    return dot(vec4(64.0), n);
   }
 
   vec4 extractAlpha(vec3 colorIn) {
