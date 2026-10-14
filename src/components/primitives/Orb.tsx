@@ -99,7 +99,6 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
           height: s * 0.12,
           bottom: s * 0.02,
           background: "var(--orb-lift)",
-          filter: `blur(${Math.max(6, s * 0.06)}px)`,
         }}
       />
 
