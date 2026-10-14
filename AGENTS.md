@@ -20,3 +20,5 @@
 - Routes without their own `errorComponent` fall back to `RouteError` via `defaultErrorComponent` in `src/router.tsx`.
 - Structured calls build the provider with `structuredOutputs: true` for every model; why: without it Gemini ignores the schema and returns unparseable text.
 - Unit tests live in `src/**/__tests__/*.test.ts` and run with `bunx vitest run`.
+
+- The Orb (`src/components/primitives/Orb.tsx`) wraps `VoicePoweredOrb.tsx` (ogl WebGL shader); ogl is dynamically imported inside a mount effect, never at module scope; why: SSR must not touch WebGL. The orb never opens its own microphone — feed `level` from `useAudioLevel`; why: the app already owns the mic stream.
