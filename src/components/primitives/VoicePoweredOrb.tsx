@@ -134,7 +134,7 @@ const FRAG = /* glsl */ `
     // Soft halos: wide outside, short inside fading to clean center
     float outer = exp(-max(d, 0.0) * (7.0 - hover * 2.0)) * step(0.0, d);
     float inner = exp(-max(-d, 0.0) * 5.0) * (1.0 - step(0.0, d));
-    float glow = max(outer, inner) * (0.8 + hover * 0.3);
+    float glow = max(outer, inner) * (0.8 + hover * 0.3) * smoothstep(1.0, 0.82, len);
 
     // Color gradient around the ring
     float cl = cos(ang) * 0.5 + 0.5;
