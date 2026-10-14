@@ -1,6 +1,7 @@
 // Onboarding pipeline. Persists persona, voice_profile, domains,
 // seeds brain edges, and marks profiles.onboarded_at.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -12,7 +13,7 @@ const OnboardInput = z.object({
 });
 
 export const finishOnboarding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => OnboardInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;

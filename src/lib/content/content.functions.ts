@@ -3,6 +3,7 @@
 // refinements are separate calls, so a single working draft can be refined
 // in place and only persists when the user explicitly saves.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -82,7 +83,7 @@ function buildSystem(args: {
 
 /** Generate a fresh draft body from a prompt. Does NOT persist. */
 export const contentDraft = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => DraftInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -109,7 +110,7 @@ export const contentDraft = createServerFn({ method: "POST" })
 
 /** Refine an existing working draft in place. Does NOT persist. */
 export const refineDraft = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => RefineInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;

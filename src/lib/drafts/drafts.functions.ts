@@ -4,6 +4,7 @@
  * association via `create_media`. Every mutation writes a Brain edge.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
@@ -489,7 +490,7 @@ export const listImageStyles = createServerFn({ method: "POST" })
 // -------- Image concepts (grounded) --------------------------------------
 
 export const generateImageConcepts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => ImageConceptInput.parse(input))
   .handler(async ({ data, context }) => {
     const fallbackConcepts = (
@@ -647,7 +648,7 @@ export const generateImageConcepts = createServerFn({ method: "POST" })
 // -------- Regenerate / polish (extends injection with DRAFT_HISTORY) -----
 
 export const polishDraft = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) =>
     z.object({ id: z.string().uuid(), instruction: z.string().default("Polish for clarity and voice.") }).parse(input),
   )

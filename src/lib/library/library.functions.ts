@@ -1,6 +1,7 @@
 // Library search + filter + bulk actions.
 // Single endpoint powers keyword FTS, structured filters, sort, and cursor pagination.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -181,7 +182,7 @@ export const listCampaigns = createServerFn({ method: "GET" })
 const NLQ = z.object({ utterance: z.string().min(1) });
 
 export const parseLibraryQuery = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => NLQ.parse(input))
   .handler(async ({ data }) => {
     const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");

@@ -1,5 +1,6 @@
 // Presets — server functions for CRUD, brain sync, seed-based auto-build, and apply.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
@@ -293,7 +294,7 @@ const BuildInputSchema = z.object({
 });
 
 export const buildPresetFromSeed = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => BuildInputSchema.parse(i))
   .handler(async ({ data, context }) => {
     // Pull user's existing domains + audiences to bias suggestions.
