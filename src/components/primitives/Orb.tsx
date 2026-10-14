@@ -100,7 +100,7 @@ export function Orb({ size = 200, idleOnly, onPress, onRelease, level }: OrbProp
           transition: "transform 300ms ease-out",
         }}
       >
-        <VoicePoweredOrb level={level} still={reduced} />
+        <VoicePoweredOrb level={level} still={reduced ?? false} />
       </span>
     </button>
   );
