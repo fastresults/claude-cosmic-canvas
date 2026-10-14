@@ -5,7 +5,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateText } from "ai";
 
 const OrchestrateWithToolsInput = z.object({
   prompt: z.string().min(1),
@@ -55,19 +54,19 @@ export const orchestrateWithTools = createServerFn({ method: "POST" })
 
       const { createOrchestratorProvider } = await import("./gateway.server");
       const { buildOrchestratorTools } = await import("./tools");
-      const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, REASONING_EFFORT } = await import("./config");
+      const { ORCHESTRATOR_MODEL, MAX_TOKENS, TOOL_STEP_LIMIT, modelCallOptions } = await import("./config");
 
       const gateway = createOrchestratorProvider();
       const tools = buildOrchestratorTools({ supabase, userId });
 
-      const result = await generateText({
+      const { runStreamed } = await import("@/lib/ai/stream.server");
+    const result = await runStreamed({
         model: gateway(ORCHESTRATOR_MODEL),
         system,
         prompt: data.prompt,
         tools,
         stopWhen: TOOL_STEP_LIMIT,
-        maxOutputTokens: MAX_TOKENS,
-        providerOptions: { lovable: { reasoningEffort: REASONING_EFFORT } },
+        ...modelCallOptions(ORCHESTRATOR_MODEL, MAX_TOKENS),
       });
 
       const toolCalls: Array<{ tool: string; input: string }> = (result.steps ?? []).flatMap((s) =>

@@ -1,6 +1,7 @@
 // Audience — the fourth pillar alongside Voice, Knowledge, and Domain.
 // A robust ICP entity. CRUD + defaults + AI suggester.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
@@ -306,6 +307,7 @@ Return concrete titles, industries, and pains. No filler, no generic phrasing.`;
       system,
       prompt,
       output: Output.object({ schema: OutSchema }),
+      maxOutputTokens: 4096,
     });
     raw = (output ?? {}) as Record<string, unknown>;
   } catch (err) {
@@ -366,7 +368,7 @@ Return concrete titles, industries, and pains. No filler, no generic phrasing.`;
 }
 
 export const suggestAudienceFromContext = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => SuggestInput.parse(i))
   .handler(async ({ data, context }) => {
     const first = await runSuggestion({ supabase: context.supabase, userId: context.userId, data });
@@ -394,7 +396,7 @@ export const suggestAudienceFromContext = createServerFn({ method: "POST" })
 
 // One-click: generate + save + set default.
 export const generateDefaultAudience = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .handler(async ({ context }) => {
     const suggested = await suggestAudienceFromContext({ data: {} });
     const { data: existingDefault } = await context.supabase

@@ -46,4 +46,6 @@ export const RATE_LIMITS = {
   research_company: { endpoint: "research.company", limit: 6, windowSeconds: 60 },
   image_generate: { endpoint: "image.generate", limit: 20, windowSeconds: 60 },
   orchestrator: { endpoint: "orchestrator.run", limit: 30, windowSeconds: 60 },
+  /** Shared budget for single-shot AI actions (voice, drafts, presets, library, onboarding, audiences, content). */
+  ai_generate: { endpoint: "ai.generate", limit: 40, windowSeconds: 60 },
 } satisfies Record<string, RateLimitConfig>;

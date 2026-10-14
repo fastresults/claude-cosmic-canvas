@@ -1,6 +1,7 @@
 // Onboarding pipeline. Persists persona, voice_profile, domains,
 // seeds brain edges, and marks profiles.onboarded_at.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -12,11 +13,10 @@ const OnboardInput = z.object({
 });
 
 export const finishOnboarding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => OnboardInput.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
     const { ORCHESTRATOR_MODEL, MAX_TOKENS } = await import("@/lib/orchestrator/config");
     const { writeEdgesServer } = await import("@/lib/ai/provenance.server");
 
@@ -29,30 +29,31 @@ export const finishOnboarding = createServerFn({ method: "POST" })
     if (personaErr || !persona) throw new Error(personaErr?.message ?? "persona failed");
 
     // 2. Ask Claude to distill a voice profile from samples.
-    const distill = await callAnthropic({
+    const { generateStructuredJson } = await import("@/lib/ai/structured.server");
+    const { z: zod } = await import("zod");
+    const VoiceSchema = zod.object({
+      signals: zod.object({
+        tone: zod.string(),
+        cadence: zod.string(),
+        vocabulary: zod.string(),
+        signature_moves: zod.array(zod.string()),
+      }),
+      directives: zod.object({ do: zod.array(zod.string()), dont: zod.array(zod.string()) }),
+    });
+    const distilled = await generateStructuredJson({
       model: ORCHESTRATOR_MODEL,
       maxTokens: MAX_TOKENS,
-      system:
-        "You extract a writing-voice fingerprint from short samples. " +
-        "Respond ONLY with compact JSON of the shape " +
-        '{"signals":{"tone":string,"cadence":string,"vocabulary":string,"signature_moves":string[]},' +
-        '"directives":{"do":string[],"dont":string[]}}. ' +
-        "Do not include any prose outside the JSON.",
+      schema: VoiceSchema,
+      system: "You extract a writing-voice fingerprint (tone, cadence, vocabulary, signature moves, do/don't directives) from short samples.",
       prompt:
         `Samples from ${data.personaName}:\n\n` +
         data.toneSamples.map((s, i) => `${i + 1}. ${s}`).join("\n\n") +
         (data.goals ? `\n\nStated goals: ${data.goals}` : ""),
     });
 
-    let signals: unknown = {};
-    let directives: unknown = { do: [], dont: [] };
-    try {
-      const parsed = JSON.parse(distill.text.trim().replace(/^```(?:json)?|```$/g, ""));
-      signals = parsed.signals ?? signals;
-      directives = parsed.directives ?? directives;
-    } catch {
-      // fallback stays as empty; UI can surface a "refine" nudge later
-    }
+    // Fallback stays empty when the model output can't be parsed; UI can nudge a refine later.
+    const signals: unknown = distilled?.signals ?? {};
+    const directives: unknown = distilled?.directives ?? { do: [], dont: [] };
 
     // 3. Voice profile
     const { data: voice, error: voiceErr } = await supabase

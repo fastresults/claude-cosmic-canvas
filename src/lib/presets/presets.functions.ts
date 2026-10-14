@@ -1,5 +1,6 @@
 // Presets — server functions for CRUD, brain sync, seed-based auto-build, and apply.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
@@ -293,7 +294,7 @@ const BuildInputSchema = z.object({
 });
 
 export const buildPresetFromSeed = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => BuildInputSchema.parse(i))
   .handler(async ({ data, context }) => {
     // Pull user's existing domains + audiences to bias suggestions.
@@ -309,6 +310,7 @@ export const buildPresetFromSeed = createServerFn({ method: "POST" })
       "@/lib/ai/gateway.server"
     );
     const { generateText, Output } = await import("ai");
+    const { modelCallOptions } = await import("@/lib/orchestrator/config");
 
     const provider = createLovableAiGatewayProvider(getGatewayKey(), undefined, {
       structuredOutputs: true,
@@ -355,6 +357,7 @@ export const buildPresetFromSeed = createServerFn({ method: "POST" })
       system,
       prompt: userPrompt,
       output: Output.object({ schema }),
+      ...modelCallOptions("openai/gpt-5.5", 4096),
     });
 
     return output;

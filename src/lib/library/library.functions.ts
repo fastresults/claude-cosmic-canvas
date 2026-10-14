@@ -1,6 +1,7 @@
 // Library search + filter + bulk actions.
 // Single endpoint powers keyword FTS, structured filters, sort, and cursor pagination.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -181,49 +182,37 @@ export const listCampaigns = createServerFn({ method: "GET" })
 const NLQ = z.object({ utterance: z.string().min(1) });
 
 export const parseLibraryQuery = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((input: unknown) => NLQ.parse(input))
   .handler(async ({ data }) => {
-    const { callAnthropic } = await import("@/lib/orchestrator/anthropic.server");
+    const { generateStructuredJson } = await import("@/lib/ai/structured.server");
     const { ORCHESTRATOR_MODEL } = await import("@/lib/orchestrator/config");
 
     const system = [
-      "You translate a user's natural-language library search into JSON.",
+      "You translate a user's natural-language library search into structured filters.",
       "Allowed formats: post, thread, essay, reply, tweet, email, other.",
       "Allowed statuses: draft, scheduled, posted, archived.",
-      "Return STRICT JSON only, no prose, matching this shape:",
-      `{"q": string|null, "filters": {"formats": string[]|null, "statuses": string[]|null, "dateFrom": string|null, "dateTo": string|null}}`,
       "dateFrom/dateTo are ISO-8601 timestamps if the user mentioned a time window; otherwise null.",
       "Put remaining topical keywords into q. If nothing structured, put the whole utterance in q.",
       `Today is ${new Date().toISOString()}.`,
     ].join("\n");
 
-    const result = await callAnthropic({
+    const QuerySchema = z.object({
+      q: z.string().nullable(),
+      filters: z.object({
+        formats: z.array(z.string()).nullable(),
+        statuses: z.array(z.string()).nullable(),
+        dateFrom: z.string().nullable(),
+        dateTo: z.string().nullable(),
+      }),
+    });
+    const parsed = await generateStructuredJson({
       model: ORCHESTRATOR_MODEL,
       maxTokens: 400,
       prompt: data.utterance,
       system,
+      schema: QuerySchema,
     });
-
-    let parsed: {
-      q: string | null;
-      filters: {
-        formats: string[] | null;
-        statuses: string[] | null;
-        dateFrom: string | null;
-        dateTo: string | null;
-      };
-    } | null = null;
-    try {
-      const cleaned = result.text
-        .trim()
-        .replace(/^```(?:json)?/i, "")
-        .replace(/```$/, "")
-        .trim();
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = null;
-    }
 
     if (!parsed) {
       return {

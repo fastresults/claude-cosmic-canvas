@@ -23,6 +23,7 @@ export async function writeEdgeServer(
     meta: (input.meta ?? {}) as Json,
   });
   if (error) console.error("[brain.server] writeEdge failed", error);
+  return { ok: !error };
 }
 
 export async function writeEdgesServer(
@@ -30,7 +31,7 @@ export async function writeEdgesServer(
   userId: string,
   inputs: ServerEdgeInput[],
 ) {
-  if (inputs.length === 0) return;
+  if (inputs.length === 0) return { ok: true };
   const { error } = await supabase.from("brain_edges").insert(
     inputs.map((i) => ({
       user_id: userId,
@@ -43,6 +44,7 @@ export async function writeEdgesServer(
     })),
   );
   if (error) console.error("[brain.server] writeEdges failed", error);
+  return { ok: !error };
 }
 
 /** Record an AI generation event: prompt → output, tagged with model + usage. */

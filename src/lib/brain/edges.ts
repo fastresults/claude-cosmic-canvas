@@ -5,6 +5,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { toast } from "sonner";
 
 export type NodeType =
   | "you"
@@ -64,11 +65,19 @@ function toRow(i: WriteEdgeInput) {
 
 export async function writeEdge(input: WriteEdgeInput) {
   const { error } = await supabase.from("brain_edges").insert(toRow(input));
-  if (error) console.error("[brain] writeEdge failed", error);
+  if (error) {
+    console.error("[brain] writeEdge failed", error);
+    toast.warning("Couldn't save the link to your Brain. Your content is safe.");
+  }
+  return { ok: !error };
 }
 
 export async function writeEdges(inputs: WriteEdgeInput[]) {
-  if (inputs.length === 0) return;
+  if (inputs.length === 0) return { ok: true };
   const { error } = await supabase.from("brain_edges").insert(inputs.map(toRow));
-  if (error) console.error("[brain] writeEdges failed", error);
+  if (error) {
+    console.error("[brain] writeEdges failed", error);
+    toast.warning("Couldn't save links to your Brain. Your content is safe.");
+  }
+  return { ok: !error };
 }

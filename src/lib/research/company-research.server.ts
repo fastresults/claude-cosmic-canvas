@@ -414,6 +414,8 @@ export type RunCompanyResearchResult = {
   urlsSelected: string[];
   processingTimeMs: number;
   externalIntelUsed: boolean;
+  /** Human-readable names of sources that returned nothing. */
+  missingSources: string[];
 };
 
 export async function runCompanyResearchCore(
@@ -468,6 +470,10 @@ export async function runCompanyResearchCore(
     urlsSelected: scrape.selectedUrls,
     processingTimeMs: Date.now() - start,
     externalIntelUsed: externalIntel.length > 0,
+    missingSources: [
+      ...(totalChars < 50 ? ["the company website"] : []),
+      ...(externalIntel.length < 50 ? ["external web research"] : []),
+    ],
   };
 }
 

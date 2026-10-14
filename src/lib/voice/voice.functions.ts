@@ -1,6 +1,7 @@
 // Voice system server functions. All AI generation surfaces in this app
 // resolve through resolveActiveVoice + formatStyleContext.
 import { createServerFn } from "@tanstack/react-start";
+import { aiRateLimit } from "@/lib/rate-limit/ai-rate-limit";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import type { Json } from "@/integrations/supabase/types";
@@ -602,6 +603,7 @@ async function generateStructured<T extends z.ZodTypeAny>(args: {
     "@/lib/ai/gateway.server"
   );
   const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+  const { modelCallOptions } = await import("@/lib/orchestrator/config");
   try {
     const provider = createLovableAiGatewayProvider(getGatewayKey(), undefined, {
       structuredOutputs: args.model.startsWith("openai/"),
@@ -611,6 +613,7 @@ async function generateStructured<T extends z.ZodTypeAny>(args: {
       system: args.system,
       prompt: args.prompt,
       output: Output.object({ schema: args.schema }),
+      ...modelCallOptions(args.model, 4096),
     });
     return output as z.infer<T>;
   } catch (e) {
@@ -628,7 +631,7 @@ async function generateStructured<T extends z.ZodTypeAny>(args: {
 }
 
 export const analyzeOwnVoice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) =>
     z
       .object({ samples: z.array(z.string().min(20).max(4000)).min(1).max(10) })
@@ -653,7 +656,7 @@ export const analyzeOwnVoice = createServerFn({ method: "POST" })
   });
 
 export const researchVoiceProfile = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) =>
     z
       .object({
@@ -686,7 +689,7 @@ export const researchVoiceProfile = createServerFn({ method: "POST" })
   });
 
 export const enrichVoiceProfile = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => z.object({ partial: AiProfile.partial() }).parse(i))
   .handler(async ({ data }) => {
     const out = await generateStructured({
@@ -699,7 +702,7 @@ export const enrichVoiceProfile = createServerFn({ method: "POST" })
   });
 
 export const generateVoiceSamples = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => z.object({ voiceProfileId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { data: profile } = await context.supabase
@@ -730,7 +733,7 @@ export const generateVoiceSamples = createServerFn({ method: "POST" })
   });
 
 export const validateVoice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) =>
     z
       .object({ text: z.string().min(1).max(20000), voiceProfileId: z.string().uuid() })
@@ -771,7 +774,7 @@ export const validateVoice = createServerFn({ method: "POST" })
   });
 
 export const distillVoiceDirectives = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([aiRateLimit])
   .inputValidator((i: unknown) => z.object({ voiceProfileId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const { data: signals } = await context.supabase

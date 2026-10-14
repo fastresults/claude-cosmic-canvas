@@ -44,6 +44,7 @@ Write a ~600-900 word brief following the required structure. Use only well-know
       model: gateway("google/gemini-3-flash-preview"),
       system,
       prompt,
+      maxOutputTokens: 4096,
     });
 
     if (!text || text.trim().length < 50) {
