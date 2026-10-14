@@ -145,7 +145,7 @@ const FRAG = /* glsl */ `
     vec3 col = mix(color1, color2, cl);
     col = mix(color3, col, v0);
     col = (col + v1) * v2 * v3;
-    col = clamp(col, 0.0, 1.0);
+    col = clamp(col * 1.25, 0.0, 1.0);
 
     return extractAlpha(col);
   }
