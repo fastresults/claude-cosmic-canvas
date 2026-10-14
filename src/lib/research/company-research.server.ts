@@ -1,3 +1,4 @@
+import { MODELS } from "@/lib/ai/models";
 // Server-only pipeline for McKinsey-grade Company Research.
 // Ported from the Thought Leader Studio `research-company-profile` edge fn.
 //
@@ -361,7 +362,7 @@ Be EXHAUSTIVE. This is a high-stakes executive briefing. Return ONLY the JSON.`;
       "X-Lovable-AIG-SDK": "vercel-ai-sdk",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-pro",
+      model: MODELS.dossier,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
