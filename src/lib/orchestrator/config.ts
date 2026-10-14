@@ -27,5 +27,9 @@ export function modelCallOptions(model: string, maxTokens: number) {
       },
     };
   }
+  // Other GPT-5 family models also take max_completion_tokens, not max_tokens.
+  if (/^openai\/gpt-5/.test(model)) {
+    return { providerOptions: { lovable: { max_completion_tokens: maxTokens } } };
+  }
   return { maxOutputTokens: maxTokens };
 }

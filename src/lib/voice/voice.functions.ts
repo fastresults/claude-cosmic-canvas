@@ -603,6 +603,7 @@ async function generateStructured<T extends z.ZodTypeAny>(args: {
     "@/lib/ai/gateway.server"
   );
   const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+  const { modelCallOptions } = await import("@/lib/orchestrator/config");
   try {
     const provider = createLovableAiGatewayProvider(getGatewayKey(), undefined, {
       structuredOutputs: args.model.startsWith("openai/"),
@@ -612,6 +613,7 @@ async function generateStructured<T extends z.ZodTypeAny>(args: {
       system: args.system,
       prompt: args.prompt,
       output: Output.object({ schema: args.schema }),
+      ...modelCallOptions(args.model, 4096),
     });
     return output as z.infer<T>;
   } catch (e) {

@@ -310,6 +310,7 @@ export const buildPresetFromSeed = createServerFn({ method: "POST" })
       "@/lib/ai/gateway.server"
     );
     const { generateText, Output } = await import("ai");
+    const { modelCallOptions } = await import("@/lib/orchestrator/config");
 
     const provider = createLovableAiGatewayProvider(getGatewayKey(), undefined, {
       structuredOutputs: true,
@@ -356,6 +357,7 @@ export const buildPresetFromSeed = createServerFn({ method: "POST" })
       system,
       prompt: userPrompt,
       output: Output.object({ schema }),
+      ...modelCallOptions("openai/gpt-5.5", 4096),
     });
 
     return output;

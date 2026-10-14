@@ -307,6 +307,7 @@ Return concrete titles, industries, and pains. No filler, no generic phrasing.`;
       system,
       prompt,
       output: Output.object({ schema: OutSchema }),
+      maxOutputTokens: 4096,
     });
     raw = (output ?? {}) as Record<string, unknown>;
   } catch (err) {
