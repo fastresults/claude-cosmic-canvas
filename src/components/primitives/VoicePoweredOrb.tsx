@@ -250,6 +250,7 @@ export function VoicePoweredOrb({ className, level, hue = 0, still = false, onRe
       observer.observe(container);
 
       let rafId = 0;
+      let readyFired = false;
       let lastTime = 0;
       let currentRot = 0;
       let smoothed = 0;
