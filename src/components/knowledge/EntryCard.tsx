@@ -1,3 +1,4 @@
+import { toPlainPreview } from "@/lib/text/plain-preview";
 import { motion, type PanInfo } from "framer-motion";
 import { useState } from "react";
 import { Pin, Archive, FileText, Link as LinkIcon, Mic, Upload, Linkedin, ClipboardType } from "lucide-react";
@@ -79,7 +80,7 @@ export function EntryCard({ entry, onTap, onPin, onArchive }: Props) {
             )}
           </div>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {entry.content?.slice(0, 180) ?? ""}
+            {toPlainPreview(entry.content, 180)}
           </p>
         </div>
       </motion.button>
