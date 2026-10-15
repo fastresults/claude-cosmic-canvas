@@ -454,6 +454,7 @@ const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
 function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
   const listSysFn = useServerFn(listSystemVoices);
   const adoptFn = useServerFn(adoptSystemVoice);
+  const qc = useQueryClient();
   const { data: sys = [] } = useQuery({
     queryKey: ["system-voices"],
     queryFn: () => listSysFn({ data: {} }),
