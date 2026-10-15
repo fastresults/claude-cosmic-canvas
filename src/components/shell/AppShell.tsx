@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { TopBar } from "./TopBar";
 import { BottomNav } from "./BottomNav";
+import { DesktopSidebar } from "./DesktopSidebar";
 import { DefaultsStrip } from "@/components/settings/DefaultsStrip";
 import { SetupJourneyStrip } from "@/components/onboarding/SetupJourneyStrip";
 import { ComposerBar } from "./ComposerBar";
@@ -29,9 +30,12 @@ function ShellChrome({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <TopBar />
+      {!onOnboarding && <DesktopSidebar gated={setupIncomplete} />}
       <main
-        className={`flex-1 pt-14 ${
-          hideChrome ? "pb-[env(safe-area-inset-bottom)]" : "pb-[calc(9rem+env(safe-area-inset-bottom))]"
+        className={`flex-1 pt-14 ${onOnboarding ? "" : "lg:pl-60"} ${
+          hideChrome
+            ? "pb-[env(safe-area-inset-bottom)]"
+            : "pb-[calc(9rem+env(safe-area-inset-bottom))] lg:pb-32"
         }`}
       >
         <SetupJourneyStrip />

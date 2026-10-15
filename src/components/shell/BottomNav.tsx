@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Home, BookOpen, Zap, Send, Brain, Settings as SettingsIcon, Lock } from "lucide-react";
 import { useUserDefaults, type DefaultSlot } from "@/hooks/useUserDefaults";
 
-const TABS = [
+export const TABS = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/", requiresSetup: false },
   { to: "/library", label: "Library", icon: BookOpen, match: (p: string) => p.startsWith("/library"), requiresSetup: true },
   { to: "/arcs", label: "Arcs", icon: Zap, match: (p: string) => p.startsWith("/arcs"), requiresSetup: true },
@@ -12,13 +12,9 @@ const TABS = [
   { to: "/settings", label: "Settings", icon: SettingsIcon, match: (p: string) => p.startsWith("/settings"), requiresSetup: false },
 ] as const;
 
-export function BottomNav({ gated = false }: { gated?: boolean }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const path = location.pathname;
+export function useFirstMissingRoute() {
   const defaults = useUserDefaults();
-
-  function firstMissingRoute(): string {
+  return (): string => {
     const order: { slot: DefaultSlot; to: string }[] = [
       { slot: "voice", to: "/settings/voice" },
       { slot: "knowledge", to: "/settings/knowledge" },
@@ -32,11 +28,18 @@ export function BottomNav({ gated = false }: { gated?: boolean }) {
       audience: !!defaults.audience,
     };
     return order.find((o) => !present[o.slot])?.to ?? "/settings/voice";
-  }
+  };
+}
+
+export function BottomNav({ gated = false }: { gated?: boolean }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const path = location.pathname;
+  const firstMissingRoute = useFirstMissingRoute();
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border frosted"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border frosted lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto flex max-w-3xl items-stretch justify-around">
