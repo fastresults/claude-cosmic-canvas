@@ -18,16 +18,22 @@ export function StreamCanvas({ sections, busy }: Props) {
   }
   if (sections.length === 0) return null;
   return (
-    <article className="space-y-4">
+    <article className="space-y-6">
       {sections.map((s, i) => (
-        <section key={i} className="rounded-2xl border border-border bg-surface p-4">
-          {s.heading && <h2 className="font-display text-lg text-foreground">{s.heading}</h2>}
-          <div className="mt-2">
-            <Markdown>{s.body}</Markdown>
-          </div>
+        <section key={i} className="rounded-2xl border border-border bg-surface px-6 py-6 sm:px-8">
+          {s.heading && (
+            <header className="mb-4">
+              <div className="mb-2 h-0.5 w-8 rounded-full bg-accent" aria-hidden />
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+                {s.heading}
+              </h2>
+            </header>
+          )}
+          <Markdown className="[&>p:first-of-type]:text-base [&>p:first-of-type]:leading-[1.8]">
+            {s.body}
+          </Markdown>
         </section>
       ))}
     </article>
   );
 }
-
