@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ArrowLeft, RotateCcw, Save, Archive, Sparkles, Loader2 } from "lucide-react";
 import { getFormat, FORMAT_ALIAS_CHANNEL } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
@@ -224,10 +225,34 @@ function FormatPage() {
       if ("fallback" in res && res.fallback) {
         setError(res.message);
       } else if (res.pendingTitle) {
-        // Draft NOT saved yet — user must name it before we persist.
+        // Auto-save immediately so generated content is never lost; the
+        // naming gate below only renames the already-saved draft.
         setSections(res.sections);
-        setTitle(null);
-        setPendingTitleInput(res.suggestedTitle ?? "");
+        const autoTitle = res.suggestedTitle ?? seed.trim().slice(0, 60);
+        setPendingTitleInput(autoTitle);
+        try {
+          const ctx2 = readWorkspaceContext();
+          const saved = await saveFn({
+            data: {
+              draftId: currentDraftId ?? undefined,
+              formatId,
+              title: autoTitle,
+              sections: res.sections as unknown as unknown[],
+              briefSnapshot: requiresChannel && channels.length > 0 ? { channels } : null,
+              status: "draft",
+              workspaceId: ctx2.workspace_id ?? wsId ?? null,
+              workspaceItemId: ctx2.workspace_item_id ?? wsItemId ?? null,
+            },
+          });
+          if (saved?.id) setCurrentDraftId(saved.id);
+          setTitle(autoTitle);
+          qc.invalidateQueries({ queryKey: ["create-drafts"] });
+          qc.invalidateQueries({ queryKey: ["workspace", ctx2.workspace_id] });
+        } catch (e) {
+          toast.error("Couldn't save your draft — name it below to retry", {
+            description: e instanceof Error ? e.message : undefined,
+          });
+        }
         setTitlePending(true);
       } else {
         setSections(res.sections);
@@ -376,7 +401,7 @@ function FormatPage() {
         <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
           <div className="text-xs uppercase tracking-wide text-primary">Name this draft</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Give your draft a title so it's easy to find later. It won't save until you name it.
+            Your draft is already saved. Give it a name you'll recognize later.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <input
@@ -416,7 +441,17 @@ function FormatPage() {
           <div className="mt-3 flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => { setTitlePending(false); setSections([]); }}
+              onClick={async () => {
+                // Draft was auto-saved — discarding archives it so it isn't lost.
+                if (currentDraftId) {
+                  try {
+                    await archiveFn({ data: { id: currentDraftId, archived: true } });
+                    qc.invalidateQueries({ queryKey: ["create-drafts"] });
+                  } catch { /* best effort */ }
+                }
+                setTitlePending(false);
+                setSections([]);
+              }}
               className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-foreground"
             >
               Discard
