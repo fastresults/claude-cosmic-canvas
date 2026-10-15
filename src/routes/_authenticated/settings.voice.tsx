@@ -339,6 +339,7 @@ function NewVoiceSheet({
       onClose();
       navigate({ to: "/settings/voice/$id", params: { id: row.id } });
     },
+    onError: () => toast.error("Couldn't switch to that voice. Please try again."),
   });
   const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
 
@@ -462,7 +463,12 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
   const [cat, setCat] = useState<string>("all");
   const adopt = useMutation({
     mutationFn: (id: string) => adoptFn({ data: { id } }),
-    onSuccess: (row) => onAdopted(row.id),
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
+      onAdopted(row.id);
+    },
+    onError: () => toast.error("Couldn't switch to that voice. Please try again."),
   });
   const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
 
