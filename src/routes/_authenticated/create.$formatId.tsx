@@ -224,10 +224,34 @@ function FormatPage() {
       if ("fallback" in res && res.fallback) {
         setError(res.message);
       } else if (res.pendingTitle) {
-        // Draft NOT saved yet — user must name it before we persist.
+        // Auto-save immediately so generated content is never lost; the
+        // naming gate below only renames the already-saved draft.
         setSections(res.sections);
-        setTitle(null);
-        setPendingTitleInput(res.suggestedTitle ?? "");
+        const autoTitle = res.suggestedTitle ?? seed.trim().slice(0, 60);
+        setPendingTitleInput(autoTitle);
+        try {
+          const ctx2 = readWorkspaceContext();
+          const saved = await saveFn({
+            data: {
+              draftId: currentDraftId ?? undefined,
+              formatId,
+              title: autoTitle,
+              sections: res.sections as unknown as unknown[],
+              briefSnapshot: requiresChannel && channels.length > 0 ? { channels } : null,
+              status: "draft",
+              workspaceId: ctx2.workspace_id ?? wsId ?? null,
+              workspaceItemId: ctx2.workspace_item_id ?? wsItemId ?? null,
+            },
+          });
+          if (saved?.id) setCurrentDraftId(saved.id);
+          setTitle(autoTitle);
+          qc.invalidateQueries({ queryKey: ["create-drafts"] });
+          qc.invalidateQueries({ queryKey: ["workspace", ctx2.workspace_id] });
+        } catch (e) {
+          toast.error("Couldn't save your draft — name it below to retry", {
+            description: e instanceof Error ? e.message : undefined,
+          });
+        }
         setTitlePending(true);
       } else {
         setSections(res.sections);

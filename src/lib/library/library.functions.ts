@@ -53,7 +53,8 @@ export const searchDrafts = createServerFn({ method: "POST" })
       .select(
         "id, format_id, title, sections, quality_score, status, created_at, campaign_id, workspace_id",
       )
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .eq("archived", false);
 
     // Partition: General = no milestone; Milestone = attached to a workspace.
     if (data.scope === "general") {
