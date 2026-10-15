@@ -108,9 +108,9 @@ const FRAG = /* glsl */ `
   const vec3 baseColor1 = vec3(0.956863, 0.729412, 0.298039);
   const vec3 baseColor2 = vec3(0.705882, 0.490196, 0.956863);
   const vec3 baseColor3 = vec3(0.298039, 0.160784, 0.501961);
-  // Light theme palette: honey amber + deep violet for contrast on cream.
-  const vec3 lightColor1 = vec3(0.85, 0.57, 0.12);
-  const vec3 lightColor2 = vec3(0.49, 0.29, 0.85);
+  // Light theme palette: burnt bronze + deep violet — dark enough to read on cream.
+  const vec3 lightColor1 = vec3(0.66, 0.30, 0.03);
+  const vec3 lightColor2 = vec3(0.40, 0.20, 0.78);
   const float innerRadius = 0.6;
   const float noiseScale = 0.65;
 
@@ -168,13 +168,15 @@ const FRAG = /* glsl */ `
     // alpha — faint glow fades to transparent, never to grey.
     vec3 lc1 = adjustHue(lightColor1, hue);
     vec3 lc2 = adjustHue(lightColor2, hue);
-    vec3 ring = mix(lc1, lc2, cl);
+    // Bias the sweep toward violet so no long stretch is pale amber on cream.
+    vec3 ring = mix(lc1, lc2, 0.25 + 0.75 * cl);
     float body = v0 * v2 * v3;
     float spark = clamp(v1 * v2 * v3, 0.0, 1.0);
     float la = clamp(body * 0.95 + spark * 0.55, 0.0, 1.0);
     la = la * la * (3.0 - 2.0 * la); // gentler halo, crisp body
     la *= smoothstep(0.02, 0.08, la); // drop near-zero alpha: no 8-bit banding rings
-    vec3 lrgb = mix(ring, mix(ring, vec3(1.0, 0.93, 0.8), 0.45), spark);
+    la = max(la, body * 0.55); // core line never drops below readable contrast
+    vec3 lrgb = mix(ring, mix(ring, vec3(0.55, 0.38, 0.95), 0.5), spark);
     vec4 lightOut = vec4(lrgb, la);
 
     return mix(darkOut, lightOut, uLight);
