@@ -8,7 +8,7 @@ import askEveLogoDark from "@/assets/askeve-logo-dark.png.asset.json";
 export function TopBar() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border frosted">
-      <div className="mx-auto flex h-full max-w-3xl items-center justify-between px-4">
+      <div className="mx-auto flex h-full max-w-3xl items-center justify-between px-4 lg:max-w-none lg:px-6">
         <Link to="/" className="flex items-center" aria-label="AskEve home">
           <img src={askEveLogo.url} alt="AskEve" className="block h-8 w-auto dark:hidden" />
           <img src={askEveLogoDark.url} alt="AskEve" className="hidden h-8 w-auto dark:block" />

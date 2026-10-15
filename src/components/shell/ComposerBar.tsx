@@ -228,10 +228,9 @@ export function ComposerBar({ onGenerate, busy: externalBusy = false }: Composer
   return (
     <form
       onSubmit={submit}
-      className="fixed inset-x-0 z-30 border-t border-border frosted"
-      style={{ bottom: "calc(3.75rem + env(safe-area-inset-bottom))" }}
+      className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 border-t border-border frosted lg:bottom-0 lg:left-60"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-1 px-3 py-2">
+      <div className="mx-auto flex max-w-3xl flex-col gap-1 px-3 py-2 lg:py-3">
         <div className="flex items-center gap-2">
 
           <input
