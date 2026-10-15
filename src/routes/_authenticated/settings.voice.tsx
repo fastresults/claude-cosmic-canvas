@@ -339,6 +339,7 @@ function NewVoiceSheet({
       onClose();
       navigate({ to: "/settings/voice/$id", params: { id: row.id } });
     },
+    onError: () => toast.error("Couldn't switch to that voice. Please try again."),
   });
   const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
 
@@ -453,6 +454,7 @@ const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
 function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
   const listSysFn = useServerFn(listSystemVoices);
   const adoptFn = useServerFn(adoptSystemVoice);
+  const qc = useQueryClient();
   const { data: sys = [] } = useQuery({
     queryKey: ["system-voices"],
     queryFn: () => listSysFn({ data: {} }),
@@ -462,7 +464,12 @@ function PersonaLibrary({ onAdopted }: { onAdopted: (id: string) => void }) {
   const [cat, setCat] = useState<string>("all");
   const adopt = useMutation({
     mutationFn: (id: string) => adoptFn({ data: { id } }),
-    onSuccess: (row) => onAdopted(row.id),
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: ["voice-profiles"] });
+      qc.invalidateQueries({ queryKey: ["voice-active"] });
+      onAdopted(row.id);
+    },
+    onError: () => toast.error("Couldn't switch to that voice. Please try again."),
   });
   const busyId = adopt.isPending ? (adopt.variables as string | undefined) : undefined;
 
