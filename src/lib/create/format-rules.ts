@@ -17,11 +17,13 @@ export function formatRules(f: CreateFormat, opts?: { channels?: string[] }): st
   const base = f.defaultLength > 0 ? `Target length: ~${f.defaultLength} words.` : "";
   const structure = STRUCTURES[f.id] ?? DEFAULT_STRUCTURES[f.category] ?? "Well-structured paragraphs with clear headers where useful.";
   const tone = TONE[f.category] ?? "Confident, concrete, no filler.";
+  const markdown = MARKDOWN_DIRECTIVE[f.category] ?? "";
   return [
     `Format: ${f.label} — ${f.description}`,
     base,
     `Structure: ${structure}`,
     `Tone: ${tone}`,
+    markdown,
     `Output ONLY the final ${f.label}. No preamble, no meta commentary.`,
   ]
     .filter(Boolean)
@@ -55,6 +57,19 @@ const DEFAULT_STRUCTURES: Partial<Record<CreateFormat["category"], string>> = {
   campaign: "Sections: objective, audience, tactics, KPIs.",
   research: "Sections: summary, findings, sources.",
   media: "N/A",
+};
+
+// Formatting directive per category. Long-form pieces must arrive as real
+// Markdown so the reader renders editorial hierarchy, not a wall of text.
+const MARKDOWN_DIRECTIVE: Partial<Record<CreateFormat["category"], string>> = {
+  "long-form":
+    "Formatting: rich Markdown. Use ## for major sections and ### for sub-sections, numbered or bulleted lists wherever content enumerates, **bold** for key terms, and exactly one > pull quote per major section quoting its single most striking sentence.",
+  research:
+    "Formatting: rich Markdown. Use ## for major sections and ### for sub-sections, bulleted lists for findings, **bold** for key terms, and > blockquotes for notable sourced statements.",
+  campaign:
+    "Formatting: rich Markdown. Use ## for sections, bulleted lists for tactics and checklists, and **bold** for KPIs and key terms.",
+  speaking:
+    "Formatting: Markdown. Use ## for sections and bulleted lists for beats or questions.",
 };
 
 const TONE: Partial<Record<CreateFormat["category"], string>> = {
