@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ArrowLeft, RotateCcw, Save, Archive, Sparkles, Loader2 } from "lucide-react";
 import { getFormat, FORMAT_ALIAS_CHANNEL } from "@/config/createFormats";
 import { SeedInput } from "@/components/create/shared/SeedInput";
@@ -400,7 +401,7 @@ function FormatPage() {
         <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4">
           <div className="text-xs uppercase tracking-wide text-primary">Name this draft</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Give your draft a title so it's easy to find later. It won't save until you name it.
+            Your draft is already saved. Give it a name you'll recognize later.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <input
@@ -440,7 +441,17 @@ function FormatPage() {
           <div className="mt-3 flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => { setTitlePending(false); setSections([]); }}
+              onClick={async () => {
+                // Draft was auto-saved — discarding archives it so it isn't lost.
+                if (currentDraftId) {
+                  try {
+                    await archiveFn({ data: { id: currentDraftId, archived: true } });
+                    qc.invalidateQueries({ queryKey: ["create-drafts"] });
+                  } catch { /* best effort */ }
+                }
+                setTitlePending(false);
+                setSections([]);
+              }}
               className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-foreground"
             >
               Discard
