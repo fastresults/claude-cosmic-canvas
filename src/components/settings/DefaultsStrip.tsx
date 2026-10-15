@@ -55,7 +55,7 @@ export function DefaultsStrip() {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-accent/10 px-2 py-0.5 text-[11px] font-display text-accent hover:bg-accent/15"
+            className="inline-flex items-center gap-1 rounded-pill border border-accent/40 bg-accent/10 px-2 py-0.5 text-[11px] font-display font-medium text-foreground hover:bg-accent/15"
             aria-label="Switch profile"
           >
             <Zap className="h-3 w-3" />
@@ -132,10 +132,14 @@ export function DefaultsStrip() {
             className={`inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 text-[11px] font-display transition-colors ${
               missing
                 ? "border-destructive/50 bg-destructive/10 text-destructive"
-                : "border-accent/30 bg-accent/10 text-accent hover:bg-accent/15"
+                : "border-accent/40 bg-accent/10 text-foreground font-medium hover:bg-accent/15"
             }`}
           >
-            {missing ? <AlertCircle className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
+            {missing ? (
+              <AlertCircle className="h-3 w-3" />
+            ) : (
+              <Icon className="h-3 w-3 text-accent" />
+            )}
             <span className="max-w-[10rem] truncate">
               {missing ? `Set ${LABELS[slot]}` : value}
             </span>
