@@ -13,6 +13,8 @@ import { useAttachDraftImage, useImageConcepts, useImageStyles } from "@/hooks/u
 import { listMediaAssets, signMediaUrl } from "@/lib/media/media.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { ThumbPeek } from "@/components/primitives/ThumbPeek";
+import { toast } from "sonner";
+import { toPlainPreview } from "@/lib/text/plain-preview";
 
 
 
@@ -150,7 +152,11 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   const groundedSummary = generationMeta?.groundingSummary || concepts.data?.summary || null;
   const previewAspectClass = selected?.aspect === "1:1" ? "aspect-square" : selected?.aspect === "9:16" ? "aspect-[9/16]" : "aspect-video";
 
+  const [saved, setSaved] = useState(false);
+
   async function run(concept: Concept, customDirection?: string) {
+    setSaved(false);
+    let finalUrl: string | null = null;
     setStreaming(true);
     setErr(null);
     setPreview(null);
@@ -168,10 +174,14 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
         },
         (dataUrl, final) => {
           setPreview(dataUrl);
-          if (final) setIsFinal(true);
+          if (final) {
+            finalUrl = dataUrl;
+            setIsFinal(true);
+          }
         },
       );
       setGenerationMeta(meta);
+      if (finalUrl) void save(finalUrl, concept, meta);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -180,9 +190,17 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
   }
 
   async function confirm() {
+    if (saved) return onDone();
     if (!preview || !selected) return;
+    await save(preview, selected, generationMeta);
+  }
+
+  async function save(dataUrl: string, sel: Concept, gm: StreamDraftImageMetadata | null) {
+    setErr(null);
+    const generationMeta = gm;
+    const selected = sel;
     try {
-      const url = await uploadDataUrl(preview);
+      const url = await uploadDataUrl(dataUrl);
       await attach.mutateAsync({
         role,
         url,
@@ -197,9 +215,11 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
         },
         generatedBy: "gemini",
       });
-      onDone();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Attach failed");
+      setSaved(true);
+      toast.success("Image saved to your draft");
+    } catch {
+      setErr("Couldn't save this image to your draft. Tap “Retry save” to try again.");
+      toast.error("Couldn't save the image to your draft");
     }
   }
 
@@ -317,7 +337,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
           )}
           {groundedSummary && !concepts.isPending && (
             <div className="rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
-              <span className="text-foreground">Grounded from draft:</span> {groundedSummary}
+              <span className="text-foreground">Grounded from draft:</span> {toPlainPreview(groundedSummary, 400)}
             </div>
           )}
           {list.length > 0 && (
@@ -393,7 +413,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
               <span className="text-foreground">Direction:</span> {selected.prompt}
               {groundedSummary && (
                 <div className="mt-2 border-t border-border pt-2">
-                  <span className="text-foreground">Grounded from draft:</span> {groundedSummary}
+                  <span className="text-foreground">Grounded from draft:</span> {toPlainPreview(groundedSummary, 400)}
                 </div>
               )}
             </div>
@@ -423,7 +443,7 @@ function GenerateTab({ draftId, role, onDone }: { draftId: string; role: Role; o
               className="ml-auto flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-foreground disabled:opacity-50"
             >
               {attach.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-              Attach to draft
+              {attach.isPending ? "Saving…" : saved ? "Done" : err ? "Retry save" : "Save to draft"}
             </button>
           </div>
         </div>
