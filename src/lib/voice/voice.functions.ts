@@ -299,7 +299,7 @@ export const setActiveVoice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getActiveVoice = createServerFn({ method: "GET" })
+export const getActiveVoice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data: profile } = await context.supabase

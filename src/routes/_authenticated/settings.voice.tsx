@@ -98,7 +98,19 @@ function VoiceList() {
 
   const setActive = useMutation({
     mutationFn: (id: string) => setActiveFn({ data: { id } }),
-    onSuccess: invalidate,
+    onMutate: async (id) => {
+      // Optimistic: the pill reflects the pick instantly, before the server replies.
+      await qc.cancelQueries({ queryKey: ["voice-active"] });
+      const previous = qc.getQueryData(["voice-active"]);
+      const picked = voices.find((v) => v.id === id);
+      if (picked) qc.setQueryData(["voice-active"], picked);
+      return { previous };
+    },
+    onError: (e, _id, ctx) => {
+      qc.setQueryData(["voice-active"], ctx?.previous);
+      toast.error(e instanceof Error ? e.message : "Couldn't switch voice");
+    },
+    onSettled: invalidate,
   });
   const setDefault = useMutation({
     mutationFn: (id: string) => setDefaultFn({ data: { id } }),

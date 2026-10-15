@@ -109,7 +109,18 @@ function VoiceEditor() {
 
   const setActive = useMutation({
     mutationFn: () => setActiveFn({ data: { id } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["voice-active"] }),
+    onMutate: async () => {
+      // Optimistic: the pill reflects the pick instantly, before the server replies.
+      await qc.cancelQueries({ queryKey: ["voice-active"] });
+      const previous = qc.getQueryData(["voice-active"]);
+      if (profile) qc.setQueryData(["voice-active"], profile);
+      return { previous };
+    },
+    onError: (e, _v, ctx) => {
+      qc.setQueryData(["voice-active"], ctx?.previous);
+      toast.error(e instanceof Error ? e.message : "Couldn't switch voice");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["voice-active"] }),
   });
   const setDefault = useMutation({
     mutationFn: () => setDefaultFn({ data: { id } }),
