@@ -1,3 +1,4 @@
+import { toPlainPreview } from "@/lib/text/plain-preview";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -538,12 +539,12 @@ function Library() {
                               <>
                                 <p className="mt-0.5 truncate text-sm font-medium text-foreground">{d.title}</p>
                                 <p className="truncate text-xs text-muted-foreground">
-                                  {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                                  {toPlainPreview(d.body, 140)}
                                 </p>
                               </>
                             ) : (
                               <p className="mt-0.5 truncate text-sm text-foreground/90">
-                                {d.body.replace(/\s+/g, " ").slice(0, 140)}
+                                {toPlainPreview(d.body, 140)}
                               </p>
                             )}
                           </div>
