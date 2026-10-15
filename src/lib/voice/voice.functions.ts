@@ -421,26 +421,43 @@ export const adoptSystemVoice = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (error || !src) throw error ?? new Error("System voice not found");
-    const { data: row, error: e2 } = await context.supabase
+    const wantName = (data.name ?? src.name).trim();
+    // Already adopted? Reuse the existing copy instead of failing on the
+    // unique (user_id, lower(trim(name))) index.
+    const { data: existingRows } = await context.supabase
       .from("voice_profiles")
-      .insert({
-        user_id: context.userId,
-        name: data.name ?? src.name,
-        category: src.category,
-        tone: src.tone,
-        guidelines: src.guidelines,
-        vocabulary_preferred: src.vocabulary_preferred,
-        vocabulary_avoid: src.vocabulary_avoid,
-        formality: src.formality,
-        humor: src.humor,
-        technicality: src.technicality,
-        conciseness: src.conciseness,
-        samples: src.samples,
-        source: "persona",
-      })
       .select("id, name")
-      .single();
-    if (e2) throw e2;
+      .eq("user_id", context.userId)
+      .ilike("name", wantName.replace(/[%_\\]/g, "\\$&"));
+    const existing = (existingRows ?? []).find(
+      (r) => r.name.trim().toLowerCase() === wantName.toLowerCase(),
+    );
+    let row: { id: string; name: string };
+    if (existing) {
+      row = existing;
+    } else {
+      const { data: inserted, error: e2 } = await context.supabase
+        .from("voice_profiles")
+        .insert({
+          user_id: context.userId,
+          name: wantName,
+          category: src.category,
+          tone: src.tone,
+          guidelines: src.guidelines,
+          vocabulary_preferred: src.vocabulary_preferred,
+          vocabulary_avoid: src.vocabulary_avoid,
+          formality: src.formality,
+          humor: src.humor,
+          technicality: src.technicality,
+          conciseness: src.conciseness,
+          samples: src.samples,
+          source: "persona",
+        })
+        .select("id, name")
+        .single();
+      if (e2) throw e2;
+      row = inserted;
+    }
     await upsertBrainNode(context.supabase, context.userId, row.id, row.name);
     // Adopting = "start using this voice now". Make it the user's default and
     // active voice so every downstream flow (composer, workspaces, drafts,
